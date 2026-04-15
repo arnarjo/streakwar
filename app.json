@@ -1,0 +1,108 @@
+{
+  "expo": {
+    "name": "StreakWar",
+    "slug": "streakwar",
+    "scheme": "streakwar",
+    "version": "1.0.0",
+    "icon": "./assets/icon.png",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0C1117"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "is.streakwar.app",
+      "buildNumber": "1",
+      "requireFullScreen": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "StreakWar needs camera access to take workout proof photos.",
+        "NSPhotoLibraryUsageDescription": "StreakWar needs photo library access to upload workout proof photos and videos.",
+        "NSPhotoLibraryAddUsageDescription": "StreakWar needs permission to save photos.",
+        "NSMicrophoneUsageDescription": "StreakWar needs microphone access to record workout proof videos.",
+        "NSMotionUsageDescription": "StreakWar uses the motion sensor to track your workouts.",
+        "NSHealthShareUsageDescription": "StreakWar reads your workouts, steps, and activity data to automatically award points in challenges — even when the app is closed.",
+        "NSHealthUpdateUsageDescription": "StreakWar does not write to Apple Health.",
+        "UIBackgroundModes": [
+          "remote-notification",
+          "fetch",
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "streakwar-health-sync"
+        ],
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "is.streakwar.app",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0C1117"
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.VIBRATE",
+        "android.permission.POST_NOTIFICATIONS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.health.connect.permission.READ_EXERCISE",
+        "android.health.connect.permission.READ_STEPS",
+        "android.health.connect.permission.READ_DISTANCE",
+        "android.health.connect.permission.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.WAKE_LOCK"
+      ]
+    },
+    "plugins": [
+      [
+        "expo-notifications",
+        {
+          "color": "#F97316",
+          "defaultChannel": "default",
+          "androidMode": "default",
+          "androidCollapsedTitle": "StreakWar"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "StreakWar needs photo library access to upload workout photos.",
+          "cameraPermission": "StreakWar needs camera access to take workout photos."
+        }
+      ],
+      [
+        "expo-background-fetch",
+        {}
+      ],
+      [
+        "expo-task-manager",
+        {}
+      ],
+      "expo-secure-store",
+      "@react-native-community/datetimepicker",
+      "expo-web-browser",
+      "react-native-health-connect",
+      [
+        "react-native-health",
+        {
+          "isClinicalDataEnabled": false
+        }
+      ]
+    ],
+    "owner": "fitbet",
+    "extra": {
+      "eas": {
+        "projectId": "bdd9ba2f-0eb5-4952-b9d3-8738c25d5851"
+      }
+    }
+  }
+}
