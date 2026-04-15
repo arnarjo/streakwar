@@ -258,3 +258,22 @@ export const SOURCE_LABELS: Record<WorkoutSource, string> = {
 
 export const REACTIONS = ['💪', '🔥', '👏', '🤩', '❤️'] as const;
 export type Reaction = typeof REACTIONS[number];
+
+// ── League ────────────────────────────────────────────────────
+export type LeagueTier = 'bronze' | 'silver' | 'gold' | 'platinum' | 'diamond';
+
+export const LEAGUE_TIER_META: Record<LeagueTier, { label: string; emoji: string; color: string }> = {
+  bronze:   { label: 'Bronze',   emoji: '🥉', color: '#B45309' },
+  silver:   { label: 'Silver',   emoji: '🥈', color: '#9CA3AF' },
+  gold:     { label: 'Gold',     emoji: '🥇', color: '#F59E0B' },
+  platinum: { label: 'Platinum', emoji: '💎', color: '#60A5FA' },
+  diamond:  { label: 'Diamond',  emoji: '👑', color: '#A78BFA' },
+};
+
+export interface LeagueMember {
+  user_id: string;
+  username: string;
+  full_name: string | null;
+  tier: LeagueTier;
+  weekly_points: number;
+}
