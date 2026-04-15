@@ -7,7 +7,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useStreaks } from '../hooks/useStreaks';
-import type { LeaderboardEntry } from '../types/database';
+import { useLeague } from '../hooks/useLeague';
+import { LEAGUE_TIER_META } from '../types/database';
+import type { LeaderboardEntry, LeagueTier } from '../types/database';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
@@ -15,7 +17,7 @@ const C = {
   gold: '#F59E0B', silver: '#9CA3AF', bronze: '#B45309',
 };
 
-type Tab = 'week' | 'world' | 'friends';
+type Tab = 'league' | 'week' | 'world' | 'friends';
 
 function medalOrRank(rank: number) {
   if (rank === 1) return '🥇';
@@ -48,7 +50,10 @@ export default function LeaderboardScreen() {
     follow, unfollow,
   } = useLeaderboard(userId);
 
-  const [tab, setTab] = useState<Tab>('week');
+  const { members: leagueMembers, myTier, myRank: myLeagueRank, loading: leagueLoading, refresh: refreshLeague } = useLeague(userId);
+  const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
+
+  const [tab, setTab] = useState<Tab>('league');
 
   useEffect(() => {
     fetchWeekly();
@@ -161,7 +166,12 @@ export default function LeaderboardScreen() {
 
       {/* Tabs */}
       <View style={s.tabs}>
-        {([['week', '📅 Week'], ['world', '🌍 All-time'], ['friends', '👥 Friends']] as [Tab, string][]).map(([key, label]) => (
+        {([
+          { key: 'league' as Tab, label: `${tierMeta?.emoji ?? '🥉'} League` },
+          { key: 'week' as Tab, label: '📅 Week' },
+          { key: 'world' as Tab, label: '🌍 All-time' },
+          { key: 'friends' as Tab, label: '👥 Friends' },
+        ]).map(({ key, label }) => (
           <TouchableOpacity
             key={key}
             style={[s.tab, tab === key && s.tabActive]}
@@ -172,29 +182,85 @@ export default function LeaderboardScreen() {
         ))}
       </View>
 
-      <FlatList
-        data={data}
-        keyExtractor={item => item.id}
-        contentContainerStyle={s.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
-        renderItem={renderRow}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>{tab === 'friends' ? '👥' : '🏆'}</Text>
-              <Text style={s.emptyTitle}>
-                {tab === 'friends' ? 'No friends yet' : tab === 'week' ? 'No workouts this week' : 'No one here yet'}
+      {tab === 'league' && (
+        <FlatList
+          data={leagueMembers}
+          keyExtractor={m => m.user_id}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={leagueLoading} onRefresh={refreshLeague} tintColor={C.primary} />}
+          ListHeaderComponent={
+            <View style={{ paddingBottom: 8 }}>
+              <Text style={[{ fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 }, { color: tierMeta?.color ?? '#B45309' }]}>
+                {tierMeta?.emoji} {tierMeta?.label} League
               </Text>
-              <Text style={s.emptyText}>
-                {tab === 'friends'
-                  ? 'Switch to Week or All-time and tap + to follow people'
-                  : 'Log your first workout to appear here'}
-              </Text>
+              <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Top 5 promote · Bottom 5 relegate</Text>
+              {leagueMembers.length === 0 && !leagueLoading && (
+                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
+                  <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 }}>
+                    Your league group is being set up — check back Monday!
+                  </Text>
+                </View>
+              )}
             </View>
-          ) : null
-        }
-      />
+          }
+          renderItem={({ item, index }) => {
+            const rank = index + 1;
+            const isMe = item.user_id === userId;
+            const isPromotion = rank <= 5 && leagueMembers.length >= 10;
+            const isRelegation = rank > leagueMembers.length - 5 && leagueMembers.length >= 10;
+            const name = item.full_name ?? item.username;
+            const avatarInitials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+            return (
+              <View style={[
+                s.leagueRow,
+                isMe && s.leagueRowMe,
+                isPromotion && s.leagueRowPromotion,
+                isRelegation && s.leagueRowRelegation,
+              ]}>
+                <Text style={[s.leagueRankText, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
+                <View style={s.leagueAvatar}>
+                  <Text style={s.leagueAvatarText}>{avatarInitials}</Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.leagueMemberName} numberOfLines={1}>
+                    {name}{isMe ? ' (you)' : ''}
+                  </Text>
+                  {isPromotion && <Text style={{ fontSize: 10, color: '#22C55E', fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
+                  {isRelegation && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
+                </View>
+                <Text style={s.leaguePts}>{item.weekly_points} pts</Text>
+              </View>
+            );
+          }}
+        />
+      )}
+
+      {tab !== 'league' && (
+        <FlatList
+          data={data}
+          keyExtractor={item => item.id}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
+          renderItem={renderRow}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>{tab === 'friends' ? '👥' : '🏆'}</Text>
+                <Text style={s.emptyTitle}>
+                  {tab === 'friends' ? 'No friends yet' : tab === 'week' ? 'No workouts this week' : 'No one here yet'}
+                </Text>
+                <Text style={s.emptyText}>
+                  {tab === 'friends'
+                    ? 'Switch to Week or All-time and tap + to follow people'
+                    : 'Log your first workout to appear here'}
+                </Text>
+              </View>
+            ) : null
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -243,4 +309,14 @@ const s = StyleSheet.create({
   emptyEmoji:   { fontSize: 48 },
   emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.muted },
   emptyText:    { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+
+  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
+  leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
+  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
+  leagueRowRelegation:{ borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  leagueRankText:     { fontSize: 14, fontWeight: '800', width: 32, textAlign: 'center' },
+  leagueAvatar:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + '20', alignItems: 'center', justifyContent: 'center' },
+  leagueAvatarText:   { fontSize: 13, fontWeight: '800', color: C.primary },
+  leagueMemberName:   { fontSize: 14, fontWeight: '700', color: C.text },
+  leaguePts:          { fontSize: 15, fontWeight: '900', color: C.primary },
 });
