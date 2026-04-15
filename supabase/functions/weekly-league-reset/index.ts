@@ -58,8 +58,8 @@ Deno.serve(async () => {
 
     if (!rows || rows.length === 0) continue;
 
-    const promotionCutoff = Math.min(5, Math.floor(rows.length * 0.25));
-    const relegationCutoff = Math.max(rows.length - 5, Math.ceil(rows.length * 0.75));
+    const promotionCutoff = Math.min(5, rows.length);
+    const relegationCutoff = Math.max(rows.length - 5, 0);
 
     for (let i = 0; i < rows.length; i++) {
       const member = rows[i];
