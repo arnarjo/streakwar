@@ -10,9 +10,11 @@ import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useLeaderboard } from '../hooks/useLeaderboard';
+import { useLeague } from '../hooks/useLeague';
+import { LEAGUE_TIER_META } from '../types/database';
+import type { WorkoutComment, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
-import type { WorkoutComment } from '../types/database';
 import { Share } from 'react-native';
 
 const C = {
@@ -27,6 +29,12 @@ export default function HomeScreen() {
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
+  const { myTier, myRank, members: leagueMembers } = useLeague(profile?.id ?? '');
+  const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
+  const daysUntilSunday = (() => {
+    const d = new Date().getDay(); // 0=Sun
+    return d === 0 ? 7 : 7 - d;
+  })();
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   async function handleShare() {
@@ -94,6 +102,25 @@ export default function HomeScreen() {
                     <Text style={s.streakSub}>Best streak: {streak.longest_streak} days</Text>
                   </View>
                   <Text style={s.streakShare}>📤</Text>
+                </TouchableOpacity>
+              )}
+
+              {leagueMembers.length > 0 && myRank !== null && (
+                <TouchableOpacity
+                  style={s.leagueBanner}
+                  onPress={() => navigation.navigate('Leaderboard')}
+                  activeOpacity={0.85}
+                >
+                  <Text style={s.leagueBannerEmoji}>{tierMeta?.emoji ?? '🥉'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.leagueBannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>
+                      #{myRank} in {tierMeta?.label} League
+                    </Text>
+                    <Text style={s.leagueBannerSub}>
+                      {daysUntilSunday} day{daysUntilSunday !== 1 ? 's' : ''} left · {leagueMembers.length} competitors
+                    </Text>
+                  </View>
+                  <Text style={s.leagueBannerArrow}>→</Text>
                 </TouchableOpacity>
               )}
 
@@ -195,4 +222,9 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
   emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  leagueBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1C1828', borderWidth: 1, borderColor: '#7C3AED30', borderRadius: 14, padding: 14, marginBottom: 10 },
+  leagueBannerEmoji: { fontSize: 28 },
+  leagueBannerTitle: { fontSize: 15, fontWeight: '800' },
+  leagueBannerSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  leagueBannerArrow: { fontSize: 18, color: '#7C3AED', fontWeight: '700' },
 });
