@@ -92,9 +92,11 @@
       "expo-web-browser",
       "react-native-health-connect",
       [
-        "react-native-health",
+        "expo-build-properties",
         {
-          "isClinicalDataEnabled": false
+          "android": {
+            "minSdkVersion": 26
+          }
         }
       ]
     ],
