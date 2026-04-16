@@ -9,14 +9,15 @@ import { format, addDays } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import ChallengeCard from '../components/ChallengeCard';
+import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
   text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316',
 };
 
-type Tab = 'active' | 'upcoming' | 'completed';
-const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done' };
+type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
+const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
 
 export default function ChallengesScreen() {
   const { profile } = useAuth();
@@ -123,34 +124,38 @@ export default function ChallengesScreen() {
         ))}
       </View>
 
-      <FlatList
-        data={filtered}
-        keyExtractor={c => c.id}
-        contentContainerStyle={s.list}
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.primary} />}
-        renderItem={({ item }) => (
-          <ChallengeCard
-            challenge={item}
-            onPress={() => navigation.navigate('ChallengeDetail', { challengeId: item.id })}
-          />
-        )}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>{tab === 'active' ? '💪' : tab === 'upcoming' ? '📅' : '🏆'}</Text>
-              <Text style={s.emptyTitle}>
-                {tab === 'active' ? 'No active challenges' : tab === 'upcoming' ? 'No upcoming challenges' : 'No completed challenges'}
-              </Text>
-              {tab === 'active' && (
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('CreateChallenge')}>
-                  <Text style={s.emptyBtnText}>Create a challenge</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ) : null
-        }
-      />
+      {tab !== 'discover' ? (
+        <FlatList
+          data={filtered}
+          keyExtractor={c => c.id}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.primary} />}
+          renderItem={({ item }) => (
+            <ChallengeCard
+              challenge={item}
+              onPress={() => navigation.navigate('ChallengeDetail', { challengeId: item.id })}
+            />
+          )}
+          ListEmptyComponent={
+            !loading ? (
+              <View style={s.empty}>
+                <Text style={s.emptyEmoji}>{tab === 'active' ? '💪' : tab === 'upcoming' ? '📅' : '🏆'}</Text>
+                <Text style={s.emptyTitle}>
+                  {tab === 'active' ? 'No active challenges' : tab === 'upcoming' ? 'No upcoming challenges' : 'No completed challenges'}
+                </Text>
+                {tab === 'active' && (
+                  <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('CreateChallenge')}>
+                    <Text style={s.emptyBtnText}>Create a challenge</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            ) : null
+          }
+        />
+      ) : (
+        <DiscoverChallengesScreen />
+      )}
 
       {/* Quick 1v1 Challenge Modal */}
       <Modal visible={quickModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
