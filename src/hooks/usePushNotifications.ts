@@ -35,6 +35,9 @@ export function usePushNotifications(
       if (data?.challenge_id && navigationRef.isReady()) {
         navigationRef.navigate('ChallengeDetail' as never, { challengeId: data.challenge_id } as never);
       }
+      if (data?.screen === 'WeeklyRecap') {
+        navigationRef.current?.navigate('WeeklyRecap' as never);
+      }
     });
 
     return () => {
