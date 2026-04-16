@@ -28,6 +28,13 @@ const C = {
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 const TIE_BREAK_OPTIONS: TieBreakRule[] = ['first_to_score', 'most_recent_activity', 'most_workouts'];
+const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = [
+  { label: '5', value: 5 },
+  { label: '10', value: 10 },
+  { label: '20', value: 20 },
+  { label: '50', value: 50 },
+  { label: '∞', value: null },
+];
 
 type Step = 1 | 2 | 3 | 4;
 
@@ -61,13 +68,6 @@ export default function CreateChallengeScreen() {
   const [tieBreak, setTieBreak] = useState<TieBreakRule>('most_recent_activity');
   const [isPublic, setIsPublic] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number | null>(null);
-  const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = [
-    { label: '5', value: 5 },
-    { label: '10', value: 10 },
-    { label: '20', value: 20 },
-    { label: '50', value: 50 },
-    { label: '∞', value: null },
-  ];
 
   function toggleScoring(mode: ScoringMode) {
     setScoringModes(prev =>
@@ -546,9 +546,9 @@ const s = StyleSheet.create({
   formRow: { marginBottom: 16 },
   formLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1, marginBottom: 10 },
   maxBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
-  maxBtnActive: { borderColor: '#F97316', backgroundColor: '#F9731618' },
-  maxBtnText: { fontSize: 13, fontWeight: '700', color: '#4A6070' },
-  maxBtnTextActive: { color: '#F97316' },
+  maxBtnActive: { borderColor: C.primary, backgroundColor: C.primary + '18' },
+  maxBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  maxBtnTextActive: { color: C.primary },
 
   summaryCard: {
     backgroundColor: C.primary + '12',

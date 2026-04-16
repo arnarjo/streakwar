@@ -5,10 +5,14 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { SCORING_MODE_LABELS } from '../types/database';
 import type { FitnessChallenge, ScoringMode } from '../types/database';
+
+type Props = {
+  myChallenges: FitnessChallenge[];
+  joinPublic: (challengeId: string) => Promise<{ error: string | null }>;
+  onRefreshMyChallenges: () => Promise<void>;
+};
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
@@ -24,10 +28,8 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: 'distance_km', label: '📍 Distance' },
 ];
 
-export default function DiscoverChallengesScreen() {
-  const { profile } = useAuth();
+export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
   const navigation = useNavigation<any>();
-  const { myChallenges, joinPublic, refresh: refreshMine } = useFitnessChallenges(profile?.id ?? '');
 
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,14 +65,13 @@ export default function DiscoverChallengesScreen() {
     : challenges.filter(c => c.scoring_modes.includes(filter as ScoringMode));
 
   async function handleJoin(challenge: FitnessChallenge) {
-    if (!profile?.id) return;
     setJoining(challenge.id);
     const { error } = await joinPublic(challenge.id);
     setJoining(null);
     if (error) {
       Alert.alert('Could not join', error);
     } else {
-      await Promise.all([load(), refreshMine()]);
+      await Promise.all([load(), onRefreshMyChallenges()]);
       navigation.navigate('ChallengeDetail', { challengeId: challenge.id });
     }
   }
@@ -85,7 +86,6 @@ export default function DiscoverChallengesScreen() {
 
   return (
     <View style={s.container}>
-      {/* Filter bar */}
       <FlatList
         horizontal
         data={FILTERS}
@@ -104,7 +104,6 @@ export default function DiscoverChallengesScreen() {
         )}
       />
 
-      {/* Challenge list */}
       <FlatList
         data={filtered}
         keyExtractor={c => c.id}
@@ -118,7 +117,7 @@ export default function DiscoverChallengesScreen() {
 
           return (
             <View style={s.card}>
-              <View style={{ flex: 1 }}>
+              <View style={s.cardContent}>
                 <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
                 <Text style={s.cardMeta}>
                   {modeEmoji} {SCORING_MODE_LABELS[item.scoring_modes[0]]} · 👥 {item.participant_count ?? 0}
@@ -163,6 +162,7 @@ const s = StyleSheet.create({
   filterBtnTextActive: { color: C.primary },
   list: { paddingHorizontal: 16, paddingBottom: 40 },
   card: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 8, gap: 12 },
+  cardContent: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
   cardMeta: { fontSize: 12, color: C.muted },
   joinBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10 },

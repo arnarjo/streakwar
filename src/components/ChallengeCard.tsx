@@ -131,7 +131,6 @@ const s = StyleSheet.create({
   },
   rankText: { fontSize: 12, fontWeight: '800', color: C.primary },
   scoreText: { fontSize: 13, fontWeight: '600', color: C.text },
-  participants: { fontSize: 12, color: C.muted },
   publicBadge: {
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 6,

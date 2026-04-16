@@ -17,7 +17,8 @@ export function useFitnessChallenges(userId: string) {
         rank,
         fitness_challenges (
           *,
-          creator:profiles!fitness_challenges_created_by_fkey (id, username, full_name, avatar_url)
+          creator:profiles!fitness_challenges_created_by_fkey (id, username, full_name, avatar_url),
+          challenge_participants(count)
         )
       `)
       .eq('user_id', userId)
@@ -29,23 +30,10 @@ export function useFitnessChallenges(userId: string) {
           ...row.fitness_challenges,
           my_score: row.score,
           my_rank: row.rank,
+          participant_count: Number(row.fitness_challenges?.challenge_participants?.[0]?.count ?? 0),
         }))
         .filter(Boolean);
-
-      const ids = challenges.map((c: any) => c.id);
-      if (ids.length > 0) {
-        const { data: rows } = await supabase
-          .from('challenge_participants')
-          .select('challenge_id')
-          .in('challenge_id', ids);
-        const countMap: Record<string, number> = {};
-        for (const row of rows ?? []) {
-          countMap[row.challenge_id] = (countMap[row.challenge_id] ?? 0) + 1;
-        }
-        setMyChallenges(challenges.map((c: any) => ({ ...c, participant_count: countMap[c.id] ?? 0 })));
-      } else {
-        setMyChallenges(challenges);
-      }
+      setMyChallenges(challenges);
     }
     setLoading(false);
   }, [userId]);

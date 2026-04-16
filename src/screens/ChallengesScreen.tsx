@@ -22,7 +22,7 @@ const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming'
 export default function ChallengesScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
-  const { myChallenges, loading, refresh, joinByCode, createChallenge } = useFitnessChallenges(profile?.id ?? '');
+  const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [code, setCode] = useState('');
@@ -154,7 +154,11 @@ export default function ChallengesScreen() {
           }
         />
       ) : (
-        <DiscoverChallengesScreen />
+        <DiscoverChallengesScreen
+          myChallenges={myChallenges}
+          joinPublic={joinPublic}
+          onRefreshMyChallenges={refresh}
+        />
       )}
 
       {/* Quick 1v1 Challenge Modal */}
