@@ -71,7 +71,7 @@ export function useFitnessChallenges(userId: string) {
     if (!challenge) return { error: 'Invalid invite code', challenge: null };
 
     // Check if challenge is full
-    if (challenge.max_participants) {
+    if (challenge.max_participants != null) {
       const { count } = await supabase
         .from('challenge_participants')
         .select('*', { count: 'exact', head: true })
@@ -102,7 +102,7 @@ export function useFitnessChallenges(userId: string) {
       .eq('id', challengeId)
       .single();
 
-    if (challenge?.max_participants) {
+    if (challenge?.max_participants != null) {
       const { count } = await supabase
         .from('challenge_participants')
         .select('*', { count: 'exact', head: true })
