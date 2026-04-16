@@ -31,7 +31,21 @@ export function useFitnessChallenges(userId: string) {
           my_rank: row.rank,
         }))
         .filter(Boolean);
-      setMyChallenges(challenges);
+
+      const ids = challenges.map((c: any) => c.id);
+      if (ids.length > 0) {
+        const { data: rows } = await supabase
+          .from('challenge_participants')
+          .select('challenge_id')
+          .in('challenge_id', ids);
+        const countMap: Record<string, number> = {};
+        for (const row of rows ?? []) {
+          countMap[row.challenge_id] = (countMap[row.challenge_id] ?? 0) + 1;
+        }
+        setMyChallenges(challenges.map((c: any) => ({ ...c, participant_count: countMap[c.id] ?? 0 })));
+      } else {
+        setMyChallenges(challenges);
+      }
     }
     setLoading(false);
   }, [userId]);
@@ -56,6 +70,17 @@ export function useFitnessChallenges(userId: string) {
 
     if (!challenge) return { error: 'Invalid invite code', challenge: null };
 
+    // Check if challenge is full
+    if (challenge.max_participants) {
+      const { count } = await supabase
+        .from('challenge_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('challenge_id', challenge.id);
+      if ((count ?? 0) >= challenge.max_participants) {
+        return { error: 'Challenge is full', challenge: null };
+      }
+    }
+
     const { error } = await supabase
       .from('challenge_participants')
       .insert({ challenge_id: challenge.id, user_id: userId });
@@ -70,6 +95,23 @@ export function useFitnessChallenges(userId: string) {
   }
 
   async function joinPublic(challengeId: string): Promise<{ error: string | null }> {
+    // Check fullness
+    const { data: challenge } = await supabase
+      .from('fitness_challenges')
+      .select('max_participants')
+      .eq('id', challengeId)
+      .single();
+
+    if (challenge?.max_participants) {
+      const { count } = await supabase
+        .from('challenge_participants')
+        .select('*', { count: 'exact', head: true })
+        .eq('challenge_id', challengeId);
+      if ((count ?? 0) >= challenge.max_participants) {
+        return { error: 'Challenge is full' };
+      }
+    }
+
     const { error } = await supabase
       .from('challenge_participants')
       .insert({ challenge_id: challengeId, user_id: userId });
@@ -98,6 +140,7 @@ export function useFitnessChallenges(userId: string) {
     is_teams_mode: boolean;
     tie_break_rule: TieBreakRule;
     is_public: boolean;
+    max_participants?: number | null;
   }): Promise<{ error: string | null; challenge: FitnessChallenge | null }> {
     const { data: challenge, error } = await supabase
       .from('fitness_challenges')
