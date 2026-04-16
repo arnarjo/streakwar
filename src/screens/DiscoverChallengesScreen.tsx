@@ -36,7 +36,7 @@ export default function DiscoverChallengesScreen() {
 
   const load = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fitness_challenges')
       .select('*, challenge_participants(count)')
       .eq('is_public', true)
@@ -44,10 +44,12 @@ export default function DiscoverChallengesScreen() {
       .order('created_at', { ascending: false })
       .limit(50);
 
-    if (data) {
+    if (error) {
+      Alert.alert('Failed to load challenges', error.message);
+    } else if (data) {
       const withCounts = data.map((c: any) => ({
         ...c,
-        participant_count: c.challenge_participants?.[0]?.count ?? 0,
+        participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
       }));
       setChallenges(withCounts);
     }

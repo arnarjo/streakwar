@@ -79,9 +79,6 @@ export default function ChallengeCard({ challenge, onPress }: Props) {
           <Text style={s.scoreText}>{challenge.my_score} pts</Text>
         )}
         <View style={{ flex: 1 }} />
-        {challenge.participant_count != null && (
-          <Text style={s.participants}>👥 {challenge.participant_count}</Text>
-        )}
         {challenge.is_public && (
           <View style={s.publicBadge}>
             <Text style={s.publicText}>Public</Text>
