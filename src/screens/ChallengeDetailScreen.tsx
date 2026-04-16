@@ -8,6 +8,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
+import { useChallengeMessages, TRASH_TALK_MESSAGES } from '../hooks/useChallengeMessages';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
@@ -24,7 +25,7 @@ const C = {
   green: '#22C55E',
 };
 
-type Tab = 'leaderboard' | 'feed' | 'info';
+type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
@@ -38,6 +39,7 @@ export default function ChallengeDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment } = useWorkoutFeed(profile?.id ?? '');
+  const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
     const { data } = await supabase
@@ -61,6 +63,7 @@ export default function ChallengeDetailScreen() {
     loadChallenge();
     loadParticipants();
     fetchFeed(challengeId);
+    fetchBanter();
 
     const channel = supabase
       .channel(`challenge_${challengeId}`)
@@ -114,14 +117,14 @@ export default function ChallengeDetailScreen() {
 
       {/* Tabs */}
       <View style={s.tabs}>
-        {(['leaderboard', 'feed', 'info'] as Tab[]).map(t => (
+        {(['leaderboard', 'feed', 'banter', 'info'] as Tab[]).map(t => (
           <TouchableOpacity
             key={t}
             style={[s.tab, tab === t && s.tabActive]}
             onPress={() => setTab(t)}
           >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>
-              {t === 'leaderboard' ? '🏆 Leaderboard' : t === 'feed' ? '📸 Feed' : 'ℹ️ Info'}
+              {t === 'leaderboard' ? '🏆 Leaderboard' : t === 'feed' ? '📸 Feed' : t === 'banter' ? '💬 Banter' : 'ℹ️ Info'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -229,6 +232,42 @@ export default function ChallengeDetailScreen() {
             </View>
           }
         />
+      )}
+
+      {/* Banter tab */}
+      {tab === 'banter' && (
+        <View style={{ flex: 1 }}>
+          <View style={s.trashGrid}>
+            {Object.entries(TRASH_TALK_MESSAGES).map(([key, text]) => (
+              <TouchableOpacity
+                key={key}
+                style={s.trashBtn}
+                onPress={() => sendMessage(key)}
+                activeOpacity={0.75}
+              >
+                <Text style={s.trashBtnText}>{text}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <FlatList
+            data={banterMessages}
+            keyExtractor={m => m.id}
+            contentContainerStyle={s.messageList}
+            renderItem={({ item }) => (
+              <View style={s.messageRow}>
+                <Text style={s.messageSender}>
+                  {item.sender?.full_name ?? item.sender?.username ?? 'Unknown'}
+                </Text>
+                <Text style={s.messageText}>{TRASH_TALK_MESSAGES[item.message_key]}</Text>
+              </View>
+            )}
+            ListEmptyComponent={
+              <View style={s.emptyBanter}>
+                <Text style={s.emptyBanterText}>No trash talk yet — send the first shot 💬</Text>
+              </View>
+            }
+          />
+        </View>
       )}
 
       {/* Info tab */}
@@ -433,4 +472,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+
+  trashGrid: { padding: 16, gap: 8 },
+  trashBtn: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
+  trashBtnText: { fontSize: 14, color: '#EEF4F8', fontWeight: '600' },
+  messageList: { paddingHorizontal: 16, paddingBottom: 40 },
+  messageRow: { backgroundColor: '#1E2A35', borderRadius: 10, padding: 12, marginBottom: 6 },
+  messageSender: { fontSize: 11, color: '#F97316', fontWeight: '700', marginBottom: 2 },
+  messageText: { fontSize: 14, color: '#EEF4F8' },
+  emptyBanter: { alignItems: 'center', paddingTop: 32 },
+  emptyBanterText: { fontSize: 14, color: '#4A6070', textAlign: 'center' },
 });
