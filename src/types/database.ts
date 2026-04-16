@@ -13,6 +13,7 @@ export type ActivityType =
 
 export type ScoringMode =
   | 'workouts'
+  | 'days_active'
   | 'steps'
   | 'distance_km'
   | 'duration_min'
@@ -125,6 +126,7 @@ export interface FitnessChallenge {
   is_teams_mode: boolean;
   tie_break_rule: TieBreakRule;
   is_public: boolean;
+  max_participants: number | null;
   invite_code: string;
   created_at: string;
   participant_count?: number;
@@ -233,6 +235,7 @@ export const ACTIVITY_OPTIONS: ActivityType[] = [
 
 export const SCORING_MODE_LABELS: Record<ScoringMode, string> = {
   workouts:    '💪 Workouts',
+  days_active: '📅 Days Active',
   steps:       '👟 Steps',
   distance_km: '📍 Distance (km)',
   duration_min:'⏱ Duration (min)',
