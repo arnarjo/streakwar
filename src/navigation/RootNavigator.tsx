@@ -19,6 +19,7 @@ import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
 import CreateChallengeScreen from '../screens/CreateChallengeScreen';
 import LogWorkoutScreen      from '../screens/LogWorkoutScreen';
 import ConnectDevicesScreen  from '../screens/ConnectDevicesScreen';
+import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
@@ -101,6 +102,7 @@ export default function RootNavigator({ onRouteChange }: Props) {
             <Stack.Screen name="LogWorkout"      component={LogWorkoutScreen}
               options={{ presentation: 'modal' }} />
             <Stack.Screen name="ConnectDevices"  component={ConnectDevicesScreen} />
+            <Stack.Screen name="WeeklyRecap"     component={WeeklyRecapScreen} options={{ headerShown: false }} />
           </>
         ) : (
           <>
