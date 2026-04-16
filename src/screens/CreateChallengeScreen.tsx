@@ -60,6 +60,14 @@ export default function CreateChallengeScreen() {
   const [teamsMode, setTeamsMode] = useState(false);
   const [tieBreak, setTieBreak] = useState<TieBreakRule>('most_recent_activity');
   const [isPublic, setIsPublic] = useState(false);
+  const [maxParticipants, setMaxParticipants] = useState<number | null>(null);
+  const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = [
+    { label: '5', value: 5 },
+    { label: '10', value: 10 },
+    { label: '20', value: 20 },
+    { label: '50', value: 50 },
+    { label: '∞', value: null },
+  ];
 
   function toggleScoring(mode: ScoringMode) {
     setScoringModes(prev =>
@@ -96,6 +104,7 @@ export default function CreateChallengeScreen() {
       is_teams_mode: teamsMode,
       tie_break_rule: tieBreak,
       is_public: isPublic,
+      max_participants: maxParticipants,
     });
     setSaving(false);
 
@@ -306,6 +315,27 @@ export default function CreateChallengeScreen() {
                 />
               </View>
 
+              {/* Max participants */}
+              <View style={s.formRow}>
+                <Text style={s.formLabel}>Max participants</Text>
+                <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
+                  {MAX_PARTICIPANT_OPTIONS.map(opt => (
+                    <TouchableOpacity
+                      key={String(opt.value)}
+                      style={[
+                        s.maxBtn,
+                        maxParticipants === opt.value && s.maxBtnActive,
+                      ]}
+                      onPress={() => setMaxParticipants(opt.value)}
+                    >
+                      <Text style={[s.maxBtnText, maxParticipants === opt.value && s.maxBtnTextActive]}>
+                        {opt.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
               <Text style={[s.label, { marginTop: 20 }]}>TIEBREAKER *</Text>
               <Text style={s.hint}>This will be shown to participants in advance</Text>
               {TIE_BREAK_OPTIONS.map(rule => (
@@ -512,6 +542,13 @@ const s = StyleSheet.create({
   },
   switchLabel: { fontSize: 14, color: C.text, fontWeight: '600' },
   switchHint: { fontSize: 11, color: C.muted, marginTop: 2 },
+
+  formRow: { marginBottom: 16 },
+  formLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1, marginBottom: 10 },
+  maxBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
+  maxBtnActive: { borderColor: '#F97316', backgroundColor: '#F9731618' },
+  maxBtnText: { fontSize: 13, fontWeight: '700', color: '#4A6070' },
+  maxBtnTextActive: { color: '#F97316' },
 
   summaryCard: {
     backgroundColor: C.primary + '12',
