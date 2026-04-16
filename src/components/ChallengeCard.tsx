@@ -50,6 +50,11 @@ export default function ChallengeCard({ challenge, onPress }: Props) {
         <View style={{ flex: 1 }}>
           <Text style={s.name} numberOfLines={1}>{challenge.name}</Text>
           <Text style={s.scoring}>{scoringLabels}</Text>
+          {challenge.participant_count !== undefined && (
+            <Text style={s.participantBadge}>
+              👥 {challenge.participant_count}{challenge.max_participants ? `/${challenge.max_participants}` : ''}
+            </Text>
+          )}
         </View>
         <View style={[s.statusBadge, { borderColor: statusColor + '40', backgroundColor: statusColor + '15' }]}>
           <Text style={[s.statusText, { color: statusColor }]}>{statusLabel}</Text>
@@ -100,6 +105,7 @@ const s = StyleSheet.create({
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   name: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 2 },
   scoring: { fontSize: 12, color: C.muted },
+  participantBadge: { fontSize: 11, color: '#4A6070', marginTop: 2, fontWeight: '600' },
   statusBadge: {
     borderWidth: 1,
     borderRadius: 8,
