@@ -256,7 +256,7 @@ export const SOURCE_LABELS: Record<WorkoutSource, string> = {
   samsung_health: 'Samsung Health',
 };
 
-export const REACTIONS = ['💪', '🔥', '👏', '🤩', '❤️'] as const;
+export const REACTIONS = ['🔥', '💪', '👏', '😂'] as const;
 export type Reaction = typeof REACTIONS[number];
 
 // ── League ────────────────────────────────────────────────────

@@ -104,19 +104,19 @@ export default function WorkoutPostCard({ post, onReact, onFetchComments, onAddC
 
       {/* Reactions */}
       <View style={s.reactionsRow}>
-        <View style={s.reactionBtns}>
-          {REACTIONS.map(r => {
-            const count = post.reaction_counts?.[r] ?? 0;
-            const active = post.my_reaction === r;
+        <View style={s.reactRow}>
+          {REACTIONS.map(emoji => {
+            const count = post.reaction_counts?.[emoji] ?? 0;
+            const active = post.my_reaction === emoji;
             return (
               <TouchableOpacity
-                key={r}
-                style={[s.reactionBtn, active && s.reactionBtnActive]}
-                onPress={() => onReact(post.id, r)}
+                key={emoji}
+                style={[s.reactBtn, active && s.reactBtnActive]}
+                onPress={() => onReact(post.id, emoji)}
                 activeOpacity={0.7}
               >
-                <Text style={s.reactionEmoji}>{r}</Text>
-                {count > 0 && <Text style={[s.reactionCount, active && { color: C.primary }]}>{count}</Text>}
+                <Text style={s.reactEmoji}>{emoji}</Text>
+                {count > 0 && <Text style={[s.reactCount, active && { color: '#F97316' }]}>{count}</Text>}
               </TouchableOpacity>
             );
           })}
@@ -249,19 +249,11 @@ const s = StyleSheet.create({
     borderTopColor: C.border,
     gap: 4,
   },
-  reactionBtns: { flexDirection: 'row', flex: 1, gap: 4 },
-  reactionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 8,
-    backgroundColor: 'transparent',
-  },
-  reactionBtnActive: { backgroundColor: C.primary + '20' },
-  reactionEmoji: { fontSize: 16 },
-  reactionCount: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  reactRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  reactBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  reactBtnActive: { backgroundColor: '#F9731615', borderColor: '#F9731640' },
+  reactEmoji: { fontSize: 16 },
+  reactCount: { fontSize: 12, fontWeight: '700', color: '#4A6070' },
   commentBtn: { padding: 6 },
   commentBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
 
