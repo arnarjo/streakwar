@@ -73,7 +73,7 @@ export default function SignupScreen({ navigation }: Props) {
     if (error) {
       shake();
       if (error.message.includes('already registered')) setErrors({ email: 'This email is already registered' });
-      else Alert.alert('Error', 'Something went wrong. Please try again.');
+      else Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } else {
       Alert.alert('Welcome! 🎉', "We've sent a confirmation email. Check your inbox.", [
         { text: 'OK', onPress: () => navigation.navigate('Login') },
