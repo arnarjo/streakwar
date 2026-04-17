@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, StatusBar, Platform, Linking,
+  Alert, ActivityIndicator, StatusBar, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,11 +24,6 @@ const C = {
 /** Providers that require OAuth via your backend (Supabase Edge Function) */
 const OAUTH_PROVIDERS: ProviderKey[] = ['strava', 'garmin', 'fitbit'];
 
-/** The OAuth initiation URL on your Supabase Edge Functions */
-function getOAuthUrl(provider: ProviderKey, userId: string): string {
-  const base = process.env.EXPO_PUBLIC_SUPABASE_URL!.replace('/rest/v1', '');
-  return `${base}/functions/v1/oauth-init?provider=${provider}&user_id=${userId}`;
-}
 
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
@@ -46,15 +41,13 @@ export default function ConnectDevicesScreen() {
     Alert.alert(success ? 'Connected!' : 'Could not connect', message);
   }
 
-  async function handleOAuthConnect(provider: ProviderKey) {
-    if (!profile?.id) return;
-    const url = getOAuthUrl(provider, profile.id);
-    const supported = await Linking.canOpenURL(url);
-    if (supported) {
-      await Linking.openURL(url);
-    } else {
-      Alert.alert('Error', 'Could not open the authorization page.');
-    }
+  function handleOAuthConnect(provider: ProviderKey) {
+    const label = PROVIDER_META[provider].label;
+    Alert.alert(
+      `${label} — Coming soon`,
+      `${label} integration requires a backend OAuth flow that hasn't been deployed yet. Use Health Connect to sync workouts for now.`,
+      [{ text: 'OK' }]
+    );
   }
 
   async function handleDisconnect(provider: ProviderKey) {

@@ -59,15 +59,17 @@ export async function initHealthConnect(): Promise<boolean> {
   if (Platform.OS !== 'android' || !HealthConnect) return false;
 
   try {
-    const { isAvailable } = HealthConnect;
-    const available = await isAvailable();
+    // v3.x: initialize() replaces isAvailable() and returns true if Health Connect is available
+    const { initialize, requestPermission } = HealthConnect;
+    const available = await initialize();
     if (!available) return false;
 
-    const { requestPermission } = HealthConnect;
-    const grants = await requestPermission(
-      HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }))
-    );
-    return grants.every((g: any) => g.granted);
+    // v3.x: requestPermission returns only the permissions that were actually granted
+    // (not objects with a `granted` boolean field)
+    const requested = HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }));
+    const granted: any[] = await requestPermission(requested);
+    // Consider connected if at least ExerciseSession was granted
+    return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e) {
     console.warn('[HealthConnect] init failed:', e);
     return false;
@@ -78,7 +80,10 @@ export async function initHealthConnect(): Promise<boolean> {
 export async function pollHealthConnect(userId: string): Promise<number> {
   if (Platform.OS !== 'android' || !HealthConnect) return 0;
 
-  const { readRecords } = HealthConnect;
+  const { initialize, readRecords } = HealthConnect;
+  const available = await initialize().catch(() => false);
+  if (!available) return 0;
+
   const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
   const startTime = lastSyncRaw ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
   const endTime = new Date().toISOString();
