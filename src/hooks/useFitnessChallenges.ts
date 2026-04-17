@@ -75,6 +75,7 @@ export function useFitnessChallenges(userId: string) {
 
     if (error) {
       if (error.code === '23505') return { error: 'You are already in this challenge', challenge: null };
+      if (error.code === 'P0001') return { error: 'Challenge is full', challenge: null };
       return { error: 'Could not join challenge', challenge: null };
     }
 
@@ -106,6 +107,7 @@ export function useFitnessChallenges(userId: string) {
 
     if (error) {
       if (error.code === '23505') return { error: 'You are already in this challenge' };
+      if (error.code === 'P0001') return { error: 'Challenge is full' };
       return { error: 'Could not join challenge' };
     }
     await fetch();

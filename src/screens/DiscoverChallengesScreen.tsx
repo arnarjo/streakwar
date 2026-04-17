@@ -33,11 +33,13 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
 
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [filter, setFilter] = useState<Filter>('all');
   const [joining, setJoining] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setLoadError(false);
     const { data, error } = await supabase
       .from('fitness_challenges')
       .select('*, challenge_participants(count)')
@@ -47,7 +49,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       .limit(50);
 
     if (error) {
-      Alert.alert('Failed to load challenges', error.message);
+      setLoadError(true);
     } else if (data) {
       const withCounts = data.map((c: any) => ({
         ...c,
@@ -120,7 +122,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
               <View style={s.cardContent}>
                 <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
                 <Text style={s.cardMeta}>
-                  {modeEmoji} {SCORING_MODE_LABELS[item.scoring_modes[0]]} · 👥 {item.participant_count ?? 0}
+                  {modeEmoji} {SCORING_MODE_LABELS[item.scoring_modes[0]] ?? 'Unknown'} · 👥 {item.participant_count ?? 0}
                   {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeft > 0 ? `${daysLeft}d left` : 'Ending soon'}
                 </Text>
               </View>
@@ -142,9 +144,13 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
         ListEmptyComponent={
           !loading ? (
             <View style={s.empty}>
-              <Text style={s.emptyEmoji}>🔍</Text>
-              <Text style={s.emptyTitle}>No public challenges yet</Text>
-              <Text style={s.emptySub}>Create a challenge and make it public to show up here</Text>
+              <Text style={s.emptyEmoji}>{loadError ? '⚠️' : '🔍'}</Text>
+              <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'No public challenges yet'}</Text>
+              <Text style={s.emptySub}>
+                {loadError
+                  ? 'Check your connection and pull down to retry'
+                  : 'Create a challenge and make it public to show up here'}
+              </Text>
             </View>
           ) : null
         }

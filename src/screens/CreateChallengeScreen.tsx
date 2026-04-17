@@ -26,7 +26,7 @@ const C = {
   error: '#EF4444',
 };
 
-const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
+const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 const TIE_BREAK_OPTIONS: TieBreakRule[] = ['first_to_score', 'most_recent_activity', 'most_workouts'];
 const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: '5', value: 5 },
@@ -369,6 +369,7 @@ export default function CreateChallengeScreen() {
                 { label: 'Photo proof', value: requirePhoto ? 'Required' : 'Optional' },
                 { label: 'Teams mode', value: teamsMode ? 'Yes' : 'No' },
                 { label: 'Visibility', value: isPublic ? 'Public' : 'Invite only' },
+                { label: 'Max participants', value: maxParticipants == null ? 'Unlimited' : String(maxParticipants) },
               ].map(({ label, value }) => (
                 <View key={label} style={s.summaryRow}>
                   <Text style={s.summaryLabel}>{label}</Text>

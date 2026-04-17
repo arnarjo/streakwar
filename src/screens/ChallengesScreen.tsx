@@ -33,7 +33,7 @@ export default function ChallengesScreen() {
   const [quickCreating, setQuickCreating] = useState(false);
   const [quickInviteCode, setQuickInviteCode] = useState<string | null>(null);
 
-  const filtered = myChallenges.filter(c => c.status === tab);
+  const filtered = tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab);
 
   async function handleJoinByCode() {
     if (!code.trim()) return;
