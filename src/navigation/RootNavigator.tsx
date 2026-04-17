@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text } from 'react-native';
+import { Text, View } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { navigationRef } from './navigationRef';
@@ -82,7 +82,7 @@ export default function RootNavigator({ onRouteChange }: Props) {
     return () => subscription.unsubscribe();
   }, []);
 
-  if (loading) return null;
+  if (loading) return <View style={{ flex: 1, backgroundColor: '#0C1117' }} />;
 
   return (
     <NavigationContainer
