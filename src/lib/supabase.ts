@@ -8,8 +8,12 @@ const ExpoSecureStoreAdapter = {
   removeItem: (key: string) => SecureStore.deleteItemAsync(key),
 };
 
-const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL!;
-const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY!;
+const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://not-configured.supabase.co';
+const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'not-configured';
+
+if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
+  console.error('[Supabase] env vars missing — add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to eas.json "env" field');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {

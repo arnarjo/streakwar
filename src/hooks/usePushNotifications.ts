@@ -6,13 +6,19 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch {
+  // non-critical — notifications may not show in foreground
+}
 
 export function usePushNotifications(
   userId: string,

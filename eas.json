@@ -7,7 +7,11 @@
     },
     "preview": {
       "distribution": "internal",
-      "android": { "buildType": "apk" }
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_SUPABASE_URL": "https://uzstenhkngldkrwnsmku.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV6c3RlbmhrbmdsZGtyd25zbWt1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU4Mzg0NzYsImV4cCI6MjA5MTQxNDQ3Nn0.dlhgVeDmAoEdsblgpSon-gYPI5Bhf-py1ELclmjbPRk"
+      }
     },
     "production": {}
   },
