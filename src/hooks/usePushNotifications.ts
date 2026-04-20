@@ -30,7 +30,7 @@ export function usePushNotifications(
   useEffect(() => {
     if (!userId) return;
 
-    registerForPushNotifications(userId);
+    registerForPushNotifications(userId).catch(() => {});
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {
       // foreground notification received
@@ -75,7 +75,12 @@ async function registerForPushNotifications(userId: string) {
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) return;
 
-  const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  let token: string;
+  try {
+    token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
+  } catch {
+    return;
+  }
 
   await supabase
     .from('profiles')
