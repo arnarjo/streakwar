@@ -236,9 +236,9 @@ export default function SignupScreen({ navigation }: Props) {
 
           <Text style={s.legalText}>
             By creating an account you agree to our{' '}
-            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/terms-of-service.html')}>Terms of Service</Text>
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/terms-of-service.html')}>Terms of Service</Text>
             {' '}and{' '}
-            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/privacy-policy.html')}>Privacy Policy</Text>
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/privacy-policy.html')}>Privacy Policy</Text>
           </Text>
 
         </ScrollView>

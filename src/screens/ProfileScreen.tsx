@@ -223,11 +223,11 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <View style={s.legalRow}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/privacy-policy.html')}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/privacy-policy.html')}>
             <Text style={s.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
           <Text style={s.legalDot}>·</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/terms-of-service.html')}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/terms-of-service.html')}>
             <Text style={s.legalLink}>Terms of Service</Text>
           </TouchableOpacity>
         </View>
