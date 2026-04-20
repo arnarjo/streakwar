@@ -29,7 +29,7 @@ const slides = [
     id: '3',
     emoji: '⚡',
     title: 'Auto-synced, no manual entry',
-    subtitle: 'Connect Apple Health, Strava, Garmin, or Fitbit. Your workouts are credited automatically — even when the app is closed.',
+    subtitle: 'Connect Apple Health, Google Health Connect, or Strava. Your workouts are credited automatically — even when the app is closed.',
     accent: '#38BDF8',
   },
   {

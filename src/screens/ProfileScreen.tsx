@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert,
+  StatusBar, RefreshControl, Alert, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -11,6 +11,8 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useHealthSync } from '../hooks/useHealthSync';
 import { useAchievements } from '../hooks/useAchievements';
+import { usePremium } from '../hooks/usePremium';
+import UpgradeModal from '../components/UpgradeModal';
 import { ACHIEVEMENT_META } from '../types/database';
 
 const C = {
@@ -26,6 +28,8 @@ export default function ProfileScreen() {
   const { connections, syncing, syncNow, nativeProvider } = useHealthSync(profile?.id ?? '');
   const { achievements } = useAchievements(profile?.id ?? '');
 
+  const { isPro, loading: premiumLoading, offering, purchase, restore } = usePremium(profile?.id ?? '');
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -90,7 +94,24 @@ export default function ProfileScreen() {
           </View>
           <Text style={s.fullName}>{profile?.full_name ?? profile?.username}</Text>
           <Text style={s.username}>@{profile?.username}</Text>
+          {isPro ? (
+            <View style={s.proBadge}>
+              <Text style={s.proBadgeText}>⚡ PRO</Text>
+            </View>
+          ) : (
+            <TouchableOpacity style={s.upgradeBtn} onPress={() => setUpgradeVisible(true)}>
+              <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
+            </TouchableOpacity>
+          )}
         </View>
+
+        <UpgradeModal
+          visible={upgradeVisible}
+          onClose={() => setUpgradeVisible(false)}
+          offering={offering}
+          onPurchase={purchase}
+          onRestore={restore}
+        />
 
         {/* Streak */}
         {streak && (
@@ -200,6 +221,16 @@ export default function ProfileScreen() {
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
           <Text style={s.signOutBtnText}>Sign out</Text>
         </TouchableOpacity>
+
+        <View style={s.legalRow}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/privacy-policy.html')}>
+            <Text style={s.legalLink}>Privacy Policy</Text>
+          </TouchableOpacity>
+          <Text style={s.legalDot}>·</Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/terms-of-service.html')}>
+            <Text style={s.legalLink}>Terms of Service</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -216,6 +247,10 @@ const s = StyleSheet.create({
   avatarText: { fontSize: 28, fontWeight: '800', color: C.primary },
   fullName: { fontSize: 22, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
   username: { fontSize: 14, color: C.muted },
+  proBadge: { backgroundColor: '#FBBF2420', borderWidth: 1, borderColor: '#FBBF2440', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, marginTop: 6 },
+  proBadgeText: { fontSize: 11, fontWeight: '800', color: '#FBBF24', letterSpacing: 1.5 },
+  upgradeBtn: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 6 },
+  upgradeBtnText: { fontSize: 12, fontWeight: '700', color: C.primary },
   streakCard: { flexDirection: 'row', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24 },
   streakItem: { flex: 1, alignItems: 'center', gap: 4 },
   streakNum: { fontSize: 32, fontWeight: '900', color: C.primary },
@@ -252,4 +287,7 @@ const s = StyleSheet.create({
   achievementDesc: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 15 },
   signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
   signOutBtnText: { color: C.error, fontSize: 15, fontWeight: '700' },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
+  legalLink: { color: C.muted, fontSize: 11, fontWeight: '600' },
+  legalDot: { color: C.muted, fontSize: 11 },
 });

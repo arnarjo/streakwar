@@ -8,8 +8,10 @@ import { useNavigation } from '@react-navigation/native';
 import { format, addDays } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
+import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
+import UpgradeModal from '../components/UpgradeModal';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
@@ -23,15 +25,30 @@ export default function ChallengesScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
   const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
+  const { isPro, offering, purchase, restore, FREE_MAX_CHALLENGES } = usePremium(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [code, setCode] = useState('');
   const [joiningCode, setJoiningCode] = useState(false);
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
 
   const [quickModalOpen, setQuickModalOpen] = useState(false);
   const [quickName, setQuickName] = useState('7-Day Challenge');
   const [quickCreating, setQuickCreating] = useState(false);
   const [quickInviteCode, setQuickInviteCode] = useState<string | null>(null);
+
+  const activeCount = myChallenges.filter(c => c.status === 'active' || c.status === 'upcoming').length;
+  const atLimit = !isPro && activeCount >= FREE_MAX_CHALLENGES;
+
+  function handleNewChallenge() {
+    if (atLimit) { setUpgradeVisible(true); return; }
+    navigation.navigate('CreateChallenge');
+  }
+
+  function handleQuickBanner() {
+    if (atLimit) { setUpgradeVisible(true); return; }
+    setQuickModalOpen(true);
+  }
 
   const filtered = tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab);
 
@@ -101,13 +118,13 @@ export default function ChallengesScreen() {
           <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)}>
             <Text style={s.joinBtnText}>Code</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.createBtn} onPress={() => navigation.navigate('CreateChallenge')}>
+          <TouchableOpacity style={s.createBtn} onPress={handleNewChallenge}>
             <Text style={s.createBtnText}>+ New</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity style={s.quickBanner} onPress={() => setQuickModalOpen(true)} activeOpacity={0.8}>
+      <TouchableOpacity style={s.quickBanner} onPress={handleQuickBanner} activeOpacity={0.8}>
         <Text style={s.quickBannerEmoji}>⚡</Text>
         <View style={{ flex: 1 }}>
           <Text style={s.quickBannerTitle}>Challenge a friend</Text>
@@ -145,7 +162,7 @@ export default function ChallengesScreen() {
                   {tab === 'active' ? 'No active challenges' : tab === 'upcoming' ? 'No upcoming challenges' : 'No completed challenges'}
                 </Text>
                 {tab === 'active' && (
-                  <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('CreateChallenge')}>
+                  <TouchableOpacity style={s.emptyBtn} onPress={handleNewChallenge}>
                     <Text style={s.emptyBtnText}>Create a challenge</Text>
                   </TouchableOpacity>
                 )}
@@ -217,6 +234,15 @@ export default function ChallengesScreen() {
           </KeyboardAvoidingView>
         </View>
       </Modal>
+
+      <UpgradeModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        offering={offering}
+        onPurchase={purchase}
+        onRestore={restore}
+        reason={`Free plan allows ${FREE_MAX_CHALLENGES} active challenges. Upgrade to Pro for unlimited.`}
+      />
 
       <Modal visible={joinModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
         <View style={s.modalOverlay}>

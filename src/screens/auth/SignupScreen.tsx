@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   KeyboardAvoidingView, Platform, ScrollView, Alert,
-  Animated, ActivityIndicator, StatusBar,
+  Animated, ActivityIndicator, StatusBar, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -55,9 +55,11 @@ export default function SignupScreen({ navigation }: Props) {
     if (!email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) e.email = 'Invalid email address';
     if (!password) e.password = 'Password is required';
-    else if (password.length < 8) e.password = 'At least 8 characters';
+    else if (password.length < 8) e.password = 'At least 8 characters required';
     else if (!/[A-Z]/.test(password)) e.password = 'Must contain at least one uppercase letter';
+    else if (!/[a-z]/.test(password)) e.password = 'Must contain at least one lowercase letter';
     else if (!/[0-9]/.test(password)) e.password = 'Must contain at least one number';
+    else if (!/[^A-Za-z0-9]/.test(password)) e.password = 'Must contain at least one special character (!@#$...)';
     if (!confirm) e.confirm = 'Please confirm your password';
     else if (password !== confirm) e.confirm = 'Passwords do not match';
     setErrors(e);
@@ -83,12 +85,17 @@ export default function SignupScreen({ navigation }: Props) {
 
   function passwordStrength() {
     if (!password) return { label: '', color: 'transparent', width: '0%' };
-    if (password.length < 6) return { label: 'Weak', color: C.error, width: '25%' };
-    if (password.length < 8) return { label: 'Fair', color: '#FBBF24', width: '50%' };
-    const ok = /[A-Z]/.test(password) && /[0-9]/.test(password);
-    return ok
-      ? { label: 'Strong 💪', color: C.success, width: '100%' }
-      : { label: 'Good', color: '#38BDF8', width: '75%' };
+    let score = 0;
+    if (password.length >= 8)  score++;
+    if (password.length >= 12) score++;
+    if (/[A-Z]/.test(password) && /[a-z]/.test(password)) score++;
+    if (/[0-9]/.test(password)) score++;
+    if (/[^A-Za-z0-9]/.test(password)) score++;
+    if (score <= 1) return { label: 'Weak',   color: C.error,   width: '20%' };
+    if (score === 2) return { label: 'Fair',   color: '#FBBF24', width: '40%' };
+    if (score === 3) return { label: 'Good',   color: '#38BDF8', width: '65%' };
+    if (score === 4) return { label: 'Strong', color: C.success, width: '85%' };
+    return { label: 'Excellent 💪', color: C.success, width: '100%' };
   }
   const strength = passwordStrength();
 
@@ -176,7 +183,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <View style={s.passwordRow}>
                     <TextInput
                       style={[s.input, s.passwordInput, errors.password && s.inputError]}
-                      placeholder="at least 8 characters"
+                      placeholder="8+ chars, A-Z, 0-9, !@#..."
                       placeholderTextColor={C.dimmed}
                       value={password}
                       onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
@@ -227,6 +234,13 @@ export default function SignupScreen({ navigation }: Props) {
             </Text>
           </TouchableOpacity>
 
+          <Text style={s.legalText}>
+            By creating an account you agree to our{' '}
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/terms-of-service.html')}>Terms of Service</Text>
+            {' '}and{' '}
+            <Text style={s.legalLink} onPress={() => Linking.openURL('https://arnarjohanns.github.io/streakwar/privacy-policy.html')}>Privacy Policy</Text>
+          </Text>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -267,4 +281,6 @@ const s = StyleSheet.create({
   primaryBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
   loginLink: { alignItems: 'center', marginTop: 24 },
   loginLinkText: { color: C.muted, fontSize: 14 },
+  legalText: { color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 16, lineHeight: 17, paddingHorizontal: 16 },
+  legalLink: { color: C.primary, fontWeight: '600' },
 });

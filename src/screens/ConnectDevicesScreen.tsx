@@ -1,14 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, StatusBar, Platform,
+  Alert, ActivityIndicator, StatusBar, Platform, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
 import { formatDistanceToNow } from 'date-fns';
+
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 const C = {
   bg: '#0C1117',
@@ -21,18 +24,34 @@ const C = {
   error: '#EF4444',
 };
 
-/** Providers that require OAuth via your backend (Supabase Edge Function) */
-const OAUTH_PROVIDERS: ProviderKey[] = ['strava', 'garmin', 'fitbit'];
+const OAUTH_PROVIDERS: ProviderKey[] = ['strava', 'fitbit'];
+const COMING_SOON_PROVIDERS: ProviderKey[] = ['garmin'];
 
 
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
-  const { connections, syncing, isConnected, connectNative, syncNow, disconnect, nativeProvider } = useHealthSync(profile?.id ?? '');
+  const { connections, syncing, isConnected, connectNative, syncNow, disconnect, nativeProvider, refresh: fetchConnections } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
 
   const nativeMeta = PROVIDER_META[nativeProvider];
+
+  // Listen for deep link callbacks from OAuth providers
+  useEffect(() => {
+    const sub = Linking.addEventListener('url', ({ url }) => {
+      if (url.includes('oauth-success')) {
+        const provider = new URL(url).searchParams.get('provider') as ProviderKey | null;
+        setConnecting(null);
+        fetchConnections();
+        Alert.alert('Connected!', `${provider ? PROVIDER_META[provider]?.label : 'Provider'} connected successfully.`);
+      } else if (url.includes('oauth-error')) {
+        setConnecting(null);
+        Alert.alert('Connection failed', 'Could not connect. Please try again.');
+      }
+    });
+    return () => sub.remove();
+  }, [fetchConnections]);
 
   async function handleNativeConnect() {
     setConnecting(nativeProvider);
@@ -41,13 +60,17 @@ export default function ConnectDevicesScreen() {
     Alert.alert(success ? 'Connected!' : 'Could not connect', message);
   }
 
-  function handleOAuthConnect(provider: ProviderKey) {
-    const label = PROVIDER_META[provider].label;
-    Alert.alert(
-      `${label} — Coming soon`,
-      `${label} integration requires a backend OAuth flow that hasn't been deployed yet. Use Health Connect to sync workouts for now.`,
-      [{ text: 'OK' }]
-    );
+  async function handleOAuthConnect(provider: ProviderKey) {
+    if (COMING_SOON_PROVIDERS.includes(provider)) {
+      Alert.alert(`${PROVIDER_META[provider].label} — Coming soon`, 'Garmin integration is coming soon. Use Health Connect to sync workouts for now.');
+      return;
+    }
+    if (!profile?.id) return;
+    setConnecting(provider);
+    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}&user_id=${profile.id}`;
+    await WebBrowser.openBrowserAsync(url);
+    // Deep link listener handles the result; clear loading if browser was dismissed manually
+    setConnecting(null);
   }
 
   async function handleDisconnect(provider: ProviderKey) {
@@ -129,9 +152,10 @@ export default function ConnectDevicesScreen() {
 
         {/* OAuth providers */}
         <Text style={s.sectionLabel}>THIRD-PARTY APPS</Text>
-        {OAUTH_PROVIDERS.map(provider => {
+        {([...OAUTH_PROVIDERS, ...COMING_SOON_PROVIDERS] as ProviderKey[]).map(provider => {
           const meta = PROVIDER_META[provider];
           const conn = connections.find(c => c.provider === provider);
+          const comingSoon = COMING_SOON_PROVIDERS.includes(provider);
           return (
             <ProviderRow
               key={provider}
@@ -141,11 +165,12 @@ export default function ConnectDevicesScreen() {
                 provider === 'strava'
                   ? 'Every Strava activity is pushed to StreakWar via webhook within 60 seconds of completion.'
                   : provider === 'garmin'
-                  ? 'Garmin Connect activities are pushed automatically via Garmin webhook.'
+                  ? 'Coming soon — Garmin Connect integration is in development.'
                   : 'Fitbit activities are pushed automatically via the Fitbit Subscription API.'
               }
               connected={isConnected(provider)}
               loading={connecting === provider}
+              comingSoon={comingSoon}
               onConnect={() => handleOAuthConnect(provider)}
               onDisconnect={() => handleDisconnect(provider)}
               lastSynced={conn?.last_synced_at ?? null}
@@ -177,7 +202,7 @@ export default function ConnectDevicesScreen() {
 
         <View style={s.footnote}>
           <Text style={s.footnoteText}>
-            Background sync runs every 15 minutes. On iOS, Apple Watch workouts are pushed instantly via HealthKit observers. Strava, Garmin, and Fitbit workouts arrive within 60 seconds via server-side webhooks.
+            Background sync runs every 15 minutes. On iOS, Apple Watch workouts are pushed instantly via HealthKit observers. Strava and Fitbit workouts arrive within 60 seconds via server-side webhooks.
           </Text>
         </View>
 
@@ -187,7 +212,7 @@ export default function ConnectDevicesScreen() {
 }
 
 function ProviderRow({
-  icon, label, description, connected, loading,
+  icon, label, description, connected, loading, comingSoon,
   onConnect, onDisconnect, lastSynced,
 }: {
   icon: string;
@@ -195,6 +220,7 @@ function ProviderRow({
   description: string;
   connected: boolean;
   loading: boolean;
+  comingSoon?: boolean;
   onConnect: () => void;
   onDisconnect: () => void;
   lastSynced: string | null;
@@ -223,14 +249,14 @@ function ProviderRow({
         </View>
       </View>
       <TouchableOpacity
-        style={[r.btn, connected ? r.btnDisconnect : r.btnConnect, loading && { opacity: 0.5 }]}
+        style={[r.btn, connected ? r.btnDisconnect : r.btnConnect, (loading || comingSoon) && { opacity: 0.5 }]}
         onPress={connected ? onDisconnect : onConnect}
         disabled={loading}
       >
         {loading
           ? <ActivityIndicator color={connected ? C.error : '#000'} size="small" />
           : <Text style={[r.btnText, connected && { color: C.error }]}>
-              {connected ? 'Disconnect' : 'Connect'}
+              {connected ? 'Disconnect' : comingSoon ? 'Soon' : 'Connect'}
             </Text>
         }
       </TouchableOpacity>

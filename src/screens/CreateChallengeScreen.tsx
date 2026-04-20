@@ -9,6 +9,8 @@ import { useNavigation } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
+import { usePremium } from '../hooks/usePremium';
+import UpgradeModal from '../components/UpgradeModal';
 import {
   SCORING_MODE_LABELS, TIE_BREAK_LABELS,
 } from '../types/database';
@@ -42,9 +44,11 @@ export default function CreateChallengeScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
   const { createChallenge } = useFitnessChallenges(profile?.id ?? '');
+  const { isPro, offering, purchase, restore } = usePremium(profile?.id ?? '');
 
   const [step, setStep] = useState<Step>(1);
   const [saving, setSaving] = useState(false);
+  const [upgradeVisible, setUpgradeVisible] = useState(false);
 
   // Step 1 – Basics
   const [name, setName] = useState('');
@@ -257,6 +261,11 @@ export default function CreateChallengeScreen() {
                   <TextInput style={s.input} value={pointsPer30min} onChangeText={setPointsPer30min} keyboardType="number-pad" placeholderTextColor={C.dimmed} />
                 </View>
               )}
+              {scoringModes.includes('custom') && (
+                <View style={s.inputGroup}>
+                  <Text style={[s.hint, { color: C.primary }]}>⚡ Custom scoring formula editor coming soon. For now, enable other modes above to score workouts.</Text>
+                </View>
+              )}
             </>
           )}
 
@@ -276,18 +285,38 @@ export default function CreateChallengeScreen() {
                 <Text style={s.hint}>How many days back can workouts be logged?</Text>
               </View>
 
-              <View style={s.switchRow}>
-                <View>
-                  <Text style={s.switchLabel}>Require photo proof?</Text>
+              <TouchableOpacity
+                style={s.switchRow}
+                activeOpacity={isPro ? 1 : 0.75}
+                onPress={!isPro ? () => setUpgradeVisible(true) : undefined}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={s.switchLabel}>Require photo proof?</Text>
+                    {!isPro && (
+                      <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={s.switchHint}>Participants must upload a photo</Text>
                 </View>
                 <Switch
                   value={requirePhoto}
-                  onValueChange={setRequirePhoto}
+                  onValueChange={v => { if (!isPro) { setUpgradeVisible(true); return; } setRequirePhoto(v); }}
                   trackColor={{ false: C.dimmed, true: C.primary }}
                   thumbColor="#fff"
+                  disabled={!isPro}
                 />
-              </View>
+              </TouchableOpacity>
+              <UpgradeModal
+                visible={upgradeVisible}
+                onClose={() => setUpgradeVisible(false)}
+                offering={offering}
+                onPurchase={purchase}
+                onRestore={restore}
+                reason="Photo proof requires a Pro subscription."
+              />
 
               <View style={s.switchRow}>
                 <View>
