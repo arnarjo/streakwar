@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "208119646679",
+    "project_id": "streakwar",
+    "storage_bucket": "streakwar.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:208119646679:android:98e718ea61dd1cc74ee392",
+        "android_client_info": {
+          "package_name": "is.streakwar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAntZwuoftlROWlmRuXcM5yAMms2uizp9s"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

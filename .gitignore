@@ -5,5 +5,4 @@ dist/
 *.log
 ios/
 android/
-google-services.json
 GoogleService-Info.plist
