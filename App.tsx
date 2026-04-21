@@ -50,13 +50,14 @@ function AppInner() {
 async function bootHealthSync(userId: string) {
   await persistUserId(userId);
   await registerBackgroundSync();
+  // iOS: set up HealthKit observers (safe — callback-based, no Activity required)
   if (Platform.OS === 'ios') {
     await initHealthKit(userId);
-  } else if (Platform.OS === 'android') {
-    await initHealthConnect();
   }
-  // Schedule tonight's streak reminder — streak count fetched lazily by the notification lib
-  scheduleStreakReminder(0);
+  // Android: do NOT call initHealthConnect() here — requestPermission() launches an
+  // Android Activity and crashes when called from an auth callback. Permission is
+  // requested only from ConnectDevicesScreen when the user explicitly taps "Connect".
+  scheduleStreakReminder(0).catch(() => {});
 }
 
 export default function App() {

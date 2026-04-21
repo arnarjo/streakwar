@@ -60,6 +60,10 @@
         "android.health.connect.permission.READ_STEPS",
         "android.health.connect.permission.READ_DISTANCE",
         "android.health.connect.permission.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.WAKE_LOCK"
       ]
     },
@@ -91,7 +95,19 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       "expo-web-browser",
-      "react-native-health-connect",
+      [
+        "react-native-health-connect",
+        {
+          "permissions": [
+            "ExerciseSession",
+            "Steps",
+            "Distance",
+            "ActiveCaloriesBurned"
+          ]
+        }
+      ],
+      "./plugins/withHealthConnectManifest",
+      "./plugins/withHealthConnectMainActivity",
       [
         "expo-build-properties",
         {

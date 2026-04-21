@@ -44,15 +44,15 @@ const HEALTHKIT_PERMISSIONS = {
 function mapAppleWorkoutType(typeId: number): ActivityType {
   // HKWorkoutActivityType constants
   switch (typeId) {
-    case 37: return 'hlaup';       // Running
-    case 52: return 'ganga';       // Walking
-    case 13: return 'hjólreiðar'; // Cycling
-    case 46: return 'sund';       // Swimming
-    case 20: return 'lyftingar';  // TraditionalStrengthTraining
-    case 21: return 'lyftingar';  // FunctionalStrengthTraining
-    case 57: return 'jóga';       // Yoga
-    case 39: return 'hiit';       // HighIntensityIntervalTraining
-    default:  return 'annað';
+    case 37: return 'run';   // Running
+    case 52: return 'walk';  // Walking
+    case 13: return 'cycle'; // Cycling
+    case 46: return 'swim';  // Swimming
+    case 20: return 'lift';  // TraditionalStrengthTraining
+    case 21: return 'lift';  // FunctionalStrengthTraining
+    case 57: return 'yoga';  // Yoga
+    case 39: return 'hiit';  // HighIntensityIntervalTraining
+    default:  return 'other';
   }
 }
 

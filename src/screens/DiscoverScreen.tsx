@@ -83,7 +83,7 @@ export default function DiscoverScreen() {
         renderItem={({ item }) => {
           const daysLeft = differenceInDays(parseISO(item.end_date), new Date());
           const isActive = item.status === 'active';
-          const scoringLabel = item.scoring_modes.slice(0, 2).map((m: any) => SCORING_MODE_LABELS[m].split(' ')[0]).join(' · ');
+          const scoringLabel = (item.scoring_modes ?? []).slice(0, 2).map((m: any) => (SCORING_MODE_LABELS[m] ?? m)?.split(' ')[0] ?? '').filter(Boolean).join(' · ');
           return (
             <View style={s.card}>
               <View style={s.cardTop}>

@@ -38,9 +38,10 @@ export default function ChallengeCard({ challenge, onPress }: Props) {
     : 'Ended';
   const statusColor = isUpcoming ? C.muted : isActive ? (daysLeft <= 3 ? '#EF4444' : C.green) : C.muted;
 
-  const scoringLabels = challenge.scoring_modes
+  const scoringLabels = (challenge.scoring_modes ?? [])
     .slice(0, 2)
-    .map(m => SCORING_MODE_LABELS[m].split(' ')[0])
+    .map(m => (SCORING_MODE_LABELS[m] ?? m)?.split(' ')[0] ?? '')
+    .filter(Boolean)
     .join(' · ');
 
   return (

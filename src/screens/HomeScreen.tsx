@@ -179,7 +179,7 @@ export default function HomeScreen() {
                 <Text style={s.emptyText}>
                   Join a challenge and start logging workouts to see what your friends are up to.
                 </Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Discover')}>
+                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Challenges')}>
                   <Text style={s.emptyBtnText}>Discover challenges</Text>
                 </TouchableOpacity>
               </View>

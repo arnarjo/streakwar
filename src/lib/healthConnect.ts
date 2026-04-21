@@ -38,40 +38,67 @@ const HC_RECORD_TYPES = [
 /** Map Health Connect exercise type strings to our activity types */
 function mapHCExerciseType(type: string): ActivityType {
   const map: Record<string, ActivityType> = {
-    RUNNING: 'hlaup',
-    RUNNING_TREADMILL: 'hlaup',
-    WALKING: 'ganga',
-    HIKING: 'ganga',
-    BIKING: 'hjólreiðar',
-    BIKING_STATIONARY: 'hjólreiðar',
-    SWIMMING_OPEN_WATER: 'sund',
-    SWIMMING_POOL: 'sund',
-    STRENGTH_TRAINING: 'lyftingar',
-    WEIGHTLIFTING: 'lyftingar',
-    YOGA: 'jóga',
+    RUNNING: 'run',
+    RUNNING_TREADMILL: 'run',
+    WALKING: 'walk',
+    HIKING: 'walk',
+    BIKING: 'cycle',
+    BIKING_STATIONARY: 'cycle',
+    SWIMMING_OPEN_WATER: 'swim',
+    SWIMMING_POOL: 'swim',
+    STRENGTH_TRAINING: 'lift',
+    WEIGHTLIFTING: 'lift',
+    YOGA: 'yoga',
     HIGH_INTENSITY_INTERVAL_TRAINING: 'hiit',
     INTERVAL_TRAINING: 'hiit',
   };
-  return map[type] ?? 'annað';
+  return map[type] ?? 'other';
 }
 
+/**
+ * Requests Health Connect permissions and returns true if ExerciseSession was granted.
+ * Requires MainActivity.kt to call HealthConnectPermissionDelegate.setPermissionDelegate(this)
+ * in onCreate() (handled by plugins/withHealthConnectMainActivity.js).
+ */
 export async function initHealthConnect(): Promise<boolean> {
   if (Platform.OS !== 'android' || !HealthConnect) return false;
-
   try {
-    // v3.x: initialize() replaces isAvailable() and returns true if Health Connect is available
     const { initialize, requestPermission } = HealthConnect;
     const available = await initialize();
     if (!available) return false;
-
-    // v3.x: requestPermission returns only the permissions that were actually granted
-    // (not objects with a `granted` boolean field)
     const requested = HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }));
     const granted: any[] = await requestPermission(requested);
-    // Consider connected if at least ExerciseSession was granted
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e) {
-    console.warn('[HealthConnect] init failed:', e);
+    console.warn('[HealthConnect] requestPermission failed:', e);
+    return false;
+  }
+}
+
+/** Opens the Health Connect app settings (fallback if requestPermission unavailable). */
+export async function openHealthConnectPermissions(): Promise<boolean> {
+  if (Platform.OS !== 'android' || !HealthConnect) return false;
+  try {
+    const { initialize, openHealthConnectSettings } = HealthConnect;
+    const available = await initialize();
+    if (!available) return false;
+    openHealthConnectSettings();
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+/** Returns true if ExerciseSession read permission has been granted in Health Connect. */
+export async function checkHealthConnectGranted(): Promise<boolean> {
+  if (Platform.OS !== 'android' || !HealthConnect) return false;
+  try {
+    const { initialize, getGrantedPermissions } = HealthConnect;
+    const available = await initialize();
+    if (!available) return false;
+    const granted: any[] = await getGrantedPermissions();
+    return granted.some((g: any) => g.recordType === 'ExerciseSession');
+  } catch (e) {
     return false;
   }
 }

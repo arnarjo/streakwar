@@ -31,7 +31,7 @@ const COMING_SOON_PROVIDERS: ProviderKey[] = ['garmin'];
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
-  const { connections, syncing, isConnected, connectNative, syncNow, disconnect, nativeProvider, refresh: fetchConnections } = useHealthSync(profile?.id ?? '');
+  const { connections, syncing, isConnected, connectNative, confirmHealthConnectConnection, syncNow, disconnect, nativeProvider, refresh: fetchConnections } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
 
@@ -53,10 +53,19 @@ export default function ConnectDevicesScreen() {
     return () => sub.remove();
   }, [fetchConnections]);
 
+
   async function handleNativeConnect() {
     setConnecting(nativeProvider);
     const { success, message } = await connectNative();
     setConnecting(null);
+    if (!success && Platform.OS === 'android') {
+      Alert.alert(
+        'Grant permissions in Health Connect',
+        'A Health Connect dialog opened. Please allow StreakWar to read Exercise sessions, Steps, Distance and Calories — then tap Connect again.',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
     Alert.alert(success ? 'Connected!' : 'Could not connect', message);
   }
 

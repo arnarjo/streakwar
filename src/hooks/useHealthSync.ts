@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { initHealthKit, syncRecentWorkouts } from '../lib/healthKit';
-import { initHealthConnect, pollHealthConnect } from '../lib/healthConnect';
+import { initHealthConnect, checkHealthConnectGranted, pollHealthConnect } from '../lib/healthConnect';
 import { persistUserId } from '../lib/backgroundSync';
 
 export type ProviderKey =
@@ -46,12 +46,11 @@ export function useHealthSync(userId: string) {
     fetchConnections();
   }, [fetchConnections]);
 
-  /** Connect a native health source (HealthKit / Health Connect) */
+  /** Connect a native health source (HealthKit on iOS / Health Connect on Android). */
   async function connectNative(): Promise<{ success: boolean; message: string }> {
     if (!userId) return { success: false, message: 'Not logged in' };
 
     let granted = false;
-
     if (Platform.OS === 'ios') {
       granted = await initHealthKit(userId);
     } else if (Platform.OS === 'android') {
@@ -59,11 +58,10 @@ export function useHealthSync(userId: string) {
     }
 
     if (!granted) {
-      return { success: false, message: 'Permission denied. Please allow access in your device settings.' };
+      return { success: false, message: 'Permission denied. Please allow access in Health Connect and try again.' };
     }
 
     const provider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
-
     await supabase.from('device_connections').upsert({
       user_id: userId,
       provider,
@@ -74,7 +72,6 @@ export function useHealthSync(userId: string) {
     await persistUserId(userId);
     await fetchConnections();
 
-    // Immediate first sync
     setSyncing(true);
     if (Platform.OS === 'ios') {
       await syncRecentWorkouts(userId);
@@ -85,6 +82,32 @@ export function useHealthSync(userId: string) {
     setLastSynced(new Date());
 
     return { success: true, message: 'Connected! Your recent workouts have been synced.' };
+  }
+
+  /**
+   * Called after the user returns from Health Connect settings on Android.
+   * Checks if ExerciseSession permission was granted and saves the connection.
+   */
+  async function confirmHealthConnectConnection(): Promise<boolean> {
+    if (!userId) return false;
+    const granted = await checkHealthConnectGranted();
+    if (!granted) return false;
+
+    await supabase.from('device_connections').upsert({
+      user_id: userId,
+      provider: 'health_connect',
+      is_active: true,
+      last_synced_at: new Date().toISOString(),
+    }, { onConflict: 'user_id,provider' });
+
+    await persistUserId(userId);
+    await fetchConnections();
+
+    setSyncing(true);
+    await pollHealthConnect(userId);
+    setSyncing(false);
+    setLastSynced(new Date());
+    return true;
   }
 
   /** Trigger a manual foreground sync */
@@ -135,6 +158,7 @@ export function useHealthSync(userId: string) {
     lastSynced,
     isConnected,
     connectNative,
+    confirmHealthConnectConnection,
     syncNow,
     disconnect,
     nativeProvider,

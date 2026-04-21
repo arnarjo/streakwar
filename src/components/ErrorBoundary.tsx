@@ -16,7 +16,12 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
       <View style={s.container}>
         <Text style={s.emoji}>⚡</Text>
         <Text style={s.title}>Eitthvað fór úrskeiðis</Text>
-        <Text style={s.msg}>Vinsamlegast endurræstu appið.</Text>
+        <Text style={s.errorMsg} selectable>
+          {this.state.error?.message ?? 'Unknown error'}
+        </Text>
+        <Text style={s.errorStack} selectable>
+          {this.state.error?.stack?.slice(0, 600) ?? ''}
+        </Text>
         <TouchableOpacity style={s.btn} onPress={() => this.setState({ hasError: false, error: null })}>
           <Text style={s.btnText}>Reyna aftur</Text>
         </TouchableOpacity>
@@ -30,6 +35,8 @@ const s = StyleSheet.create({
   emoji: { fontSize: 48, marginBottom: 16 },
   title: { fontSize: 20, fontWeight: '800', color: '#EEF4F8', marginBottom: 8 },
   msg: { fontSize: 14, color: '#4A6070', textAlign: 'center', marginBottom: 24 },
+  errorMsg: { fontSize: 13, color: '#F97316', textAlign: 'center', marginBottom: 8, fontWeight: '700' },
+  errorStack: { fontSize: 10, color: '#4A6070', textAlign: 'left', marginBottom: 16, fontFamily: 'monospace' },
   btn: { backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   btnText: { color: '#000', fontWeight: '800', fontSize: 15 },
 });
