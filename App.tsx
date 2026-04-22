@@ -11,7 +11,6 @@ import { supabase } from './src/lib/supabase';
 import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
 import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
 import { initHealthConnect } from './src/lib/healthConnect';
-import { scheduleStreakReminder } from './src/lib/streakNotification';
 import { Platform } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
@@ -57,7 +56,7 @@ async function bootHealthSync(userId: string) {
   // Android: do NOT call initHealthConnect() here — requestPermission() launches an
   // Android Activity and crashes when called from an auth callback. Permission is
   // requested only from ConnectDevicesScreen when the user explicitly taps "Connect".
-  scheduleStreakReminder(0).catch(() => {});
+  // Streak reminder is scheduled in usePushNotifications after permissions are granted.
 }
 
 export default function App() {

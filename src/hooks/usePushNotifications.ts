@@ -4,6 +4,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { scheduleStreakReminder } from '../lib/streakNotification';
 import type { NavigationContainerRef } from '@react-navigation/native';
 
 try {
@@ -17,7 +18,7 @@ try {
     }),
   });
 } catch {
-  // non-critical — notifications may not show in foreground
+  // non-critical
 }
 
 export function usePushNotifications(
@@ -30,7 +31,9 @@ export function usePushNotifications(
   useEffect(() => {
     if (!userId) return;
 
-    registerForPushNotifications(userId).catch(() => {});
+    registerForPushNotifications(userId).catch((e) =>
+      console.warn('[PushNotifications] registration failed:', e)
+    );
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {
       // foreground notification received
@@ -56,14 +59,6 @@ export function usePushNotifications(
 async function registerForPushNotifications(userId: string) {
   if (!Device.isDevice) return;
 
-  const { status: existing } = await Notifications.getPermissionsAsync();
-  let finalStatus = existing;
-  if (existing !== 'granted') {
-    const { status } = await Notifications.requestPermissionsAsync();
-    finalStatus = status;
-  }
-  if (finalStatus !== 'granted') return;
-
   if (Platform.OS === 'android') {
     await Notifications.setNotificationChannelAsync('default', {
       name: 'default',
@@ -72,18 +67,39 @@ async function registerForPushNotifications(userId: string) {
     });
   }
 
+  const { status: existing } = await Notifications.getPermissionsAsync();
+  let finalStatus = existing;
+  if (existing !== 'granted') {
+    const { status } = await Notifications.requestPermissionsAsync();
+    finalStatus = status;
+  }
+  if (finalStatus !== 'granted') {
+    console.warn('[PushNotifications] permission denied');
+    return;
+  }
+
+  // Schedule the streak reminder now that we know permissions are granted
+  await scheduleStreakReminder(0).catch(() => {});
+
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
-  if (!projectId) return;
+  if (!projectId) {
+    console.warn('[PushNotifications] no projectId found in config');
+    return;
+  }
 
   let token: string;
   try {
     token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-  } catch {
+    console.log('[PushNotifications] token:', token);
+  } catch (e) {
+    console.warn('[PushNotifications] getExpoPushTokenAsync failed:', e);
     return;
   }
 
-  await supabase
+  const { error } = await supabase
     .from('profiles')
     .update({ push_token: token })
     .eq('id', userId);
+
+  if (error) console.warn('[PushNotifications] failed to save token:', error);
 }
