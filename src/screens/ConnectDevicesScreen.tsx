@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, StatusBar, Platform, Linking,
+  Alert, ActivityIndicator, StatusBar, Platform, Linking, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
+import { openHealthConnectPermissions } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -34,8 +35,24 @@ export default function ConnectDevicesScreen() {
   const { connections, syncing, isConnected, connectNative, confirmHealthConnectConnection, syncNow, disconnect, nativeProvider, refresh: fetchConnections } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
+  const awaitingHCReturn = useRef(false);
 
   const nativeMeta = PROVIDER_META[nativeProvider];
+
+  // When user returns from Health Connect settings, re-check if permissions were granted
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state === 'active' && awaitingHCReturn.current) {
+        awaitingHCReturn.current = false;
+        const confirmed = await confirmHealthConnectConnection();
+        setConnecting(null);
+        if (confirmed) {
+          Alert.alert('Connected!', 'Health Connect permissions granted. Your workouts will sync automatically.');
+        }
+      }
+    });
+    return () => sub.remove();
+  }, [confirmHealthConnectConnection]);
 
   // Listen for deep link callbacks from OAuth providers
   useEffect(() => {
@@ -56,16 +73,30 @@ export default function ConnectDevicesScreen() {
 
   async function handleNativeConnect() {
     setConnecting(nativeProvider);
-    const { success, message } = await connectNative();
-    setConnecting(null);
-    if (!success && Platform.OS === 'android') {
-      Alert.alert(
-        'Grant permissions in Health Connect',
-        'A Health Connect dialog opened. Please allow StreakWar to read Exercise sessions, Steps, Distance and Calories — then tap Connect again.',
-        [{ text: 'OK' }]
-      );
+
+    if (Platform.OS === 'android') {
+      // Try requestPermission first (works when installed via Play Store)
+      const { success, message } = await connectNative();
+      if (success) {
+        setConnecting(null);
+        Alert.alert('Connected!', message);
+        return;
+      }
+      // Permissions not granted via dialog — open HC permissions page directly.
+      // AppState listener will detect when user returns and check if granted.
+      awaitingHCReturn.current = true;
+      const opened = await openHealthConnectPermissions();
+      if (!opened) {
+        awaitingHCReturn.current = false;
+        setConnecting(null);
+        Alert.alert('Could not open Health Connect', 'Please open Health Connect manually and grant permissions to StreakWar.');
+      }
+      // Keep connecting spinner active while user is in HC — cleared by AppState listener
       return;
     }
+
+    const { success, message } = await connectNative();
+    setConnecting(null);
     Alert.alert(success ? 'Connected!' : 'Could not connect', message);
   }
 

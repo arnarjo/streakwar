@@ -10,7 +10,7 @@
  *     without the user needing to open the app.
  */
 
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
@@ -75,16 +75,31 @@ export async function initHealthConnect(): Promise<boolean> {
   }
 }
 
-/** Opens the Health Connect app settings (fallback if requestPermission unavailable). */
+/**
+ * Opens Health Connect's permission management page for StreakWar directly.
+ * On Android 14+, this uses the OS-level MANAGE_HEALTH_PERMISSIONS action which
+ * works even for sideloaded APKs (unlike requestPermission which requires Play Store).
+ * Falls back to the generic HC settings screen on older Android versions.
+ */
 export async function openHealthConnectPermissions(): Promise<boolean> {
-  if (Platform.OS !== 'android' || !HealthConnect) return false;
+  if (Platform.OS !== 'android') return false;
   try {
+    // Android 14+ built-in HC: open StreakWar's specific permission page
+    const manageUrl = 'android-health-connect://manage-health-permissions/is.streakwar.app';
+    const canOpen = await Linking.canOpenURL(manageUrl);
+    if (canOpen) {
+      await Linking.openURL(manageUrl);
+      return true;
+    }
+  } catch {}
+  // Fallback: open HC settings
+  try {
+    if (!HealthConnect) return false;
     const { initialize, openHealthConnectSettings } = HealthConnect;
-    const available = await initialize();
-    if (!available) return false;
+    await initialize();
     openHealthConnectSettings();
     return true;
-  } catch (e) {
+  } catch {
     return false;
   }
 }
