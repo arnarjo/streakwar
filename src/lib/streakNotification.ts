@@ -20,17 +20,20 @@ const EVENING_BASE_ID = 'streakwar-evening-reminder-';
  */
 export async function scheduleStreakReminder(
   currentStreak: number,
-  lastLoggedDate?: string | null
+  lastLoggedDate?: string | null,
+  userName?: string | null
 ): Promise<void> {
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
+    const morningTitle = userName ? `Good morning, ${userName}! 🌅` : 'StreakWar — Good morning! 🌅';
+
     // 1. Morning Reminder (Always daily)
     await Notifications.scheduleNotificationAsync({
       identifier: MORNING_ID,
       content: {
-        title: 'StreakWar — Good morning! 🌅',
+        title: morningTitle,
         body: currentStreak > 0
           ? `Keep your ${currentStreak}-day streak going — log a workout today! 🔥`
           : 'Start your streak today 🔥',
@@ -74,7 +77,7 @@ export async function scheduleStreakReminder(
       await Notifications.scheduleNotificationAsync({
         identifier: `${EVENING_BASE_ID}${dateStr}`,
         content: {
-          title: "StreakWar — Don't break your streak!",
+          title: userName ? `${userName}, don't break your streak!` : "StreakWar — Don't break your streak!",
           body: `Log your workout before midnight to keep your ${currentStreak}-day streak alive 🔥`,
           sound: true,
           ...(Platform.OS === 'android' && { channelId: 'default' }),

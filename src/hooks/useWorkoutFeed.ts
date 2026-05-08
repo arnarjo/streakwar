@@ -33,6 +33,9 @@ export function useWorkoutFeed(userId: string) {
       const challengeIds = (participations ?? []).map((p: any) => p.challenge_id);
       if (challengeIds.length > 0) {
         query = query.in('challenge_id', challengeIds);
+      } else {
+        // If not in any challenges, only show the user's own posts
+        query = query.eq('user_id', userId);
       }
     }
 

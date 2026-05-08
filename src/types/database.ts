@@ -10,7 +10,7 @@ export type ActivityType =
   | 'hiit'
   | 'sport'
   | 'other'
-  | 'ganga'; // step-based walking from Health Connect / HealthKit
+  | 'ganga'; // @deprecated step-based walking from Health Connect / HealthKit
 
 export type ScoringMode =
   | 'workouts'

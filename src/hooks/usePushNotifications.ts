@@ -31,14 +31,25 @@ export function usePushNotifications(
 
   const refreshReminders = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
-      .from('user_streaks')
-      .select('current_streak, last_active_date')
-      .eq('user_id', userId)
-      .single();
+    const [{ data: streakData }, { data: profile }] = await Promise.all([
+      supabase
+        .from('user_streaks')
+        .select('current_streak, last_active_date')
+        .eq('user_id', userId)
+        .single(),
+      supabase
+        .from('profiles')
+        .select('full_name, username')
+        .eq('id', userId)
+        .single()
+    ]);
+
+    const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
+
     await scheduleStreakReminder(
-      data?.current_streak ?? 0,
-      data?.last_active_date
+      streakData?.current_streak ?? 0,
+      streakData?.last_active_date,
+      firstName
     ).catch(() => {});
   }, [userId]);
 

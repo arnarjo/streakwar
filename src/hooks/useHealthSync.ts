@@ -67,7 +67,10 @@ export function useHealthSync(userId: string) {
     }
 
     if (!granted) {
-      return { success: false, message: 'Permission denied. Please allow access in Health Connect and try again.' };
+      const msg = Platform.OS === 'ios'
+        ? 'Apple Health access denied. Please enable it in Settings > Health > Data Access & Devices.'
+        : 'Health Connect access denied. Please ensure the Health Connect app is installed and permissions are granted.';
+      return { success: false, message: msg };
     }
 
     const provider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
