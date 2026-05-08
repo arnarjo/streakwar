@@ -76,13 +76,22 @@ function toLocalDate(date: Date | string): string {
  * in onCreate() (handled by plugins/withHealthConnectMainActivity.js).
  */
 export async function initHealthConnect(): Promise<boolean> {
-  if (Platform.OS !== 'android' || !HealthConnect) return false;
+  if (Platform.OS !== 'android' || !HealthConnect) {
+    console.log('[HealthConnect] init failed: platform or package mismatch');
+    return false;
+  }
   try {
     const { initialize, requestPermission } = HealthConnect;
+    console.log('[HealthConnect] Initializing...');
     const available = await initialize();
+    console.log('[HealthConnect] Available:', available);
     if (!available) return false;
+
     const requested = HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }));
+    console.log('[HealthConnect] Requesting permissions:', requested);
     const granted: any[] = await requestPermission(requested);
+    console.log('[HealthConnect] Permissions granted result:', granted);
+
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e) {
     console.warn('[HealthConnect] requestPermission failed:', e);
@@ -126,11 +135,17 @@ export async function checkHealthConnectGranted(): Promise<boolean> {
   if (Platform.OS !== 'android' || !HealthConnect) return false;
   try {
     const { initialize, getGrantedPermissions } = HealthConnect;
+    console.log('[HealthConnect] Checking permissions, initializing...');
     const available = await initialize();
-    if (!available) return false;
+    if (!available) {
+      console.log('[HealthConnect] Not available during check');
+      return false;
+    }
     const granted: any[] = await getGrantedPermissions();
+    console.log('[HealthConnect] Currently granted:', granted);
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e) {
+    console.warn('[HealthConnect] checkHealthConnectGranted failed:', e);
     return false;
   }
 }
@@ -222,7 +237,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       const { error: insertErr } = await supabase.from('workout_posts').insert({
         user_id: userId,
         challenge_id: challengeId,
-        activity_type: 'ganga',
+        activity_type: 'walk',
         steps: totalSteps,
         source: 'health_connect',
         external_activity_id: `steps_${localDate}`,

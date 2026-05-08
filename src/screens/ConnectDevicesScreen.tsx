@@ -32,7 +32,11 @@ const COMING_SOON_PROVIDERS: ProviderKey[] = [];
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
-  const { connections, syncing, isConnected, connectNative, confirmHealthConnectConnection, syncNow, disconnect, nativeProvider, refresh: fetchConnections } = useHealthSync(profile?.id ?? '');
+  const {
+    connections, syncing, isConnected, connectNative,
+    confirmHealthConnectConnection, syncNow, disconnect,
+    nativeProvider, showBatteryWarning, refresh: fetchConnections
+  } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
   const awaitingHCReturn = useRef(false);
@@ -47,13 +51,17 @@ export default function ConnectDevicesScreen() {
   // When user returns from Health Connect settings, re-check if permissions were granted
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
+      console.log('[ConnectDevices] AppState changed to:', state, 'Awaiting HC:', awaitingHCReturn.current);
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
         const confirmed = await confirmHealthConnectConnection();
+        console.log('[ConnectDevices] Connection confirmed:', confirmed);
         if (!mounted.current) return;
         setConnecting(null);
         if (confirmed) {
           Alert.alert('Connected!', 'Health Connect permissions granted. Your workouts will sync automatically.');
+        } else {
+          Alert.alert('Not connected', 'Permissions were not granted in Health Connect.');
         }
       }
     });
@@ -157,6 +165,28 @@ export default function ConnectDevicesScreen() {
         </View>
 
         {/* Status */}
+        {showBatteryWarning && (
+          <TouchableOpacity
+            style={s.warningRow}
+            onPress={() => {
+              Alert.alert(
+                'Background Sync Stale',
+                'Health Connect has not synced in over 30 minutes. This usually means Android is "optimizing" the app for battery. Please disable battery optimization for StreakWar in system settings.',
+                [
+                  { text: 'Cancel', style: 'cancel' },
+                  { text: 'Open Settings', onPress: () => Linking.openSettings() }
+                ]
+              );
+            }}
+          >
+            <Text style={s.warningEmoji}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.warningTitle}>Background sync is delayed</Text>
+              <Text style={s.warningSub}>Tap to fix battery optimization →</Text>
+            </View>
+          </TouchableOpacity>
+        )}
+
         {connectedCount > 0 && (
           <View style={s.statusRow}>
             <View style={s.statusDot} />
@@ -340,6 +370,22 @@ const s = StyleSheet.create({
   },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
   statusText: { flex: 1, fontSize: 13, color: C.green, fontWeight: '600' },
+
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: C.error + '12',
+    borderWidth: 1,
+    borderColor: C.error + '30',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+  },
+  warningEmoji: { fontSize: 24 },
+  warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
+  warningSub: { fontSize: 12, color: C.muted, marginTop: 2, fontWeight: '600' },
+
   syncNowBtn: { paddingHorizontal: 10, paddingVertical: 4 },
   syncNowText: { color: C.primary, fontSize: 13, fontWeight: '700' },
 

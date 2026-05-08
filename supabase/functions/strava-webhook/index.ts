@@ -151,6 +151,9 @@ serve(async (req) => {
     .eq('fitness_challenges.status', 'active');
 
   const challengeId = participations?.[0]?.challenge_id ?? null;
+  if (!challengeId) {
+    console.log(`[Strava] No active challenge found for user ${conn.user_id}, logging anyway.`);
+  }
 
   const { error } = await supabase.from('workout_posts').insert({
     user_id: conn.user_id,

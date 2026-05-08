@@ -33,10 +33,13 @@ export function usePushNotifications(
     if (!userId) return;
     const { data } = await supabase
       .from('user_streaks')
-      .select('current_streak')
+      .select('current_streak, last_active_date')
       .eq('user_id', userId)
       .single();
-    await scheduleStreakReminder(data?.current_streak ?? 0).catch(() => {});
+    await scheduleStreakReminder(
+      data?.current_streak ?? 0,
+      data?.last_active_date
+    ).catch(() => {});
   }, [userId]);
 
   useEffect(() => {
@@ -116,6 +119,11 @@ async function registerForPushNotifications(
   if (existing !== 'granted') {
     const { status } = await Notifications.requestPermissionsAsync();
     finalStatus = status;
+
+    // Permissions just granted — schedule reminders immediately
+    if (finalStatus === 'granted') {
+      await refreshReminders();
+    }
   }
   if (finalStatus !== 'granted') {
     console.warn('[PushNotifications] permission denied');
