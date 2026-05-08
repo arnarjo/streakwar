@@ -19,18 +19,36 @@ const C = {
 
 type Props = {
   post: WorkoutPost;
+  currentUserId?: string;
   onReact: (postId: string, reaction: string) => void;
   onFetchComments: (postId: string) => Promise<WorkoutComment[]>;
   onAddComment: (postId: string, content: string) => Promise<{ error: string | null }>;
+  onEdit?: (post: WorkoutPost) => void;
+  onDelete?: (postId: string) => void;
 };
 
-export default function WorkoutPostCard({ post, onReact, onFetchComments, onAddComment }: Props) {
+export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchComments, onAddComment, onEdit, onDelete }: Props) {
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<WorkoutComment[]>([]);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const timeAgo = formatDistanceToNow(new Date(post.posted_at), { addSuffix: true });
+  const isOwnPost = !!currentUserId && currentUserId === post.user_id;
+
+  function showPostMenu() {
+    Alert.alert('Workout', undefined, [
+      { text: 'Edit', onPress: () => onEdit?.(post) },
+      {
+        text: 'Delete', style: 'destructive', onPress: () =>
+          Alert.alert('Delete workout', 'This cannot be undone.', [
+            { text: 'Cancel', style: 'cancel' },
+            { text: 'Delete', style: 'destructive', onPress: () => onDelete?.(post.id) },
+          ]),
+      },
+      { text: 'Cancel', style: 'cancel' },
+    ]);
+  }
 
   async function openComments() {
     setCommentsOpen(true);
@@ -76,6 +94,11 @@ export default function WorkoutPostCard({ post, onReact, onFetchComments, onAddC
           </Text>
         </View>
         <Text style={s.time}>{timeAgo}</Text>
+        {isOwnPost && (
+          <TouchableOpacity onPress={showPostMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Text style={s.menuDots}>⋯</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Stats row */}
@@ -210,6 +233,7 @@ const s = StyleSheet.create({
   name: { fontSize: 14, fontWeight: '700', color: C.text },
   meta: { fontSize: 12, color: C.muted, marginTop: 1 },
   time: { fontSize: 11, color: C.muted },
+  menuDots: { fontSize: 18, color: C.muted, paddingLeft: 8, fontWeight: '700' },
 
   statsRow: {
     flexDirection: 'row',

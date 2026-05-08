@@ -1,15 +1,18 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
-import type { FitnessChallenge, ChallengeParticipant, ScoringMode, TieBreakRule } from '../types/database';
+import type { FitnessChallenge, ChallengeParticipant, ScoringMode, TieBreakRule, RenewalType } from '../types/database';
 
 export function useFitnessChallenges(userId: string) {
   const [myChallenges, setMyChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
+  // Tracks whether the component is still mounted so we never call setState
+  // after unmount on slow network responses.
+  const mountedRef = useRef(true);
 
   const fetch = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('challenge_participants')
       .select(`
         challenge_id,
@@ -23,6 +26,14 @@ export function useFitnessChallenges(userId: string) {
       `)
       .eq('user_id', userId)
       .order('joined_at', { ascending: false });
+
+    if (!mountedRef.current) return;
+
+    if (error) {
+      console.warn('[useFitnessChallenges] fetch error:', error.message);
+      setLoading(false);
+      return;
+    }
 
     if (data) {
       const challenges = data
@@ -38,7 +49,11 @@ export function useFitnessChallenges(userId: string) {
     setLoading(false);
   }, [userId]);
 
-  useEffect(() => { fetch(); }, [fetch]);
+  useEffect(() => {
+    mountedRef.current = true;
+    fetch();
+    return () => { mountedRef.current = false; };
+  }, [fetch]);
 
   async function getParticipants(challengeId: string): Promise<ChallengeParticipant[]> {
     const { data } = await supabase
@@ -131,6 +146,7 @@ export function useFitnessChallenges(userId: string) {
     tie_break_rule: TieBreakRule;
     is_public: boolean;
     max_participants?: number | null;
+    renewal_type?: RenewalType;
   }): Promise<{ error: string | null; challenge: FitnessChallenge | null }> {
     const { data: challenge, error } = await supabase
       .from('fitness_challenges')

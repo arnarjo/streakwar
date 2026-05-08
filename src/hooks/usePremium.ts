@@ -9,6 +9,9 @@ type PurchasesPackage = import('react-native-purchases').PurchasesPackage;
 
 const ENTITLEMENT_PRO = 'pro';
 
+// Set to false before production launch to re-enable Pro gates
+const TESTING_MODE = true;
+
 const RC_API_KEY = Platform.select({
   ios:     process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS     ?? '',
   android: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID ?? '',
@@ -52,6 +55,7 @@ export function usePremium(userId: string) {
       .select('is_pro, pro_expires_at')
       .eq('id', userId)
       .single();
+    if (TESTING_MODE) { setIsPro(true); setLoading(false); return; }
     if (data) {
       const active = data.is_pro && (
         !data.pro_expires_at || new Date(data.pro_expires_at) > new Date()

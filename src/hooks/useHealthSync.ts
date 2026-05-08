@@ -9,8 +9,6 @@ export type ProviderKey =
   | 'apple_health'
   | 'health_connect'
   | 'strava'
-  | 'garmin'
-  | 'fitbit'
   | 'samsung_health';
 
 export interface DeviceConnection {
@@ -23,8 +21,6 @@ export const PROVIDER_META: Record<ProviderKey, { label: string; icon: string; p
   apple_health:   { label: 'Apple Health',     icon: '🍎', platform: 'ios' },
   health_connect: { label: 'Health Connect',   icon: '💚', platform: 'android' },
   strava:         { label: 'Strava',            icon: '🟠', platform: 'both' },
-  garmin:         { label: 'Garmin Connect',   icon: '⌚', platform: 'both' },
-  fitbit:         { label: 'Fitbit',            icon: '💙', platform: 'both' },
   samsung_health: { label: 'Samsung Health',   icon: '📱', platform: 'android' },
 };
 
@@ -122,14 +118,12 @@ export function useHealthSync(userId: string) {
       count = await pollHealthConnect(userId);
     }
 
-    if (count > 0) {
-      await supabase
-        .from('device_connections')
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect');
-      await fetchConnections();
-    }
+    await supabase
+      .from('device_connections')
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect');
+    await fetchConnections();
 
     setSyncing(false);
     setLastSynced(new Date());

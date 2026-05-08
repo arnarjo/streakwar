@@ -11,6 +11,7 @@
  */
 
 import { Platform, Linking } from 'react-native';
+import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
@@ -28,31 +29,45 @@ if (Platform.OS === 'android') {
 
 const LAST_SYNC_KEY = 'health_connect_last_sync';
 
+// Distance and ActiveCaloriesBurned are not yet used — only ExerciseSession and Steps.
 const HC_RECORD_TYPES = [
   'ExerciseSession',
   'Steps',
-  'Distance',
-  'ActiveCaloriesBurned',
 ] as const;
 
-/** Map Health Connect exercise type strings to our activity types */
-function mapHCExerciseType(type: string): ActivityType {
-  const map: Record<string, ActivityType> = {
-    RUNNING: 'run',
-    RUNNING_TREADMILL: 'run',
-    WALKING: 'walk',
-    HIKING: 'walk',
-    BIKING: 'cycle',
-    BIKING_STATIONARY: 'cycle',
-    SWIMMING_OPEN_WATER: 'swim',
-    SWIMMING_POOL: 'swim',
-    STRENGTH_TRAINING: 'lift',
-    WEIGHTLIFTING: 'lift',
-    YOGA: 'yoga',
-    HIGH_INTENSITY_INTERVAL_TRAINING: 'hiit',
-    INTERVAL_TRAINING: 'hiit',
+/**
+ * Map Health Connect exercise type numeric codes to our activity types.
+ * HC returns integer constants (ExerciseSessionRecord.EXERCISE_TYPE_*), not strings.
+ * Reference: https://developer.android.com/reference/kotlin/androidx/health/connect/client/records/ExerciseSessionRecord
+ */
+function mapHCExerciseType(typeCode: number): ActivityType {
+  // Key numeric constants from ExerciseSessionRecord
+  const map: Record<number, ActivityType> = {
+    56: 'run',   // EXERCISE_TYPE_RUNNING
+    57: 'run',   // EXERCISE_TYPE_RUNNING_TREADMILL
+    79: 'walk',  // EXERCISE_TYPE_WALKING
+    37: 'walk',  // EXERCISE_TYPE_HIKING
+    8:  'cycle', // EXERCISE_TYPE_BIKING
+    9:  'cycle', // EXERCISE_TYPE_BIKING_STATIONARY
+    74: 'swim',  // EXERCISE_TYPE_SWIMMING_OPEN_WATER
+    75: 'swim',  // EXERCISE_TYPE_SWIMMING_POOL
+    62: 'lift',  // EXERCISE_TYPE_STRENGTH_TRAINING
+    44: 'lift',  // EXERCISE_TYPE_WEIGHTLIFTING
+    83: 'yoga',  // EXERCISE_TYPE_YOGA
+    27: 'hiit',  // EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING
+    38: 'hiit',  // EXERCISE_TYPE_INTERVAL_TRAINING
   };
-  return map[type] ?? 'other';
+  return map[typeCode] ?? 'other';
+}
+
+/** Returns the device's local date as YYYY-MM-DD, avoiding UTC offset drift. */
+function toLocalDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
 }
 
 /**
@@ -83,20 +98,22 @@ export async function initHealthConnect(): Promise<boolean> {
  */
 export async function openHealthConnectPermissions(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
+
+  // Android 14+: open StreakWar's specific permission page in Health Connect.
+  // canOpenURL always returns false on Android 11+ without a <queries> declaration,
+  // so we skip that check and try openURL directly.
   try {
-    // Android 14+ built-in HC: open StreakWar's specific permission page
-    const manageUrl = 'android-health-connect://manage-health-permissions/is.streakwar.app';
-    const canOpen = await Linking.canOpenURL(manageUrl);
-    if (canOpen) {
-      await Linking.openURL(manageUrl);
-      return true;
-    }
+    const appId = Constants.expoConfig?.android?.package ?? 'is.streakwar.app';
+    await Linking.openURL(`android-health-connect://manage-health-permissions/${appId}`);
+    return true;
   } catch {}
-  // Fallback: open HC settings
+
+  // Fallback for Android 13 and below: open generic HC settings page.
   try {
     if (!HealthConnect) return false;
     const { initialize, openHealthConnectSettings } = HealthConnect;
-    await initialize();
+    const available = await initialize();
+    if (!available) return false;
     openHealthConnectSettings();
     return true;
   } catch {
@@ -127,7 +144,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   if (!available) return 0;
 
   const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
-  const startTime = lastSyncRaw ?? new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+  const startTime = lastSyncRaw ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const endTime = new Date().toISOString();
 
   let synced = 0;
@@ -160,16 +177,20 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       const toInsert = sessionList
         .filter((s: any) => s.metadata?.id && !existingSet.has(String(s.metadata.id)))
         .map((session: any) => {
-          const durationMs = new Date(session.endTime).getTime() - new Date(session.startTime).getTime();
-          const durationMin = Math.round(durationMs / 60000);
+          // Guard against missing timestamps — HC can omit endTime on in-progress sessions
+          const startMs = session.startTime ? new Date(session.startTime).getTime() : NaN;
+          const endMs   = session.endTime   ? new Date(session.endTime).getTime()   : NaN;
+          const durationMs  = endMs - startMs;
+          const durationMin = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : null;
           return {
             user_id: userId,
             challenge_id: challengeId,
-            activity_type: mapHCExerciseType(session.exerciseType ?? ''),
-            duration_minutes: durationMin > 0 ? durationMin : null,
+            activity_type: mapHCExerciseType(session.exerciseType ?? 0),
+            duration_minutes: durationMin !== null && durationMin > 0 ? durationMin : null,
             source: 'health_connect',
             external_activity_id: String(session.metadata.id),
-            workout_date: session.startTime.slice(0, 10),
+            // Use local date to avoid UTC midnight off-by-one on users outside UTC
+            workout_date: session.startTime ? toLocalDate(session.startTime) : toLocalDate(new Date()),
           };
         });
 
@@ -179,39 +200,48 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       }
     }
 
-    // Sync today's steps
-    const today = new Date().toISOString().slice(0, 10);
+    // Sync today's steps using local date so the day boundary matches the user's clock
+    const now = new Date();
+    const localDate = toLocalDate(now);
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+
     const { records: stepRecords } = await readRecords('Steps', {
       timeRangeFilter: {
         operator: 'between',
-        startTime: `${today}T00:00:00Z`,
-        endTime: `${today}T23:59:59Z`,
+        startTime: startOfDay.toISOString(),
+        endTime: endOfDay.toISOString(),
       },
     });
 
     const totalSteps = (stepRecords ?? []).reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
 
     if (totalSteps > 0) {
-      const { data: existingSteps } = await supabase
-        .from('workout_posts')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('source', 'health_connect')
-        .eq('external_activity_id', `steps_${today}`)
-        .maybeSingle();
+      // Atomic insert — if the row already exists, update steps in place.
+      // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
+      const { error: insertErr } = await supabase.from('workout_posts').insert({
+        user_id: userId,
+        challenge_id: challengeId,
+        activity_type: 'ganga',
+        steps: totalSteps,
+        source: 'health_connect',
+        external_activity_id: `steps_${localDate}`,
+        workout_date: localDate,
+      });
 
-      if (existingSteps) {
-        await supabase.from('workout_posts').update({ steps: totalSteps }).eq('id', existingSteps.id);
+      if (insertErr) {
+        if (insertErr.code === '23505') {
+          // Unique constraint hit — row was already created today, just update step count
+          await supabase
+            .from('workout_posts')
+            .update({ steps: totalSteps })
+            .eq('user_id', userId)
+            .eq('source', 'health_connect')
+            .eq('external_activity_id', `steps_${localDate}`);
+        } else {
+          console.warn('[HealthConnect] steps insert failed:', insertErr);
+        }
       } else {
-        await supabase.from('workout_posts').insert({
-          user_id: userId,
-          challenge_id: challengeId,
-          activity_type: 'ganga',
-          steps: totalSteps,
-          source: 'health_connect',
-          external_activity_id: `steps_${today}`,
-          workout_date: today,
-        });
         synced++;
       }
     }

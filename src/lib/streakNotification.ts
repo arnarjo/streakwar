@@ -1,71 +1,74 @@
 /**
- * Schedules a daily 8pm reminder if the user hasn't logged a workout yet today.
- * Call scheduleStreakReminder() on login and after each successful workout log.
- * The notification is rescheduled for tomorrow each time so it fires every evening
- * until the user logs. If they log before 8pm the reminder is cancelled for that day.
+ * Schedules two daily repeating reminders:
+ *  - 8am: motivational morning nudge
+ *  - 8pm: streak-at-risk reminder
+ *
+ * Call scheduleStreakReminder() on login and whenever the streak changes.
+ * Call cancelStreakReminders() on logout.
  */
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 
-const IDENTIFIER = 'streakwar-streak-reminder';
+const MORNING_ID = 'streakwar-morning-reminder';
+const EVENING_ID = 'streakwar-evening-reminder';
 
-function tonightAt8pm(): Date {
-  const d = new Date();
-  d.setHours(20, 0, 0, 0);
-  // If it's already past 8pm, schedule for tomorrow
-  if (d.getTime() <= Date.now()) {
-    d.setDate(d.getDate() + 1);
-  }
-  return d;
-}
-
-/** Schedule (or reschedule) the streak-at-risk reminder for 8pm tonight. */
+/** Schedule (or refresh) both daily reminders. Safe to call repeatedly. */
 export async function scheduleStreakReminder(currentStreak: number): Promise<void> {
-  // Background-fetch and task-manager environments may not have notification
-  // permissions yet — swallow any errors silently.
   try {
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
-    // Cancel any previously scheduled instance before replacing it
-    await Notifications.cancelScheduledNotificationAsync(IDENTIFIER).catch(() => {});
-
-    const streakMsg = currentStreak > 0
-      ? `Haltu ${currentStreak}-daga streaknum lifandi! 🔥`
-      : 'Skráðu workout og byrjaðu streakinn þinn 🔥';
+    const streakLine = currentStreak > 0
+      ? `${currentStreak}-day streak — keep it going! 🔥`
+      : 'Start your streak today 🔥';
 
     await Notifications.scheduleNotificationAsync({
-      identifier: IDENTIFIER,
+      identifier: MORNING_ID,
       content: {
-        title: 'StreakWar — Streakur þinn er í hættu!',
-        body: streakMsg,
+        title: 'StreakWar — Good morning! 🌅',
+        body: currentStreak > 0 ? 'Keep your streak going — log a workout today! 🔥' : 'Start your streak today 🔥',
         sound: true,
         ...(Platform.OS === 'android' && { channelId: 'default' }),
       },
-      trigger: { date: tonightAt8pm() },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 8,
+        minute: 0,
+      },
+    });
+
+    await Notifications.scheduleNotificationAsync({
+      identifier: EVENING_ID,
+      content: {
+        title: 'StreakWar — Don\'t break your streak!',
+        body: currentStreak > 0 ? 'Log your workout before midnight to keep your streak alive 🔥' : 'Log a workout and start your streak 🔥',
+        sound: true,
+        ...(Platform.OS === 'android' && { channelId: 'default' }),
+      },
+      trigger: {
+        type: Notifications.SchedulableTriggerInputTypes.DAILY,
+        hour: 20,
+        minute: 0,
+      },
     });
   } catch {
-    // Silently ignore — push notifications are non-critical
+    // non-critical
   }
 }
 
-/** Cancel the reminder — call this immediately after a workout is successfully logged. */
-export async function cancelTodayStreakReminder(): Promise<void> {
+/** Cancel all streak reminders (e.g. on logout). */
+export async function cancelStreakReminders(): Promise<void> {
   try {
-    await Notifications.cancelScheduledNotificationAsync(IDENTIFIER);
-    // Reschedule for tomorrow so the habit loop continues
-    await Notifications.scheduleNotificationAsync({
-      identifier: IDENTIFIER,
-      content: {
-        title: 'StreakWar — Haltu streaknum gangandi!',
-        body: 'Dagurinn er næstum liðinn — skráðu workout til að halda streaknum 🔥',
-        sound: true,
-        ...(Platform.OS === 'android' && { channelId: 'default' }),
-      },
-      trigger: { date: tonightAt8pm() },
-    });
+    await Notifications.cancelScheduledNotificationAsync(MORNING_ID).catch(() => {});
+    await Notifications.cancelScheduledNotificationAsync(EVENING_ID).catch(() => {});
   } catch {
-    // Silently ignore
+    // non-critical
   }
+}
+
+/** @deprecated Use cancelStreakReminders(). Kept so LogWorkoutScreen compiles. */
+export async function cancelTodayStreakReminder(): Promise<void> {
+  // Repeating triggers cannot be paused for a single day.
+  // The evening reminder will still fire; users can dismiss it.
 }

@@ -78,6 +78,11 @@ serve(async (req) => {
   let externalUserId: string | null = null;
   let expiresAt: Date | null = null;
 
+  // Garmin uses OAuth 1.0a — different flow entirely
+  if (provider === 'garmin') {
+    return handleGarminCallback(req, userId);
+  }
+
   try {
     if (provider === 'strava') {
       tokens = await exchangeStrava(code);
@@ -116,8 +121,145 @@ serve(async (req) => {
     await ensureStravaWebhookSubscription();
   }
 
+  // Register per-user Fitbit activity subscription
+  if (provider === 'fitbit') {
+    await ensureFitbitSubscription(tokens.access_token);
+  }
+
   return Response.redirect('streakwar://oauth-success?provider=' + provider, 302);
 });
+
+// ─── Garmin OAuth 1.0a ────────────────────────────────────────────────────────
+
+function percentEncode(s: string): string {
+  return encodeURIComponent(s)
+    .replace(/[!'()*]/g, c => '%' + c.charCodeAt(0).toString(16).toUpperCase());
+}
+
+async function hmacSha1(signingKey: string, baseString: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(signingKey),
+    { name: 'HMAC', hash: 'SHA-1' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(baseString));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+async function buildOAuth1Header(
+  method: string,
+  url: string,
+  oauthToken: string,
+  oauthVerifier: string,
+  consumerKey: string,
+  consumerSecret: string,
+  tokenSecret: string,
+): Promise<string> {
+  const oauthParams: Record<string, string> = {
+    oauth_consumer_key: consumerKey,
+    oauth_nonce: crypto.randomUUID().replace(/-/g, ''),
+    oauth_signature_method: 'HMAC-SHA1',
+    oauth_timestamp: String(Math.floor(Date.now() / 1000)),
+    oauth_token: oauthToken,
+    oauth_verifier: oauthVerifier,
+    oauth_version: '1.0',
+  };
+
+  const paramString = Object.entries(oauthParams)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([k, v]) => `${percentEncode(k)}=${percentEncode(v)}`)
+    .join('&');
+
+  const baseString = [method.toUpperCase(), percentEncode(url), percentEncode(paramString)].join('&');
+  const signingKey = `${percentEncode(consumerSecret)}&${percentEncode(tokenSecret)}`;
+  const signature = await hmacSha1(signingKey, baseString);
+
+  oauthParams.oauth_signature = signature;
+  return 'OAuth ' + Object.entries(oauthParams)
+    .map(([k, v]) => `${percentEncode(k)}="${percentEncode(v)}"`)
+    .join(', ');
+}
+
+async function handleGarminCallback(req: Request, userId: string): Promise<Response> {
+  const url = new URL(req.url);
+  const oauthToken = url.searchParams.get('oauth_token') ?? '';
+  const oauthVerifier = url.searchParams.get('oauth_verifier') ?? '';
+
+  if (!oauthToken || !oauthVerifier) {
+    return Response.redirect('streakwar://oauth-error?reason=missing_garmin_params', 302);
+  }
+
+  // Retrieve the request token secret stored by oauth-init
+  const { data: conn } = await supabase
+    .from('device_connections')
+    .select('refresh_token')
+    .eq('user_id', userId)
+    .eq('provider', 'garmin')
+    .eq('is_active', false)
+    .single();
+
+  const requestTokenSecret = conn?.refresh_token ?? '';
+  if (!requestTokenSecret) {
+    return Response.redirect('streakwar://oauth-error?reason=missing_request_secret', 302);
+  }
+
+  const consumerKey = Deno.env.get('GARMIN_CONSUMER_KEY') ?? '';
+  const consumerSecret = Deno.env.get('GARMIN_CONSUMER_SECRET') ?? '';
+  const accessTokenUrl = 'https://connect.garmin.com/oauth-service/oauth/access_token';
+
+  const authHeader = await buildOAuth1Header(
+    'POST', accessTokenUrl,
+    oauthToken, oauthVerifier,
+    consumerKey, consumerSecret, requestTokenSecret,
+  );
+
+  const res = await fetch(accessTokenUrl, {
+    method: 'POST',
+    headers: { 'Authorization': authHeader, 'Content-Type': 'application/x-www-form-urlencoded' },
+  });
+
+  if (!res.ok) {
+    console.error('Garmin access token failed:', res.status, await res.text());
+    return Response.redirect('streakwar://oauth-error?reason=garmin_token_failed', 302);
+  }
+
+  const body = await res.text();
+  const params = new URLSearchParams(body);
+  const accessToken = params.get('oauth_token') ?? '';
+  const accessTokenSecret = params.get('oauth_token_secret') ?? '';
+
+  if (!accessToken) {
+    return Response.redirect('streakwar://oauth-error?reason=garmin_empty_token', 302);
+  }
+
+  // Store access token (access_token) + secret (refresh_token field) — Garmin has no expiry
+  const { error } = await supabase.from('device_connections').upsert({
+    user_id: userId,
+    provider: 'garmin',
+    is_active: true,
+    access_token: accessToken,
+    refresh_token: accessTokenSecret,  // Garmin token secret, never expires
+    token_expires_at: null,
+    external_user_id: null,
+    last_synced_at: null,
+  }, { onConflict: 'user_id,provider' });
+
+  if (error) {
+    console.error('Garmin DB upsert failed:', error);
+    return Response.redirect('streakwar://oauth-error?reason=db_error', 302);
+  }
+
+  return Response.redirect('streakwar://oauth-success?provider=garmin', 302);
+}
+
+async function ensureFitbitSubscription(accessToken: string) {
+  // Fitbit subscriptions are per-user. Subscribe to the activities collection.
+  // If already subscribed, Fitbit returns 200 or 409 — both are fine.
+  await fetch('https://api.fitbit.com/1/user/-/activities/apiSubscriptions/1.json', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+}
 
 async function ensureStravaWebhookSubscription() {
   const callbackUrl = `${Deno.env.get('SUPABASE_URL')}/functions/v1/strava-webhook`;

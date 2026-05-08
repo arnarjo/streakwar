@@ -9,7 +9,8 @@ export type ActivityType =
   | 'yoga'
   | 'hiit'
   | 'sport'
-  | 'other';
+  | 'other'
+  | 'ganga'; // step-based walking from Health Connect / HealthKit
 
 export type ScoringMode =
   | 'workouts'
@@ -106,12 +107,14 @@ export const ACHIEVEMENT_META: Record<AchievementKey, { icon: string; title: str
   steps_100k:    { icon: '👟', title: 'Step Legend',      desc: '100 000 total steps logged'       },
 };
 
+export type RenewalType = 'none' | 'weekly' | 'monthly';
+
 export interface FitnessChallenge {
   id: string;
   name: string;
   description: string | null;
   cover_image_url: string | null;
-  created_by: string;
+  created_by: string | null;
   start_date: string;
   end_date: string;
   status: ChallengeStatus;
@@ -128,6 +131,9 @@ export interface FitnessChallenge {
   is_public: boolean;
   max_participants: number | null;
   invite_code: string;
+  renewal_type: RenewalType;
+  is_global: boolean;
+  parent_challenge_id: string | null;
   created_at: string;
   participant_count?: number;
   my_score?: number;
@@ -227,6 +233,7 @@ export const ACTIVITY_LABELS: Record<ActivityType, string> = {
   hiit:  '🔥 HIIT',
   sport: '⚽ Sport',
   other: '💪 Other',
+  ganga: '👟 Steps',
 };
 
 export const ACTIVITY_OPTIONS: ActivityType[] = [

@@ -12,11 +12,12 @@ const C = {
 };
 
 const PRO_FEATURES = [
-  { icon: '🏆', text: 'Create unlimited challenges' },
-  { icon: '👥', text: 'Unlimited participants per challenge' },
+  { icon: '🛡️', text: 'Streak freeze — protect 1 day per month' },
+  { icon: '🌍', text: 'Public challenges visible in Discover' },
+  { icon: '♾️', text: 'Unlimited participants per challenge' },
   { icon: '📸', text: 'Require photo proof' },
+  { icon: '✏️', text: 'Custom scoring formulas' },
   { icon: '💎', text: 'Diamond league access' },
-  { icon: '📊', text: 'Advanced stats & analytics' },
 ];
 
 interface Props {

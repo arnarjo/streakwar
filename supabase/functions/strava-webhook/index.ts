@@ -66,7 +66,7 @@ serve(async (req) => {
   // Find the StreakWar user with this Strava athlete id
   const { data: conn } = await supabase
     .from('device_connections')
-    .select('user_id, access_token')
+    .select('user_id, access_token, refresh_token, token_expires_at')
     .eq('provider', 'strava')
     .eq('external_user_id', stravaAthleteId)
     .eq('is_active', true)
@@ -74,6 +74,39 @@ serve(async (req) => {
 
   if (!conn) {
     return Response.json({ ok: true, skipped: 'no connected user' });
+  }
+
+  // Refresh token if expired (Strava tokens expire after 6 hours)
+  let accessToken = conn.access_token;
+  const expiresAt = conn.token_expires_at ? new Date(conn.token_expires_at).getTime() : 0;
+  if (Date.now() >= expiresAt - 60_000) {
+    // Token expired or expires within 1 minute — refresh it
+    const refreshRes = await fetch('https://www.strava.com/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        client_id: Deno.env.get('STRAVA_CLIENT_ID'),
+        client_secret: Deno.env.get('STRAVA_CLIENT_SECRET'),
+        grant_type: 'refresh_token',
+        refresh_token: conn.refresh_token,
+      }),
+    });
+    if (refreshRes.ok) {
+      const tokens = await refreshRes.json();
+      accessToken = tokens.access_token;
+      await supabase.from('device_connections').update({
+        access_token: tokens.access_token,
+        refresh_token: tokens.refresh_token ?? conn.refresh_token,
+        token_expires_at: tokens.expires_at
+          ? new Date(tokens.expires_at * 1000).toISOString()
+          : null,
+      })
+        .eq('user_id', conn.user_id)
+        .eq('provider', 'strava');
+    } else {
+      console.error('Strava token refresh failed:', await refreshRes.text());
+      // Continue with existing token — might still work if clock drift
+    }
   }
 
   // Check for duplicate
@@ -92,7 +125,7 @@ serve(async (req) => {
   // Fetch full activity from Strava
   const actRes = await fetch(
     `https://www.strava.com/api/v3/activities/${stravaActivityId}`,
-    { headers: { Authorization: `Bearer ${conn.access_token}` } },
+    { headers: { Authorization: `Bearer ${accessToken}` } },
   );
 
   if (!actRes.ok) {

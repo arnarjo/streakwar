@@ -1,4 +1,5 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
+import { AppState } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -28,35 +29,78 @@ export function usePushNotifications(
   const notificationListener = useRef<Notifications.EventSubscription>();
   const responseListener = useRef<Notifications.EventSubscription>();
 
+  const refreshReminders = useCallback(async () => {
+    if (!userId) return;
+    const { data } = await supabase
+      .from('user_streaks')
+      .select('current_streak')
+      .eq('user_id', userId)
+      .single();
+    await scheduleStreakReminder(data?.current_streak ?? 0).catch(() => {});
+  }, [userId]);
+
   useEffect(() => {
     if (!userId) return;
 
-    registerForPushNotifications(userId).catch((e) =>
+    registerForPushNotifications(userId, refreshReminders).catch((e) =>
       console.warn('[PushNotifications] registration failed:', e)
     );
+
+    // Re-schedule reminders each time the app comes to the foreground so
+    // the streak count stays current and the repeating triggers are re-created
+    // if they were ever cleared (e.g. OS notification reset).
+    const appStateSub = AppState.addEventListener('change', (state) => {
+      if (state === 'active') refreshReminders();
+    });
 
     notificationListener.current = Notifications.addNotificationReceivedListener(() => {
       // foreground notification received
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data as any;
-      if (data?.challenge_id && navigationRef.isReady()) {
-        navigationRef.navigate('ChallengeDetail' as never, { challengeId: data.challenge_id } as never);
-      }
-      if (data?.screen === 'WeeklyRecap') {
-        navigationRef.current?.navigate('WeeklyRecap' as never);
-      }
+      handleNotificationResponse(response, navigationRef);
+    });
+
+    // Handle cold start: app was closed and user tapped a notification to open it.
+    // addNotificationResponseReceivedListener fires too early in this case —
+    // getLastNotificationResponseAsync catches it once navigation is ready.
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (!response) return;
+      const waitForNav = (attempts = 0) => {
+        if (navigationRef.isReady()) {
+          handleNotificationResponse(response, navigationRef);
+        } else if (attempts < 20) {
+          setTimeout(() => waitForNav(attempts + 1), 100);
+        }
+      };
+      waitForNav();
     });
 
     return () => {
+      appStateSub.remove();
       notificationListener.current?.remove();
       responseListener.current?.remove();
     };
-  }, [userId]);
+  }, [userId, refreshReminders]);
 }
 
-async function registerForPushNotifications(userId: string) {
+function handleNotificationResponse(
+  response: Notifications.NotificationResponse,
+  navigationRef: NavigationContainerRef<any>,
+) {
+  if (!navigationRef.isReady()) return;
+  const data = response.notification.request.content.data as any;
+  if (data?.screen === 'WeeklyRecap') {
+    navigationRef.navigate('WeeklyRecap' as never);
+  } else if (data?.challenge_id) {
+    navigationRef.navigate('ChallengeDetail' as never, { challengeId: data.challenge_id } as never);
+  }
+}
+
+async function registerForPushNotifications(
+  userId: string,
+  refreshReminders: () => Promise<void>,
+) {
   if (!Device.isDevice) return;
 
   if (Platform.OS === 'android') {
@@ -78,8 +122,8 @@ async function registerForPushNotifications(userId: string) {
     return;
   }
 
-  // Schedule the streak reminder now that we know permissions are granted
-  await scheduleStreakReminder(0).catch(() => {});
+  // Schedule reminders with actual streak count now that permissions are confirmed
+  await refreshReminders();
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) {
@@ -90,7 +134,6 @@ async function registerForPushNotifications(userId: string) {
   let token: string;
   try {
     token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
-    console.log('[PushNotifications] token:', token);
   } catch (e) {
     console.warn('[PushNotifications] getExpoPushTokenAsync failed:', e);
     return;

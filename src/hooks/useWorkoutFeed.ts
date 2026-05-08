@@ -39,35 +39,45 @@ export function useWorkoutFeed(userId: string) {
     const { data } = await query;
 
     if (data) {
-      // Fetch reaction counts for each post
-      const postsWithReactions = await Promise.all(
-        data.map(async (post: any) => {
-          const { data: reactions } = await supabase
-            .from('workout_reactions')
-            .select('reaction, user_id')
-            .eq('post_id', post.id);
+      const postIds = data.map((p: any) => p.id);
 
-          const counts: Record<string, number> = {};
-          let myReaction: string | null = null;
-          for (const r of reactions ?? []) {
-            counts[r.reaction] = (counts[r.reaction] ?? 0) + 1;
-            if (r.user_id === userId) myReaction = r.reaction;
-          }
+      // Two batched queries instead of 2×N individual ones
+      const [{ data: allReactions }, { data: allCommentCounts }] = await Promise.all([
+        supabase
+          .from('workout_reactions')
+          .select('post_id, reaction, user_id')
+          .in('post_id', postIds),
+        supabase
+          .from('workout_comments')
+          .select('post_id, id')
+          .in('post_id', postIds),
+      ]);
 
-          const { count: commentCount } = await supabase
-            .from('workout_comments')
-            .select('*', { count: 'exact', head: true })
-            .eq('post_id', post.id);
+      // Index reactions and comment counts by post_id
+      const reactionsByPost = new Map<string, { counts: Record<string, number>; myReaction: string | null }>();
+      for (const r of allReactions ?? []) {
+        if (!reactionsByPost.has(r.post_id)) {
+          reactionsByPost.set(r.post_id, { counts: {}, myReaction: null });
+        }
+        const entry = reactionsByPost.get(r.post_id)!;
+        entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+        if (r.user_id === userId) entry.myReaction = r.reaction;
+      }
 
-          return {
-            ...post,
-            reaction_counts: counts,
-            my_reaction: myReaction,
-            comment_count: commentCount ?? 0,
-          };
-        })
-      );
-      setFeed(postsWithReactions);
+      const commentCountByPost = new Map<string, number>();
+      for (const c of allCommentCounts ?? []) {
+        commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1);
+      }
+
+      setFeed(data.map((post: any) => {
+        const r = reactionsByPost.get(post.id);
+        return {
+          ...post,
+          reaction_counts: r?.counts ?? {},
+          my_reaction: r?.myReaction ?? null,
+          comment_count: commentCountByPost.get(post.id) ?? 0,
+        };
+      }));
     }
     setLoading(false);
   }, [userId]);
@@ -183,6 +193,47 @@ export function useWorkoutFeed(userId: string) {
     return { error: null };
   }
 
+  async function updateWorkout(postId: string, params: {
+    activity_type: ActivityType;
+    duration_minutes: number | null;
+    distance_km: number | null;
+    calories: number | null;
+    steps: number | null;
+    caption: string;
+    workout_date: string;
+  }): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('workout_posts')
+      .update({
+        activity_type: params.activity_type,
+        duration_minutes: params.duration_minutes,
+        distance_km: params.distance_km,
+        calories: params.calories,
+        steps: params.steps,
+        caption: params.caption || null,
+        workout_date: params.workout_date,
+      })
+      .eq('id', postId)
+      .eq('user_id', userId);
+    if (error) return { error: 'Could not update workout' };
+    setFeed(prev => prev.map(p => p.id === postId
+      ? { ...p, ...params, caption: params.caption || null }
+      : p
+    ));
+    return { error: null };
+  }
+
+  async function deleteWorkout(postId: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('workout_posts')
+      .delete()
+      .eq('id', postId)
+      .eq('user_id', userId);
+    if (error) return { error: 'Could not delete workout' };
+    setFeed(prev => prev.filter(p => p.id !== postId));
+    return { error: null };
+  }
+
   async function pickMedia(): Promise<string | null> {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All,
@@ -193,5 +244,5 @@ export function useWorkoutFeed(userId: string) {
     return result.assets[0]?.uri ?? null;
   }
 
-  return { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, logWorkout, pickMedia };
+  return { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, logWorkout, updateWorkout, deleteWorkout, pickMedia };
 }

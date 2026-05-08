@@ -1,15 +1,18 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, RefreshControl, Share, Image,
+  StatusBar, RefreshControl, Share, Image, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import ViewShot from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useChallengeMessages, TRASH_TALK_MESSAGES } from '../hooks/useChallengeMessages';
 import WorkoutPostCard from '../components/WorkoutPostCard';
+import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
@@ -37,8 +40,10 @@ export default function ChallengeDetailScreen() {
   const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
   const [tab, setTab] = useState<Tab>('leaderboard');
   const [refreshing, setRefreshing] = useState(false);
+  const [sharingCard, setSharingCard] = useState(false);
+  const shareCardRef = useRef<ViewShot>(null);
 
-  const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment } = useWorkoutFeed(profile?.id ?? '');
+  const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
@@ -66,7 +71,7 @@ export default function ChallengeDetailScreen() {
     fetchBanter();
 
     const channel = supabase
-      .channel(`challenge_${challengeId}`)
+      .channel(`challenge_${challengeId}_${Date.now()}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenge_participants', filter: `challenge_id=eq.${challengeId}` }, loadParticipants)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workout_posts', filter: `challenge_id=eq.${challengeId}` }, () => fetchFeed(challengeId))
       .subscribe();
@@ -82,9 +87,33 @@ export default function ChallengeDetailScreen() {
 
   async function shareInvite() {
     if (!challenge) return;
-    await Share.share({
-      message: `Join the challenge "${challenge.name}" on StreakWar! Code: ${challenge.invite_code}`,
-    });
+    const msg = `Keppum saman á StreakWar! 🔥\n\nTaktu þátt í "${challenge.name}" — hlaupaðu, hreyfðu þig og safnaðu stigum.\n\nKóði: ${challenge.invite_code}\n\nSæktu StreakWar: https://streakwar.is`;
+    await Share.share({ message: msg, title: `Boð í ${challenge.name}` });
+  }
+
+  async function shareMyRank() {
+    if (!challenge || !myParticipant || !profile) return;
+    const canShare = await Sharing.isAvailableAsync();
+    if (!canShare) {
+      // Fallback to text share if image sharing not available
+      await Share.share({
+        message: `Ég er #${myParticipant.rank ?? '?'} í "${challenge.name}" með ${myParticipant.score} stig á StreakWar! 💪\n\nKóði: ${challenge.invite_code}`,
+      });
+      return;
+    }
+    setSharingCard(true);
+    try {
+      const uri = await shareCardRef.current?.capture?.();
+      if (!uri) throw new Error('Capture failed');
+      await Sharing.shareAsync(uri, {
+        mimeType: 'image/png',
+        dialogTitle: `Deila stöðu í ${challenge.name}`,
+      });
+    } catch {
+      Alert.alert('Villa', 'Ekki tókst að taka skjámynd. Reyndu aftur.');
+    } finally {
+      setSharingCard(false);
+    }
   }
 
   if (!challenge) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
@@ -151,6 +180,16 @@ export default function ChallengeDetailScreen() {
                       <Text style={s.logWorkoutBtnText}>+ Log Workout</Text>
                     </TouchableOpacity>
                   </View>
+                  <TouchableOpacity
+                    style={[s.shareRankBtn, sharingCard && s.shareRankBtnBusy]}
+                    onPress={shareMyRank}
+                    disabled={sharingCard}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={s.shareRankBtnText}>
+                      {sharingCard ? '...' : '📤 Deila stöðu minni'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               )}
 
@@ -221,9 +260,12 @@ export default function ChallengeDetailScreen() {
           renderItem={({ item }) => (
             <WorkoutPostCard
               post={item}
+              currentUserId={profile?.id}
               onReact={toggleReaction}
               onFetchComments={handleFetchComments}
               onAddComment={handleAddComment}
+              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+              onDelete={(postId) => deleteWorkout(postId)}
             />
           )}
           ListEmptyComponent={
@@ -329,6 +371,24 @@ export default function ChallengeDetailScreen() {
             </View>
           }
         />
+      )}
+
+      {/* Off-screen ShareCard captured by ViewShot — not visible to user */}
+      {myParticipant && profile && (
+        <ViewShot
+          ref={shareCardRef}
+          options={{ format: 'png', quality: 1.0 }}
+          style={s.offScreen}
+        >
+          <ShareCard
+            challengeName={challenge.name}
+            renewalType={challenge.renewal_type ?? 'none'}
+            rank={myParticipant.rank}
+            score={myParticipant.score}
+            username={profile.username}
+            inviteCode={challenge.invite_code}
+          />
+        </ViewShot>
       )}
     </SafeAreaView>
   );
@@ -482,4 +542,16 @@ const s = StyleSheet.create({
   messageText: { fontSize: 14, color: '#EEF4F8' },
   emptyBanter: { alignItems: 'center', paddingTop: 32 },
   emptyBanterText: { fontSize: 14, color: '#4A6070', textAlign: 'center' },
+
+  shareRankBtn: {
+    marginTop: 8,
+    backgroundColor: 'rgba(249,115,22,0.15)',
+    borderWidth: 1, borderColor: 'rgba(249,115,22,0.4)',
+    borderRadius: 10, paddingVertical: 10,
+    alignItems: 'center',
+  },
+  shareRankBtnBusy: { opacity: 0.5 },
+  shareRankBtnText: { color: C.primary, fontWeight: '700', fontSize: 13 },
+
+  offScreen: { position: 'absolute', top: -1000, left: -1000, opacity: 0 },
 });

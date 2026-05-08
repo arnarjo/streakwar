@@ -18,7 +18,7 @@ type FormErrors = { fullName?: string; username?: string; email?: string; passwo
 const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,20}$/;
 
 export default function SignupScreen({ navigation }: Props) {
-  const { signUp } = useAuth();
+  const { signUp, signInWithGoogle, signInWithFacebook } = useAuth();
   const [fullName, setFullName] = useState('');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
@@ -26,9 +26,18 @@ export default function SignupScreen({ navigation }: Props) {
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState<1 | 2>(1);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  async function handleSocialSignIn(provider: 'google' | 'facebook') {
+    setSocialLoading(provider);
+    const fn = provider === 'google' ? signInWithGoogle : signInWithFacebook;
+    const { error } = await fn();
+    setSocialLoading(null);
+    if (error) Alert.alert('Sign up failed', error.message || 'Something went wrong. Please try again.');
+  }
 
   function shake() {
     Animated.sequence([
@@ -119,6 +128,38 @@ export default function SignupScreen({ navigation }: Props) {
           <Text style={s.subtitle}>
             {step === 1 ? "This is how you'll appear on leaderboards" : 'Set up your login credentials'}
           </Text>
+
+          {step === 1 && (
+            <>
+              <TouchableOpacity
+                style={s.socialBtn}
+                onPress={() => handleSocialSignIn('google')}
+                disabled={!!socialLoading}
+                activeOpacity={0.8}
+              >
+                {socialLoading === 'google'
+                  ? <ActivityIndicator color={C.text} size="small" />
+                  : <><Text style={s.socialIcon}>G</Text><Text style={s.socialBtnText}>Sign up with Google</Text></>
+                }
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.socialBtn, s.facebookBtn]}
+                onPress={() => handleSocialSignIn('facebook')}
+                disabled={!!socialLoading}
+                activeOpacity={0.8}
+              >
+                {socialLoading === 'facebook'
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <><Text style={[s.socialIcon, { color: '#fff' }]}>f</Text><Text style={[s.socialBtnText, { color: '#fff' }]}>Sign up with Facebook</Text></>
+                }
+              </TouchableOpacity>
+              <View style={s.divider}>
+                <View style={s.dividerLine} />
+                <Text style={s.dividerText}>or continue with email</Text>
+                <View style={s.dividerLine} />
+              </View>
+            </>
+          )}
 
           <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
             {step === 1 ? (
@@ -283,4 +324,15 @@ const s = StyleSheet.create({
   loginLinkText: { color: C.muted, fontSize: 14 },
   legalText: { color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 16, lineHeight: 17, paddingHorizontal: 16 },
   legalLink: { color: C.primary, fontWeight: '600' },
+  socialBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
+    paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10,
+  },
+  facebookBtn: { backgroundColor: '#1877F2', borderColor: '#1877F2' },
+  socialIcon: { fontSize: 17, fontWeight: '800', color: C.text, width: 20, textAlign: 'center' },
+  socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
+  dividerText: { color: C.dimmed, fontSize: 12 },
 });

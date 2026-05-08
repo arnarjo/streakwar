@@ -19,9 +19,11 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         <Text style={s.errorMsg} selectable>
           {this.state.error?.message ?? 'Unknown error'}
         </Text>
-        <Text style={s.errorStack} selectable>
-          {this.state.error?.stack?.slice(0, 600) ?? ''}
-        </Text>
+        {__DEV__ && (
+          <Text style={s.errorStack} selectable>
+            {this.state.error?.stack?.slice(0, 600) ?? ''}
+          </Text>
+        )}
         <TouchableOpacity style={s.btn} onPress={() => this.setState({ hasError: false, error: null })}>
           <Text style={s.btnText}>Reyna aftur</Text>
         </TouchableOpacity>

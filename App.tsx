@@ -11,11 +11,41 @@ import { supabase } from './src/lib/supabase';
 import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
 import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
 import { initHealthConnect } from './src/lib/healthConnect';
-import { Platform } from 'react-native';
+import { Platform, Linking } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
 function AppInner() {
   const [session, setSession] = useState<Session | null>(null);
+
+  // Handle deep links: password reset + OAuth callbacks
+  useEffect(() => {
+    const handleUrl = async (url: string) => {
+      if (!url) return;
+      // Let Supabase parse auth tokens or codes from the URL (handles both
+      // PKCE ?code= and legacy #access_token= formats).
+      try {
+        await supabase.auth.exchangeCodeForSession(url);
+      } catch {
+        // Fragment-based tokens (older Supabase email links)
+        const fragment = url.split('#')[1];
+        if (fragment) {
+          const p = new URLSearchParams(fragment);
+          const access_token = p.get('access_token');
+          const refresh_token = p.get('refresh_token');
+          if (access_token && refresh_token) {
+            await supabase.auth.setSession({ access_token, refresh_token });
+          }
+        }
+      }
+    };
+
+    // App already running — deep link fires this event
+    const sub = Linking.addEventListener('url', ({ url }) => handleUrl(url));
+    // App launched via deep link
+    Linking.getInitialURL().then(url => { if (url) handleUrl(url); });
+
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {

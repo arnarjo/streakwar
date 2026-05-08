@@ -52,14 +52,12 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
       synced += workoutsSynced;
     }
 
-    // Update last background sync timestamp in Supabase so the user can see it
-    if (synced > 0) {
-      await supabase
-        .from('device_connections')
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .in('provider', Platform.OS === 'ios' ? ['apple_health'] : ['health_connect']);
-    }
+    // Always update last_synced_at so the UI reflects when sync last ran
+    await supabase
+      .from('device_connections')
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .in('provider', Platform.OS === 'ios' ? ['apple_health'] : ['health_connect']);
 
     return synced > 0
       ? BackgroundFetch.BackgroundFetchResult.NewData

@@ -56,6 +56,16 @@ function mapAppleWorkoutType(typeId: number): ActivityType {
   }
 }
 
+/** Returns the device's local date as YYYY-MM-DD, avoiding UTC offset drift. */
+function toLocalDate(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
 // Track which userId was initialized so re-auth with a different account
 // doesn't keep delivering workouts to the previous user.
 let _initializedUserId: string | null = null;
@@ -89,12 +99,12 @@ export function teardownHealthKit() {
   _initializedUserId = null;
 }
 
-/** Fetch workouts recorded in the last 24 hours and sync any that are new */
+/** Fetch workouts recorded in the last 7 days and sync any that are new */
 export async function syncRecentWorkouts(userId: string): Promise<number> {
   if (Platform.OS !== 'ios' || !AppleHealthKit || !_initializedUserId) return 0;
 
   const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
+  yesterday.setDate(yesterday.getDate() - 7);
 
   return new Promise(resolve => {
     AppleHealthKit.getSamples(
@@ -146,7 +156,10 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
         calories: workout.totalEnergyBurned ? Math.round(workout.totalEnergyBurned) : null,
         source: 'apple_health',
         external_activity_id: externalId,
-        workout_date: workout.startDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10),
+        // Use local date to avoid UTC midnight off-by-one on users outside UTC
+        workout_date: workout.startDate
+          ? toLocalDate(workout.startDate)
+          : toLocalDate(new Date()),
       };
     })
     .filter((row): row is NonNullable<typeof row> => row !== null);
@@ -162,7 +175,8 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
 export async function syncTodaySteps(userId: string): Promise<void> {
   if (Platform.OS !== 'ios' || !AppleHealthKit || !_initializedUserId) return;
 
-  const today = new Date().toISOString().slice(0, 10);
+  // Use local date — new Date().toISOString() returns UTC which can be yesterday
+  const localDate = toLocalDate(new Date());
 
   return new Promise(resolve => {
     AppleHealthKit.getStepCount(
@@ -170,33 +184,32 @@ export async function syncTodaySteps(userId: string): Promise<void> {
       async (err: any, result: { value: number }) => {
         if (err || !result?.value) { resolve(); return; }
 
-        const { data: existing } = await supabase
-          .from('workout_posts')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('source', 'apple_health')
-          .eq('activity_type', 'ganga')
-          .eq('workout_date', today)
-          .eq('external_activity_id', `steps_${today}`)
-          .maybeSingle();
+        // Atomic insert — if the row already exists, update steps in place.
+        // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
+        const { error: insertErr } = await supabase.from('workout_posts').insert({
+          user_id: userId,
+          challenge_id: await getActiveChallengeId(userId),
+          activity_type: 'ganga',
+          steps: result.value,
+          source: 'apple_health',
+          external_activity_id: `steps_${localDate}`,
+          workout_date: localDate,
+        });
 
-        if (existing) {
-          await supabase
-            .from('workout_posts')
-            .update({ steps: result.value })
-            .eq('id', existing.id);
-        } else {
-          const challengeId = await getActiveChallengeId(userId);
-          await supabase.from('workout_posts').insert({
-            user_id: userId,
-            challenge_id: challengeId,
-            activity_type: 'ganga',
-            steps: result.value,
-            source: 'apple_health',
-            external_activity_id: `steps_${today}`,
-            workout_date: today,
-          });
+        if (insertErr) {
+          if (insertErr.code === '23505') {
+            // Unique constraint hit — row already exists, just update step count
+            await supabase
+              .from('workout_posts')
+              .update({ steps: result.value })
+              .eq('user_id', userId)
+              .eq('source', 'apple_health')
+              .eq('external_activity_id', `steps_${localDate}`);
+          } else {
+            console.warn('[HealthKit] steps insert failed:', insertErr);
+          }
         }
+
         resolve();
       }
     );

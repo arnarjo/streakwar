@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
-  TouchableOpacity, StatusBar, Share,
+  TouchableOpacity, StatusBar, Share, Alert, Modal, ActivityIndicator,
 } from 'react-native';
+import { supabase } from '../lib/supabase';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuth } from '../hooks/useAuth';
 import { useLeaderboard } from '../hooks/useLeaderboard';
@@ -54,6 +55,41 @@ export default function LeaderboardScreen() {
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
 
   const [tab, setTab] = useState<Tab>('league');
+  const [nudgeTarget, setNudgeTarget] = useState<{ id: string; name: string } | null>(null);
+  const [nudgeSending, setNudgeSending] = useState(false);
+  const [nudgedToday, setNudgedToday] = useState<Set<string>>(new Set());
+
+  const NUDGE_EMOJIS = ['💪', '🔥', '👏', '😤', '⚡'];
+
+  async function sendNudge(receiverId: string, emoji?: string) {
+    setNudgeSending(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) { setNudgeSending(false); return; }
+
+    try {
+      const resp = await fetch(
+        `${process.env.EXPO_PUBLIC_SUPABASE_URL}/functions/v1/send-nudge`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session.access_token}`,
+          },
+          body: JSON.stringify({ receiver_id: receiverId, emoji }),
+        },
+      );
+      const json = await resp.json();
+      if (resp.status === 429) {
+        Alert.alert('Þegar sent', 'Þú hefur þegar hvatt þennan í dag.');
+      } else if (json.success) {
+        setNudgedToday(prev => new Set(prev).add(receiverId));
+      }
+    } catch {
+      Alert.alert('Villa', 'Gat ekki sent.');
+    }
+    setNudgeSending(false);
+    setNudgeTarget(null);
+  }
 
   useEffect(() => {
     fetchWeekly();
@@ -120,6 +156,15 @@ export default function LeaderboardScreen() {
             <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
               {isFollowing ? '✓' : '+'}
             </Text>
+          </TouchableOpacity>
+        )}
+        {!isMe && (
+          <TouchableOpacity
+            style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
+            onPress={() => setNudgeTarget({ id: item.id, name: item.full_name ?? item.username })}
+            activeOpacity={0.7}
+          >
+            <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -230,11 +275,50 @@ export default function LeaderboardScreen() {
                   {isRelegation && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
                 </View>
                 <Text style={s.leaguePts}>{item.weekly_points} pts</Text>
+                {!isMe && (
+                  <TouchableOpacity
+                    style={[s.nudgeBtn, nudgedToday.has(item.user_id) && s.nudgeBtnDone]}
+                    onPress={() => setNudgeTarget({ id: item.user_id, name: item.full_name ?? item.username })}
+                  >
+                    <Text style={s.nudgeBtnText}>{nudgedToday.has(item.user_id) ? '✓' : '💪'}</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             );
           }}
         />
       )}
+
+      {/* Nudge / emoji picker modal */}
+      <Modal visible={!!nudgeTarget} transparent animationType="fade" onRequestClose={() => setNudgeTarget(null)}>
+        <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setNudgeTarget(null)}>
+          <View style={s.nudgeModal}>
+            <Text style={s.nudgeModalTitle}>Hvetja {nudgeTarget?.name?.split(' ')[0]}</Text>
+            <View style={s.nudgeEmojiRow}>
+              {NUDGE_EMOJIS.map(emoji => (
+                <TouchableOpacity
+                  key={emoji}
+                  style={s.nudgeEmojiBtn}
+                  onPress={() => sendNudge(nudgeTarget!.id, emoji)}
+                  disabled={nudgeSending}
+                >
+                  <Text style={s.nudgeEmoji}>{emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TouchableOpacity
+              style={[s.nudgeTextBtn, nudgeSending && { opacity: 0.5 }]}
+              onPress={() => sendNudge(nudgeTarget!.id)}
+              disabled={nudgeSending}
+            >
+              {nudgeSending
+                ? <ActivityIndicator color="#000" size="small" />
+                : <Text style={s.nudgeTextBtnText}>💪 Get moving!</Text>
+              }
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {tab !== 'league' && (
         <FlatList
@@ -319,4 +403,17 @@ const s = StyleSheet.create({
   leagueAvatarText:   { fontSize: 13, fontWeight: '800', color: C.primary },
   leagueMemberName:   { fontSize: 14, fontWeight: '700', color: C.text },
   leaguePts:          { fontSize: 15, fontWeight: '900', color: C.primary },
+
+  nudgeBtn:     { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
+  nudgeBtnDone: { backgroundColor: C.primary + '20', borderColor: C.primary },
+  nudgeBtnText: { fontSize: 14, lineHeight: 16 },
+
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
+  nudgeModal: { backgroundColor: '#151C24', borderRadius: 20, padding: 24, alignItems: 'center', gap: 16, width: 280, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  nudgeModalTitle: { fontSize: 16, fontWeight: '800', color: C.text },
+  nudgeEmojiRow: { flexDirection: 'row', gap: 12 },
+  nudgeEmojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  nudgeEmoji: { fontSize: 26 },
+  nudgeTextBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
+  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
 });

@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase } from '../../lib/supabase';
 
 const C = {
   bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
@@ -16,13 +17,50 @@ const C = {
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [socialLoading, setSocialLoading] = useState<'google' | 'facebook' | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
   const shakeAnim = useRef(new Animated.Value(0)).current;
+
+  async function handleSocialSignIn(provider: 'google' | 'facebook') {
+    setSocialLoading(provider);
+    const fn = provider === 'google' ? signInWithGoogle : signInWithFacebook;
+    const { error } = await fn();
+    setSocialLoading(null);
+    // null error means either success or user-cancelled — nothing to show.
+    if (error) Alert.alert('Sign in failed', error.message || 'Something went wrong. Please try again.');
+  }
+
+  async function handleForgotPassword() {
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setErrors(e => ({ ...e, email: 'Enter your email address first' }));
+      shake();
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(trimmedEmail)) {
+      setErrors(e => ({ ...e, email: 'Enter a valid email address first' }));
+      shake();
+      return;
+    }
+
+    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
+      redirectTo: 'streakwar://reset-password',
+    });
+
+    if (error) {
+      Alert.alert('Error', error.message || 'Failed to send reset email. Please try again.');
+    } else {
+      Alert.alert(
+        'Check your inbox',
+        `We've sent a password reset link to ${trimmedEmail}. Follow the link to set a new password.`,
+      );
+    }
+  }
 
   function shake() {
     Animated.sequence([
@@ -48,7 +86,18 @@ export default function LoginScreen({ navigation }: Props) {
     setLoading(true);
     const { error } = await signIn(email.trim(), password);
     setLoading(false);
-    if (error) { shake(); setErrors({ email: 'Incorrect email or password' }); }
+    if (error) {
+      shake();
+      const msg = error.message ?? '';
+      if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('not confirmed')) {
+        Alert.alert(
+          'Email not confirmed',
+          'Please check your inbox and click the confirmation link before signing in.',
+        );
+      } else {
+        setErrors({ email: 'Incorrect email or password' });
+      }
+    }
   }
 
   return (
@@ -108,7 +157,7 @@ export default function LoginScreen({ navigation }: Props) {
 
             <TouchableOpacity
               style={s.forgotBtn}
-              onPress={() => Alert.alert('Reset password', "We'll send you a reset email.")}
+              onPress={handleForgotPassword}
             >
               <Text style={s.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -122,6 +171,42 @@ export default function LoginScreen({ navigation }: Props) {
               {loading ? <ActivityIndicator color="#000" /> : <Text style={s.loginBtnText}>Sign in</Text>}
             </TouchableOpacity>
           </Animated.View>
+
+          <View style={s.divider}>
+            <View style={s.dividerLine} />
+            <Text style={s.dividerText}>or continue with</Text>
+            <View style={s.dividerLine} />
+          </View>
+
+          <TouchableOpacity
+            style={s.socialBtn}
+            onPress={() => handleSocialSignIn('google')}
+            disabled={!!socialLoading}
+            activeOpacity={0.8}
+          >
+            {socialLoading === 'google'
+              ? <ActivityIndicator color={C.text} size="small" />
+              : <>
+                  <Text style={s.socialIcon}>G</Text>
+                  <Text style={s.socialBtnText}>Continue with Google</Text>
+                </>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[s.socialBtn, s.facebookBtn]}
+            onPress={() => handleSocialSignIn('facebook')}
+            disabled={!!socialLoading}
+            activeOpacity={0.8}
+          >
+            {socialLoading === 'facebook'
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <>
+                  <Text style={[s.socialIcon, { color: '#fff' }]}>f</Text>
+                  <Text style={[s.socialBtnText, { color: '#fff' }]}>Continue with Facebook</Text>
+                </>
+            }
+          </TouchableOpacity>
 
           <View style={s.divider}>
             <View style={s.dividerLine} />
@@ -174,4 +259,12 @@ const s = StyleSheet.create({
   dividerText: { color: C.dimmed, fontSize: 13 },
   signupBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700' },
+  socialBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
+    paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10,
+  },
+  facebookBtn: { backgroundColor: '#1877F2', borderColor: '#1877F2' },
+  socialIcon: { fontSize: 17, fontWeight: '800', color: C.text, width: 20, textAlign: 'center' },
+  socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
 });

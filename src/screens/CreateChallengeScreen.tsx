@@ -14,8 +14,8 @@ import UpgradeModal from '../components/UpgradeModal';
 import {
   SCORING_MODE_LABELS, TIE_BREAK_LABELS,
 } from '../types/database';
-import type { ScoringMode, TieBreakRule } from '../types/database';
-import { format, addDays } from 'date-fns';
+import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
+import { format, addDays, addWeeks, addMonths } from 'date-fns';
 
 const C = {
   bg: '#0C1117',
@@ -29,6 +29,16 @@ const C = {
 };
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
+
+const CHALLENGE_TEMPLATES: Array<{
+  icon: string; label: string; name: string; days: number;
+  scoring: ScoringMode[]; pw?: string; ps?: string; pk?: string; pd?: string;
+}> = [
+  { icon: '💪', label: '30 dagar', name: '30 Day Fitness', days: 30, scoring: ['workouts'], pw: '1' },
+  { icon: '👟', label: 'Skref', name: 'Step Warriors', days: 14, scoring: ['steps'], ps: '1' },
+  { icon: '🏃', label: 'Hlaupavik', name: 'Run This Week', days: 7, scoring: ['distance_km'], pk: '1' },
+  { icon: '🔥', label: 'HIIT', name: 'HIIT Week Blitz', days: 7, scoring: ['duration_min'], pd: '2' },
+];
 const TIE_BREAK_OPTIONS: TieBreakRule[] = ['first_to_score', 'most_recent_activity', 'most_workouts'];
 const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = [
   { label: '5', value: 5 },
@@ -36,6 +46,13 @@ const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = 
   { label: '20', value: 20 },
   { label: '50', value: 50 },
   { label: '∞', value: null },
+];
+const DURATION_PRESETS: Array<{ label: string; days: number | null }> = [
+  { label: '1 vika',    days: 7   },
+  { label: '2 vikur',   days: 14  },
+  { label: '1 mánuður', days: 30  },
+  { label: '3 mánuðar', days: 90  },
+  { label: 'Sérsniðið', days: null },
 ];
 
 type Step = 1 | 2 | 3 | 4;
@@ -57,6 +74,16 @@ export default function CreateChallengeScreen() {
   const [endDate, setEndDate] = useState(addDays(new Date(), 30));
   const [showStartPicker, setShowStartPicker] = useState(false);
   const [showEndPicker, setShowEndPicker] = useState(false);
+  const [durationPreset, setDurationPreset] = useState<number | null>(30); // days, null = custom
+
+  function applyPreset(days: number | null) {
+    setDurationPreset(days);
+    if (days !== null) {
+      const start = new Date();
+      setStartDate(start);
+      setEndDate(addDays(start, days));
+    }
+  }
 
   // Step 2 – Scoring
   const [scoringModes, setScoringModes] = useState<ScoringMode[]>(['workouts']);
@@ -72,8 +99,20 @@ export default function CreateChallengeScreen() {
   const [tieBreak, setTieBreak] = useState<TieBreakRule>('most_recent_activity');
   const [isPublic, setIsPublic] = useState(false);
   const [maxParticipants, setMaxParticipants] = useState<number | null>(null);
+  const [renewalType, setRenewalType] = useState<RenewalType>('none');
+
+  function applyTemplate(t: typeof CHALLENGE_TEMPLATES[0]) {
+    setName(t.name);
+    applyPreset(t.days);
+    setScoringModes(t.scoring);
+    if (t.pw) setPointsPerWorkout(t.pw);
+    if (t.ps) setPointsPer1000Steps(t.ps);
+    if (t.pk) setPointsPerKm(t.pk);
+    if (t.pd) setPointsPer30min(t.pd);
+  }
 
   function toggleScoring(mode: ScoringMode) {
+    if (mode === 'custom' && !isPro) { setUpgradeVisible(true); return; }
     setScoringModes(prev =>
       prev.includes(mode) ? prev.filter(m => m !== mode) : [...prev, mode]
     );
@@ -109,6 +148,7 @@ export default function CreateChallengeScreen() {
       tie_break_rule: tieBreak,
       is_public: isPublic,
       max_participants: maxParticipants,
+      renewal_type: isPublic ? renewalType : 'none',
     });
     setSaving(false);
 
@@ -159,6 +199,44 @@ export default function CreateChallengeScreen() {
           {/* ── Step 1: Basics ── */}
           {step === 1 && (
             <>
+              {/* Quick templates */}
+              <View style={s.inputGroup}>
+                <Text style={s.label}>SNÖGG UPPSETNING</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  {CHALLENGE_TEMPLATES.map(t => (
+                    <TouchableOpacity
+                      key={t.label}
+                      style={s.templateBtn}
+                      onPress={() => applyTemplate(t)}
+                    >
+                      <Text style={s.templateIcon}>{t.icon}</Text>
+                      <Text style={s.templateLabel}>{t.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Duration presets */}
+              <View style={s.inputGroup}>
+                <Text style={s.label}>LENGD</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {DURATION_PRESETS.map(preset => {
+                    const active = preset.days === durationPreset;
+                    return (
+                      <TouchableOpacity
+                        key={String(preset.days)}
+                        style={[s.presetBtn, active && s.presetBtnActive]}
+                        onPress={() => applyPreset(preset.days)}
+                      >
+                        <Text style={[s.presetBtnText, active && s.presetBtnTextActive]}>
+                          {preset.label}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+              </View>
+
               <View style={s.inputGroup}>
                 <Text style={s.label}>CHALLENGE NAME *</Text>
                 <TextInput
@@ -222,6 +300,7 @@ export default function CreateChallengeScreen() {
               <Text style={s.label}>SCORING (select one or more)</Text>
               {ALL_SCORING_MODES.map(mode => {
                 const active = scoringModes.includes(mode);
+                const isProMode = mode === 'custom';
                 return (
                   <TouchableOpacity
                     key={mode}
@@ -229,7 +308,14 @@ export default function CreateChallengeScreen() {
                     onPress={() => toggleScoring(mode)}
                     activeOpacity={0.75}
                   >
-                    <Text style={s.toggleLabel}>{SCORING_MODE_LABELS[mode]}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
+                      <Text style={s.toggleLabel}>{SCORING_MODE_LABELS[mode]}</Text>
+                      {isProMode && !isPro && (
+                        <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                          <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
+                        </View>
+                      )}
+                    </View>
                     <View style={[s.checkbox, active && s.checkboxActive]}>
                       {active && <Text style={s.checkmark}>✓</Text>}
                     </View>
@@ -331,37 +417,74 @@ export default function CreateChallengeScreen() {
                 />
               </View>
 
-              <View style={s.switchRow}>
-                <View>
-                  <Text style={s.switchLabel}>Open to everyone?</Text>
+              <TouchableOpacity
+                style={s.switchRow}
+                activeOpacity={isPro ? 1 : 0.75}
+                onPress={!isPro ? () => setUpgradeVisible(true) : undefined}
+              >
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <Text style={s.switchLabel}>Open to everyone?</Text>
+                    {!isPro && (
+                      <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
+                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={s.switchHint}>Appears in the Discover tab</Text>
                 </View>
                 <Switch
                   value={isPublic}
-                  onValueChange={setIsPublic}
+                  onValueChange={v => { if (!isPro) { setUpgradeVisible(true); return; } setIsPublic(v); if (!v) setRenewalType('none'); }}
                   trackColor={{ false: C.dimmed, true: C.primary }}
                   thumbColor="#fff"
+                  disabled={!isPro}
                 />
-              </View>
+              </TouchableOpacity>
+
+              {/* Recurring — only for public challenges */}
+              {isPublic && (
+                <View style={s.inputGroup}>
+                  <Text style={s.label}>ENDURNÝJAST SJÁLFKRAFA?</Text>
+                  <Text style={s.hint}>Nýtt challenge byrjar strax þegar þetta lýkur</Text>
+                  <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+                    {([
+                      { value: 'none',    label: 'Nei' },
+                      { value: 'weekly',  label: '🔥 Vikulegt' },
+                      { value: 'monthly', label: '🏆 Mánaðarlegt' },
+                    ] as Array<{ value: RenewalType; label: string }>).map(opt => (
+                      <TouchableOpacity
+                        key={opt.value}
+                        style={[s.presetBtn, renewalType === opt.value && s.presetBtnActive, { flex: 1 }]}
+                        onPress={() => setRenewalType(opt.value)}
+                      >
+                        <Text style={[s.presetBtnText, renewalType === opt.value && s.presetBtnTextActive, { textAlign: 'center' }]}>
+                          {opt.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
 
               {/* Max participants */}
               <View style={s.formRow}>
                 <Text style={s.formLabel}>Max participants</Text>
                 <View style={{ flexDirection: 'row', gap: 6, flexWrap: 'wrap' }}>
-                  {MAX_PARTICIPANT_OPTIONS.map(opt => (
-                    <TouchableOpacity
-                      key={String(opt.value)}
-                      style={[
-                        s.maxBtn,
-                        maxParticipants === opt.value && s.maxBtnActive,
-                      ]}
-                      onPress={() => setMaxParticipants(opt.value)}
-                    >
-                      <Text style={[s.maxBtnText, maxParticipants === opt.value && s.maxBtnTextActive]}>
-                        {opt.label}
-                      </Text>
-                    </TouchableOpacity>
-                  ))}
+                  {MAX_PARTICIPANT_OPTIONS.map(opt => {
+                    const needsPro = opt.value === null && !isPro;
+                    return (
+                      <TouchableOpacity
+                        key={String(opt.value)}
+                        style={[s.maxBtn, maxParticipants === opt.value && s.maxBtnActive]}
+                        onPress={() => { if (needsPro) { setUpgradeVisible(true); return; } setMaxParticipants(opt.value); }}
+                      >
+                        <Text style={[s.maxBtnText, maxParticipants === opt.value && s.maxBtnTextActive]}>
+                          {opt.label}{needsPro ? ' ⚡' : ''}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
                 </View>
               </View>
 
@@ -399,6 +522,7 @@ export default function CreateChallengeScreen() {
                 { label: 'Teams mode', value: teamsMode ? 'Yes' : 'No' },
                 { label: 'Visibility', value: isPublic ? 'Public' : 'Invite only' },
                 { label: 'Max participants', value: maxParticipants == null ? 'Unlimited' : String(maxParticipants) },
+                ...(isPublic && renewalType !== 'none' ? [{ label: 'Auto-renewal', value: renewalType === 'weekly' ? '🔥 Weekly' : '🏆 Monthly' }] : []),
               ].map(({ label, value }) => (
                 <View key={label} style={s.summaryRow}>
                   <Text style={s.summaryLabel}>{label}</Text>
@@ -494,6 +618,12 @@ const s = StyleSheet.create({
 
   scroll: { padding: 20, paddingBottom: 60 },
   inputGroup: { marginBottom: 18 },
+  templateBtn: {
+    flex: 1, backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
+    borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 4,
+  },
+  templateIcon: { fontSize: 20 },
+  templateLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 0.5 },
   label: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5, marginBottom: 8 },
   hint: { fontSize: 12, color: C.muted, marginTop: 5 },
   input: {
@@ -579,6 +709,11 @@ const s = StyleSheet.create({
   maxBtnActive: { borderColor: C.primary, backgroundColor: C.primary + '18' },
   maxBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
   maxBtnTextActive: { color: C.primary },
+
+  presetBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
+  presetBtnActive: { borderColor: C.primary, backgroundColor: C.primary + '18' },
+  presetBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  presetBtnTextActive: { color: C.primary },
 
   summaryCard: {
     backgroundColor: C.primary + '12',

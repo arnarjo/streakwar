@@ -1,8 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert, Linking,
+  StatusBar, RefreshControl, Alert, Linking, Switch,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Notifications from 'expo-notifications';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -14,6 +16,8 @@ import { useAchievements } from '../hooks/useAchievements';
 import { usePremium } from '../hooks/usePremium';
 import UpgradeModal from '../components/UpgradeModal';
 import { ACHIEVEMENT_META } from '../types/database';
+import { scheduleStreakReminder } from '../lib/streakNotification';
+import { format, subDays, startOfWeek } from 'date-fns';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
@@ -23,7 +27,7 @@ const C = {
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
   const navigation = useNavigation<any>();
-  const { streak } = useStreaks(profile?.id ?? '');
+  const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, nativeProvider } = useHealthSync(profile?.id ?? '');
   const { achievements } = useAchievements(profile?.id ?? '');
@@ -32,6 +36,12 @@ export default function ProfileScreen() {
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [heatmapData, setHeatmapData] = useState<Map<string, number>>(new Map());
+  const [notifPrefs, setNotifPrefs] = useState({
+    streakReminder: true,
+    challengeUpdates: true,
+    reactions: true,
+  });
 
   async function fetchStats() {
     if (!profile?.id) return;
@@ -42,11 +52,54 @@ export default function ProfileScreen() {
     setTotalWorkouts(count ?? 0);
   }
 
-  useEffect(() => { fetchStats(); }, [profile?.id]);
+
+  const fetchHeatmap = useCallback(async () => {
+    if (!profile?.id) return;
+    const since = format(subDays(new Date(), 90), 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('workout_posts')
+      .select('workout_date')
+      .eq('user_id', profile.id)
+      .gte('workout_date', since);
+    const map = new Map<string, number>();
+    for (const { workout_date } of (data ?? [])) {
+      const key = workout_date.slice(0, 10);
+      map.set(key, (map.get(key) ?? 0) + 1);
+    }
+    setHeatmapData(map);
+  }, [profile?.id]);
+
+  async function loadNotifPrefs() {
+    if (!profile?.id) return;
+    const stored = await AsyncStorage.getItem(`notif_prefs_${profile.id}`);
+    if (stored) {
+      try { setNotifPrefs(JSON.parse(stored)); } catch {}
+    }
+  }
+
+  async function toggleNotifPref(key: keyof typeof notifPrefs) {
+    const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
+    setNotifPrefs(updated);
+    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
+    if (key === 'streakReminder') {
+      if (!updated.streakReminder) {
+        await Notifications.cancelAllScheduledNotificationsAsync();
+      } else {
+        const { data } = await supabase
+          .from('user_streaks')
+          .select('current_streak')
+          .eq('user_id', profile!.id)
+          .single();
+        scheduleStreakReminder(data?.current_streak ?? 0).catch(() => {});
+      }
+    }
+  }
+
+  useEffect(() => { fetchStats(); fetchHeatmap(); loadNotifPrefs(); }, [profile?.id]);
 
   async function onRefresh() {
     setRefreshing(true);
-    await fetchStats();
+    await Promise.all([fetchStats(), fetchHeatmap()]);
     setRefreshing(false);
   }
 
@@ -116,15 +169,35 @@ export default function ProfileScreen() {
         {/* Streak */}
         {streak && (
           <View style={s.streakCard}>
-            <View style={s.streakItem}>
-              <Text style={s.streakNum}>{streak.current_streak}</Text>
-              <Text style={s.streakLabel}>🔥 Current streak</Text>
+            <View style={s.streakRow}>
+              <View style={s.streakItem}>
+                <Text style={s.streakNum}>{streak.current_streak}</Text>
+                <Text style={s.streakLabel}>🔥 Current streak</Text>
+              </View>
+              <View style={s.streakDivider} />
+              <View style={s.streakItem}>
+                <Text style={s.streakNum}>{streak.longest_streak}</Text>
+                <Text style={s.streakLabel}>⚡ Best streak</Text>
+              </View>
             </View>
-            <View style={s.streakDivider} />
-            <View style={s.streakItem}>
-              <Text style={s.streakNum}>{streak.longest_streak}</Text>
-              <Text style={s.streakLabel}>⚡ Best streak</Text>
-            </View>
+            {isPro && streak.current_streak > 0 && (
+              <TouchableOpacity
+                style={[s.freezeBtn, (frozenToday || freezeCredits <= 0) && s.freezeBtnUsed]}
+                disabled={frozenToday || freezeCredits <= 0}
+                onPress={async () => {
+                  const { success, message } = await freezeStreak();
+                  Alert.alert(success ? '🛡️ Streak protected!' : 'Could not protect', message);
+                }}
+              >
+                <Text style={s.freezeBtnText}>
+                  {frozenToday
+                    ? '🛡️ Protected today'
+                    : freezeCredits <= 0
+                    ? '🛡️ No freezes left this month'
+                    : `🛡️ Protect today (${freezeCredits} left)`}
+                </Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -144,6 +217,49 @@ export default function ProfileScreen() {
             </View>
           ))}
         </View>
+
+        {/* Activity heatmap — 13 weeks, binary active/inactive per day */}
+        {heatmapData.size > 0 && (() => {
+          const today = new Date();
+          const DAY_LABELS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+          const startMonday = startOfWeek(subDays(today, 12 * 7), { weekStartsOn: 1 });
+          const cols: string[][] = [];
+          for (let w = 0; w < 13; w++) {
+            const days: string[] = [];
+            for (let d = 0; d < 7; d++) {
+              const date = subDays(new Date(startMonday), -(w * 7 + d));
+              days.push(date > today ? '' : format(date, 'yyyy-MM-dd'));
+            }
+            cols.push(days);
+          }
+          return (
+            <>
+              <Text style={s.sectionTitle}>Activity</Text>
+              <View style={s.heatmapCard}>
+                <View style={s.heatmapGrid}>
+                  {cols.map((days, wi) => (
+                    <View key={wi} style={s.heatmapCol}>
+                      {days.map((dateStr, di) => {
+                        const active = dateStr ? (heatmapData.get(dateStr) ?? 0) > 0 : false;
+                        return (
+                          <View
+                            key={di}
+                            style={[s.heatmapCell, active && s.heatmapCellActive]}
+                          />
+                        );
+                      })}
+                    </View>
+                  ))}
+                </View>
+                <View style={s.heatmapLegend}>
+                  {DAY_LABELS.map((l, i) => (
+                    <Text key={i} style={s.heatmapDayLabel}>{l}</Text>
+                  ))}
+                </View>
+              </View>
+            </>
+          );
+        })()}
 
         {/* Auto-sync status */}
         <View style={s.sectionHeader}>
@@ -218,6 +334,29 @@ export default function ProfileScreen() {
           </>
         )}
 
+        {/* Notification settings */}
+        <Text style={[s.sectionTitle, { marginTop: 16 }]}>Notifications</Text>
+        <View style={s.notifCard}>
+          {([
+            { key: 'streakReminder' as const, label: 'Streak reminder', desc: 'Daily reminder to keep your streak' },
+            { key: 'challengeUpdates' as const, label: 'Challenge updates', desc: 'When challenges start or end' },
+            { key: 'reactions' as const, label: 'Reactions & comments', desc: 'When someone reacts to your workout' },
+          ]).map(({ key, label, desc }, i, arr) => (
+            <View key={key} style={[s.notifRow, i < arr.length - 1 && s.notifRowBorder]}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.notifLabel}>{label}</Text>
+                <Text style={s.notifDesc}>{desc}</Text>
+              </View>
+              <Switch
+                value={notifPrefs[key]}
+                onValueChange={() => toggleNotifPref(key)}
+                trackColor={{ false: C.border, true: C.primary + '99' }}
+                thumbColor={notifPrefs[key] ? C.primary : C.muted}
+              />
+            </View>
+          ))}
+        </View>
+
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
           <Text style={s.signOutBtnText}>Sign out</Text>
         </TouchableOpacity>
@@ -251,11 +390,15 @@ const s = StyleSheet.create({
   proBadgeText: { fontSize: 11, fontWeight: '800', color: '#FBBF24', letterSpacing: 1.5 },
   upgradeBtn: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 6 },
   upgradeBtnText: { fontSize: 12, fontWeight: '700', color: C.primary },
-  streakCard: { flexDirection: 'row', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24 },
+  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24, gap: 12 },
+  streakRow: { flexDirection: 'row' },
   streakItem: { flex: 1, alignItems: 'center', gap: 4 },
   streakNum: { fontSize: 32, fontWeight: '900', color: C.primary },
   streakLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
   streakDivider: { width: 1, backgroundColor: C.border, marginHorizontal: 16 },
+  freezeBtn: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E40', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
+  freezeBtnUsed: { backgroundColor: 'transparent', borderColor: C.border },
+  freezeBtnText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
   sectionTitle: { fontSize: 14, fontWeight: '800', color: C.text, marginBottom: 10, letterSpacing: -0.2 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
   editLink: { color: C.primary, fontSize: 13, fontWeight: '700' },
@@ -290,4 +433,18 @@ const s = StyleSheet.create({
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
   legalLink: { color: C.muted, fontSize: 11, fontWeight: '600' },
   legalDot: { color: C.muted, fontSize: 11 },
+
+  heatmapCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 14, marginBottom: 24, flexDirection: 'row', gap: 4 },
+  heatmapGrid: { flexDirection: 'row', gap: 2, flex: 1 },
+  heatmapCol: { flex: 1, gap: 2 },
+  heatmapCell: { aspectRatio: 1, borderRadius: 2, backgroundColor: '#1E2A35' },
+  heatmapCellActive: { backgroundColor: C.primary },
+  heatmapLegend: { justifyContent: 'space-around', paddingLeft: 4 },
+  heatmapDayLabel: { fontSize: 8, color: C.muted, fontWeight: '600', textAlign: 'center' },
+
+  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  notifRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
+  notifLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
+  notifDesc: { fontSize: 12, color: C.muted },
 });

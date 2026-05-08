@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  RefreshControl, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { differenceInDays, parseISO } from 'date-fns';
@@ -17,6 +18,7 @@ type Props = {
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
   text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
+  gold: '#F59E0B', purple: '#8B5CF6',
 };
 
 type Filter = 'all' | ScoringMode;
@@ -28,9 +30,15 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: 'distance_km', label: '📍 Distance' },
 ];
 
+const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: string }> = {
+  weekly:  { border: C.primary, badge: '#F9731620', emoji: '🔥' },
+  monthly: { border: C.gold,    badge: '#F59E0B20', emoji: '🏆' },
+};
+
 export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
   const navigation = useNavigation<any>();
 
+  const [globalChallenges, setGlobalChallenges] = useState<FitnessChallenge[]>([]);
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
@@ -40,22 +48,37 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
-    const { data, error } = await supabase
-      .from('fitness_challenges')
-      .select('*, challenge_participants(count)')
-      .eq('is_public', true)
-      .in('status', ['active', 'upcoming'])
-      .order('created_at', { ascending: false })
-      .limit(50);
 
-    if (error) {
+    const [globalRes, publicRes] = await Promise.all([
+      // Global (StreakWar-managed) challenges — always at top
+      supabase
+        .from('fitness_challenges')
+        .select('*, challenge_participants(count)')
+        .eq('is_global', true)
+        .in('status', ['active', 'upcoming'])
+        .order('renewal_type', { ascending: true }), // weekly before monthly
+
+      // User-created public challenges
+      supabase
+        .from('fitness_challenges')
+        .select('*, challenge_participants(count)')
+        .eq('is_public', true)
+        .eq('is_global', false)
+        .in('status', ['active', 'upcoming'])
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ]);
+
+    if (globalRes.error || publicRes.error) {
       setLoadError(true);
-    } else if (data) {
-      const withCounts = data.map((c: any) => ({
-        ...c,
-        participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
-      }));
-      setChallenges(withCounts);
+    } else {
+      const toCount = (data: any[]) =>
+        data.map((c: any) => ({
+          ...c,
+          participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
+        }));
+      setGlobalChallenges(toCount(globalRes.data ?? []));
+      setChallenges(toCount(publicRes.data ?? []));
     }
     setLoading(false);
   }, []);
@@ -64,7 +87,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
 
   const filtered = filter === 'all'
     ? challenges
-    : challenges.filter(c => c.scoring_modes.includes(filter as ScoringMode));
+    : challenges.filter(c => (c.scoring_modes ?? []).includes(filter as ScoringMode));
 
   async function handleJoin(challenge: FitnessChallenge) {
     setJoining(challenge.id);
@@ -86,8 +109,69 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
     return !!(challenge.max_participants && (challenge.participant_count ?? 0) >= challenge.max_participants);
   }
 
+  function daysLeftLabel(endDate: string) {
+    const d = differenceInDays(parseISO(endDate), new Date());
+    if (d < 0) return 'Ending soon';
+    if (d === 0) return 'Last day!';
+    return `${d}d left`;
+  }
+
+  function JoinButton({ item }: { item: FitnessChallenge }) {
+    const joined = isJoined(item.id);
+    const full = isFull(item);
+    const busy = joining === item.id;
+    return (
+      <TouchableOpacity
+        style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
+        onPress={() => !joined && !full && handleJoin(item)}
+        disabled={joined || full || busy}
+      >
+        <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
+          {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
+        </Text>
+      </TouchableOpacity>
+    );
+  }
+
   return (
-    <View style={s.container}>
+    <ScrollView
+      style={s.container}
+      contentContainerStyle={{ paddingBottom: 40 }}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={C.primary} />}
+    >
+      {/* ── Global Challenges ── */}
+      {globalChallenges.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionTitle}>🌍 Global Challenges</Text>
+          <Text style={s.sectionSub}>Open to everyone — resets automatically</Text>
+          {globalChallenges.map(item => {
+            const style = GLOBAL_COLORS[item.renewal_type] ?? GLOBAL_COLORS.weekly;
+            const modes = item.scoring_modes ?? [];
+            const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
+            return (
+              <View key={item.id} style={[s.globalCard, { borderColor: style.border + '80' }]}>
+                <View style={[s.globalBadge, { backgroundColor: style.badge }]}>
+                  <Text style={[s.globalBadgeText, { color: style.border }]}>
+                    {style.emoji} {item.renewal_type === 'weekly' ? 'WEEKLY' : 'MONTHLY'}
+                  </Text>
+                </View>
+                <View style={s.cardContent}>
+                  <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={s.cardMeta}>
+                    {modeEmoji} {modes.map(m => SCORING_MODE_LABELS[m]).join(' · ')}
+                  </Text>
+                  <Text style={[s.cardMeta, { marginTop: 2 }]}>
+                    👥 {item.participant_count ?? 0} þátttakendur · {daysLeftLabel(item.end_date)}
+                  </Text>
+                </View>
+                <JoinButton item={item} />
+              </View>
+            );
+          })}
+        </View>
+      )}
+
+      {/* ── Filter bar ── */}
       <FlatList
         horizontal
         data={FILTERS}
@@ -106,77 +190,91 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
         )}
       />
 
-      <FlatList
-        data={filtered}
-        keyExtractor={c => c.id}
-        contentContainerStyle={s.list}
-        refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={C.primary} />}
-        renderItem={({ item }) => {
-          const joined = isJoined(item.id);
-          const full = isFull(item);
-          const daysLeft = differenceInDays(parseISO(item.end_date), new Date());
-          const modeEmoji = SCORING_MODE_LABELS[item.scoring_modes[0]]?.split(' ')[0] ?? '💪';
-
-          return (
-            <View style={s.card}>
-              <View style={s.cardContent}>
-                <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                <Text style={s.cardMeta}>
-                  {modeEmoji} {SCORING_MODE_LABELS[item.scoring_modes[0]] ?? 'Unknown'} · 👥 {item.participant_count ?? 0}
-                  {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeft > 0 ? `${daysLeft}d left` : 'Ending soon'}
-                </Text>
+      {/* ── User-created public challenges ── */}
+      {filtered.length === 0 && !loading ? (
+        <View style={s.empty}>
+          <Text style={s.emptyEmoji}>{loadError ? '⚠️' : '🔍'}</Text>
+          <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'No public challenges yet'}</Text>
+          <Text style={s.emptySub}>
+            {loadError
+              ? 'Check your connection and pull down to retry'
+              : 'Create a challenge and make it public to show up here'}
+          </Text>
+        </View>
+      ) : (
+        <View style={s.list}>
+          {filtered.map(item => {
+            const modes = item.scoring_modes ?? [];
+            const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
+            return (
+              <View key={item.id} style={s.card}>
+                <View style={s.cardContent}>
+                  <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+                  <Text style={s.cardMeta}>
+                    {modeEmoji} {SCORING_MODE_LABELS[modes[0]] ?? 'Unknown'} · 👥 {item.participant_count ?? 0}
+                    {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeftLabel(item.end_date)}
+                  </Text>
+                </View>
+                <JoinButton item={item} />
               </View>
-              <TouchableOpacity
-                style={[
-                  s.joinBtn,
-                  (joined || full) && s.joinBtnDisabled,
-                ]}
-                onPress={() => !joined && !full && handleJoin(item)}
-                disabled={joined || full || joining === item.id}
-              >
-                <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
-                  {joining === item.id ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          );
-        }}
-        ListEmptyComponent={
-          !loading ? (
-            <View style={s.empty}>
-              <Text style={s.emptyEmoji}>{loadError ? '⚠️' : '🔍'}</Text>
-              <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'No public challenges yet'}</Text>
-              <Text style={s.emptySub}>
-                {loadError
-                  ? 'Check your connection and pull down to retry'
-                  : 'Create a challenge and make it public to show up here'}
-              </Text>
-            </View>
-          ) : null
-        }
-      />
-    </View>
+            );
+          })}
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
+
+  section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2 },
+  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10 },
+
+  globalCard: {
+    backgroundColor: C.card,
+    borderWidth: 1.5,
+    borderRadius: 16,
+    padding: 14,
+    marginBottom: 10,
+    gap: 8,
+  },
+  globalBadge: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+
   filterBar: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterBtn: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
+  filterBtn: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+  },
   filterBtnActive: { backgroundColor: C.primary + '20', borderColor: C.primary + '60' },
   filterBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
   filterBtnTextActive: { color: C.primary },
-  list: { paddingHorizontal: 16, paddingBottom: 40 },
-  card: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, marginBottom: 8, gap: 12 },
+
+  list: { paddingHorizontal: 16 },
+  card: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
+    borderRadius: 14, padding: 14, marginBottom: 8, gap: 12,
+  },
   cardContent: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
   cardMeta: { fontSize: 12, color: C.muted },
+
   joinBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10 },
   joinBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: C.border },
   joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
   joinBtnTextDisabled: { color: C.muted },
-  empty: { paddingTop: 60, alignItems: 'center', gap: 8 },
+
+  empty: { paddingTop: 40, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center', paddingHorizontal: 32 },
+  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center' },
 });

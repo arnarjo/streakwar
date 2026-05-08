@@ -14,7 +14,6 @@
 
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
-import { HmacSha1 } from 'https://deno.land/x/hmac@v2.0.1/mod.ts';
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -22,6 +21,16 @@ const supabase = createClient(
 );
 
 const GARMIN_CONSUMER_SECRET = Deno.env.get('GARMIN_CONSUMER_SECRET') ?? '';
+
+async function hmacSha1Hex(secret: string, message: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(secret),
+    { name: 'HMAC', hash: 'SHA-1' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(message));
+  return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 // Garmin activity type string → our ActivityType
 function garminTypeToActivity(type: string): string {
@@ -47,9 +56,7 @@ serve(async (req) => {
   // Garmin includes x-garmin-signature header with HMAC-SHA1 of the body
   const signature = req.headers.get('x-garmin-signature');
   if (GARMIN_CONSUMER_SECRET && signature) {
-    const hmac = new HmacSha1(GARMIN_CONSUMER_SECRET);
-    hmac.update(body);
-    const expected = hmac.hexDigest();
+    const expected = await hmacSha1Hex(GARMIN_CONSUMER_SECRET, body);
     if (signature !== expected) {
       return new Response('Invalid signature', { status: 401 });
     }

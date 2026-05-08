@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Alert, ActivityIndicator, StatusBar, Platform, Linking, AppState,
+  Alert, ActivityIndicator, StatusBar, Platform, AppState,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -25,8 +25,8 @@ const C = {
   error: '#EF4444',
 };
 
-const OAUTH_PROVIDERS: ProviderKey[] = ['strava', 'fitbit'];
-const COMING_SOON_PROVIDERS: ProviderKey[] = ['garmin'];
+const OAUTH_PROVIDERS: ProviderKey[] = ['strava'];
+const COMING_SOON_PROVIDERS: ProviderKey[] = [];
 
 
 export default function ConnectDevicesScreen() {
@@ -36,8 +36,13 @@ export default function ConnectDevicesScreen() {
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
   const awaitingHCReturn = useRef(false);
+  const mounted = useRef(true);
 
   const nativeMeta = PROVIDER_META[nativeProvider];
+
+  useEffect(() => {
+    return () => { mounted.current = false; };
+  }, []);
 
   // When user returns from Health Connect settings, re-check if permissions were granted
   useEffect(() => {
@@ -45,6 +50,7 @@ export default function ConnectDevicesScreen() {
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
         const confirmed = await confirmHealthConnectConnection();
+        if (!mounted.current) return;
         setConnecting(null);
         if (confirmed) {
           Alert.alert('Connected!', 'Health Connect permissions granted. Your workouts will sync automatically.');
@@ -54,21 +60,6 @@ export default function ConnectDevicesScreen() {
     return () => sub.remove();
   }, [confirmHealthConnectConnection]);
 
-  // Listen for deep link callbacks from OAuth providers
-  useEffect(() => {
-    const sub = Linking.addEventListener('url', ({ url }) => {
-      if (url.includes('oauth-success')) {
-        const provider = new URL(url).searchParams.get('provider') as ProviderKey | null;
-        setConnecting(null);
-        fetchConnections();
-        Alert.alert('Connected!', `${provider ? PROVIDER_META[provider]?.label : 'Provider'} connected successfully.`);
-      } else if (url.includes('oauth-error')) {
-        setConnecting(null);
-        Alert.alert('Connection failed', 'Could not connect. Please try again.');
-      }
-    });
-    return () => sub.remove();
-  }, [fetchConnections]);
 
 
   async function handleNativeConnect() {
@@ -101,15 +92,23 @@ export default function ConnectDevicesScreen() {
   }
 
   async function handleOAuthConnect(provider: ProviderKey) {
-    if (COMING_SOON_PROVIDERS.includes(provider)) {
-      Alert.alert(`${PROVIDER_META[provider].label} — Coming soon`, 'Garmin integration is coming soon. Use Health Connect to sync workouts for now.');
-      return;
-    }
     if (!profile?.id) return;
     setConnecting(provider);
     const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}&user_id=${profile.id}`;
-    await WebBrowser.openBrowserAsync(url);
-    // Deep link listener handles the result; clear loading if browser was dismissed manually
+    try {
+      // openAuthSessionAsync closes the custom tab when it detects the streakwar:// redirect
+      const result = await WebBrowser.openAuthSessionAsync(url, 'streakwar://');
+      if (result.type === 'success' && result.url?.includes('oauth-success')) {
+        const parsedProvider = new URL(result.url).searchParams.get('provider') as ProviderKey | null;
+        await fetchConnections();
+        Alert.alert('Connected!', `${parsedProvider ? PROVIDER_META[parsedProvider]?.label : 'Provider'} connected successfully.`);
+      } else if (result.type === 'success' && result.url?.includes('oauth-error')) {
+        Alert.alert('Connection failed', 'Could not connect. Please try again.');
+      }
+      // cancel/dismiss = user closed browser — no error to show
+    } catch {
+      Alert.alert('Connection failed', 'Could not open browser. Please try again.');
+    }
     setConnecting(null);
   }
 
@@ -201,13 +200,7 @@ export default function ConnectDevicesScreen() {
               key={provider}
               icon={meta.icon}
               label={meta.label}
-              description={
-                provider === 'strava'
-                  ? 'Every Strava activity is pushed to StreakWar via webhook within 60 seconds of completion.'
-                  : provider === 'garmin'
-                  ? 'Coming soon — Garmin Connect integration is in development.'
-                  : 'Fitbit activities are pushed automatically via the Fitbit Subscription API.'
-              }
+              description="Every Strava activity is pushed to StreakWar via webhook within 60 seconds of completion."
               connected={isConnected(provider)}
               loading={connecting === provider}
               comingSoon={comingSoon}

@@ -1,5 +1,5 @@
 -- Streak qualification rules:
---   Exercise session: >= 30 minutes duration
+--   Exercise session: >= 20 minutes duration
 --   Steps day: >= 7,500 steps
 -- A workout_post qualifies if it meets either threshold.
 
@@ -13,14 +13,14 @@ declare
 begin
   -- Check if this workout meets the streak threshold
   v_qualifies := (
-    -- Exercise session >= 30 min
-    (new.activity_type != 'ganga' AND coalesce(new.duration_minutes, 0) >= 30)
+    -- Exercise session >= 20 min
+    (new.activity_type != 'ganga' AND coalesce(new.duration_minutes, 0) >= 20)
     OR
     -- Steps >= 7,500 (steps tracked as 'ganga' with steps column)
     (new.activity_type = 'ganga' AND coalesce(new.steps, 0) >= 7500)
     OR
-    -- Non-steps walking/hiking with >= 30 min duration
-    (new.activity_type = 'ganga' AND coalesce(new.duration_minutes, 0) >= 30 AND coalesce(new.steps, 0) = 0)
+    -- Non-steps walking/hiking with >= 20 min duration
+    (new.activity_type = 'ganga' AND coalesce(new.duration_minutes, 0) >= 20 AND coalesce(new.steps, 0) = 0)
   );
 
   if not v_qualifies then

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Image, ActivityIndicator, Platform,
@@ -11,8 +11,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { ACTIVITY_LABELS, ACTIVITY_OPTIONS } from '../types/database';
-import type { ActivityType } from '../types/database';
-import { cancelTodayStreakReminder } from '../lib/streakNotification';
+import type { ActivityType, WorkoutPost } from '../types/database';
+import { scheduleStreakReminder } from '../lib/streakNotification';
+import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
 
 const C = {
@@ -32,21 +33,55 @@ export default function LogWorkoutScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const preselectedChallengeId = route.params?.challengeId as string | undefined;
+  const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
+  const isEditMode = !!editWorkout;
 
-  const { logWorkout, pickMedia } = useWorkoutFeed(profile?.id ?? '');
+  const { logWorkout, updateWorkout, pickMedia } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
+  const { streak } = useStreaks(profile?.id ?? '');
 
-  const [activityType, setActivityType] = useState<ActivityType>('run');
-  const [duration, setDuration] = useState('');
-  const [distance, setDistance] = useState('');
-  const [calories, setCalories] = useState('');
-  const [steps, setSteps] = useState('');
-  const [caption, setCaption] = useState('');
-  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(preselectedChallengeId ?? null);
-  const [workoutDate, setWorkoutDate] = useState(new Date());
+  const [activityType, setActivityType] = useState<ActivityType>(editWorkout?.activity_type ?? 'run');
+  const [duration, setDuration] = useState(editWorkout?.duration_minutes != null ? String(editWorkout.duration_minutes) : '');
+  const [distance, setDistance] = useState(editWorkout?.distance_km != null ? String(editWorkout.distance_km) : '');
+  const [calories, setCalories] = useState(editWorkout?.calories != null ? String(editWorkout.calories) : '');
+  const [steps, setSteps] = useState(editWorkout?.steps != null ? String(editWorkout.steps) : '');
+  const [caption, setCaption] = useState(editWorkout?.caption ?? '');
+  const [selectedChallengeId, setSelectedChallengeId] = useState<string | null>(
+    editWorkout?.challenge_id ?? preselectedChallengeId ?? null
+  );
+  const [workoutDate, setWorkoutDate] = useState(
+    editWorkout?.workout_date ? new Date(editWorkout.workout_date) : new Date()
+  );
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  // Timer
+  const [timerRunning, setTimerRunning] = useState(false);
+  const [timerSeconds, setTimerSeconds] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+
+  function toggleTimer() {
+    if (timerRunning) {
+      clearInterval(timerRef.current!);
+      setTimerRunning(false);
+    } else {
+      timerRef.current = setInterval(() => setTimerSeconds(s => s + 1), 1000);
+      setTimerRunning(true);
+    }
+  }
+
+  function useTimerDuration() {
+    const mins = Math.max(1, Math.round(timerSeconds / 60));
+    setDuration(String(mins));
+    clearInterval(timerRef.current!);
+    setTimerRunning(false);
+    setTimerSeconds(0);
+  }
+
+  const timerDisplay = `${String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:${String(timerSeconds % 60).padStart(2, '0')}`;
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active');
 
@@ -63,25 +98,51 @@ export default function LogWorkoutScreen() {
     const caloriesVal = calories ? parseInt(calories, 10) : null;
     const stepsVal = steps ? parseInt(steps, 10) : null;
 
+    const hasMetric = durationVal || distanceVal || caloriesVal || stepsVal || caption.trim();
+    if (!hasMetric) {
+      Alert.alert('Missing info', 'Add at least one stat or a note before saving.');
+      return;
+    }
+
+    const workoutDateStr = format(workoutDate, 'yyyy-MM-dd');
+
     setSaving(true);
-    const { error } = await logWorkout({
-      activity_type: activityType,
-      duration_minutes: durationVal,
-      distance_km: distanceVal,
-      calories: caloriesVal,
-      steps: stepsVal,
-      caption,
-      challenge_id: selectedChallengeId,
-      workout_date: format(workoutDate, 'yyyy-MM-dd'),
-      source: 'manual',
-      imageUri: mediaUri ?? undefined,
-    });
+    let error: string | null = null;
+
+    if (isEditMode && editWorkout) {
+      ({ error } = await updateWorkout(editWorkout.id, {
+        activity_type: activityType,
+        duration_minutes: durationVal,
+        distance_km: distanceVal,
+        calories: caloriesVal,
+        steps: stepsVal,
+        caption,
+        workout_date: workoutDateStr,
+      }));
+    } else {
+      ({ error } = await logWorkout({
+        activity_type: activityType,
+        duration_minutes: durationVal,
+        distance_km: distanceVal,
+        calories: caloriesVal,
+        steps: stepsVal,
+        caption,
+        challenge_id: selectedChallengeId,
+        workout_date: workoutDateStr,
+        source: 'manual',
+        imageUri: mediaUri ?? undefined,
+      }));
+    }
     setSaving(false);
 
     if (error) {
       Alert.alert('Error', error);
     } else {
-      cancelTodayStreakReminder();
+      // Reschedule the streak reminder so the evening notification reflects
+      // the updated streak. Edit mode doesn't change the streak count.
+      scheduleStreakReminder(
+        isEditMode ? (streak?.current_streak ?? 0) : (streak?.current_streak ?? 0) + 1
+      ).catch(() => {});
       navigation.goBack();
     }
   }
@@ -96,7 +157,7 @@ export default function LogWorkoutScreen() {
           <TouchableOpacity onPress={() => navigation.goBack()}>
             <Text style={s.cancelText}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={s.title}>Log Workout</Text>
+          <Text style={s.title}>{isEditMode ? 'Edit Workout' : 'Log Workout'}</Text>
           <TouchableOpacity
             style={[s.saveBtn, saving && { opacity: 0.5 }]}
             onPress={handleSave}
@@ -132,6 +193,34 @@ export default function LogWorkoutScreen() {
               );
             })}
           </View>
+
+          {/* Timer */}
+          {!isEditMode && (
+            <>
+              <Text style={s.sectionLabel}>WORKOUT TIMER</Text>
+              <View style={s.timerCard}>
+                <Text style={s.timerDisplay}>{timerDisplay}</Text>
+                <View style={s.timerBtns}>
+                  <TouchableOpacity
+                    style={[s.timerBtn, timerRunning && s.timerBtnActive]}
+                    onPress={toggleTimer}
+                  >
+                    <Text style={s.timerBtnText}>{timerRunning ? '⏸ Pause' : timerSeconds > 0 ? '▶ Resume' : '▶ Start'}</Text>
+                  </TouchableOpacity>
+                  {timerSeconds > 0 && !timerRunning && (
+                    <TouchableOpacity style={s.timerUseBtn} onPress={useTimerDuration}>
+                      <Text style={s.timerUseBtnText}>Use time →</Text>
+                    </TouchableOpacity>
+                  )}
+                  {timerSeconds > 0 && (
+                    <TouchableOpacity onPress={() => { clearInterval(timerRef.current!); setTimerRunning(false); setTimerSeconds(0); }}>
+                      <Text style={s.timerResetText}>Reset</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </>
+          )}
 
           {/* Stats */}
           <Text style={s.sectionLabel}>STATS (optional)</Text>
@@ -413,6 +502,24 @@ const s = StyleSheet.create({
     minHeight: 80,
     textAlignVertical: 'top',
   },
+
+  timerCard: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.border,
+    borderRadius: 14,
+    padding: 16,
+    alignItems: 'center',
+    gap: 12,
+  },
+  timerDisplay: { fontSize: 42, fontWeight: '900', color: C.text, letterSpacing: 2, fontVariant: ['tabular-nums'] },
+  timerBtns: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  timerBtn: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 9 },
+  timerBtnActive: { backgroundColor: C.primary + '30', borderColor: C.primary + '80' },
+  timerBtnText: { color: C.primary, fontWeight: '800', fontSize: 14 },
+  timerUseBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9 },
+  timerUseBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  timerResetText: { color: C.muted, fontSize: 13, fontWeight: '600' },
 
   saveBigBtn: {
     backgroundColor: C.primary,

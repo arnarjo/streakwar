@@ -15,7 +15,10 @@ import { LEAGUE_TIER_META } from '../types/database';
 import type { WorkoutComment, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
+import StreakMilestoneCard from '../components/StreakMilestoneCard';
+import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { Share } from 'react-native';
+import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
@@ -25,7 +28,7 @@ const C = {
 export default function HomeScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<any>();
-  const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment } = useWorkoutFeed(profile?.id ?? '');
+  const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
@@ -36,6 +39,51 @@ export default function HomeScreen() {
     return d === 0 ? 7 : 7 - d;
   })();
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
+
+  async function fetchMilestones() {
+    if (!profile?.id) return;
+    const { data: parts } = await supabase
+      .from('challenge_participants')
+      .select('challenge_id')
+      .eq('user_id', profile.id);
+    if (!parts || parts.length === 0) return;
+
+    const { data: peers } = await supabase
+      .from('challenge_participants')
+      .select('user_id')
+      .in('challenge_id', parts.map(p => p.challenge_id))
+      .neq('user_id', profile.id);
+
+    if (!peers || peers.length === 0) return;
+    const peerIds = [...new Set(peers.map(p => p.user_id))];
+
+    const { data } = await supabase
+      .from('streak_milestones')
+      .select('*, profile:profiles(id, username, full_name)')
+      .in('user_id', peerIds)
+      .gte('achieved_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
+      .order('achieved_at', { ascending: false })
+      .limit(5);
+
+    if (!data) return;
+
+    const withReactions = await Promise.all(data.map(async (m: any) => {
+      const { data: reactions } = await supabase
+        .from('milestone_reactions')
+        .select('reaction, user_id')
+        .eq('milestone_id', m.id);
+      const counts: Record<string, number> = {};
+      let myReaction: string | null = null;
+      for (const r of reactions ?? []) {
+        counts[r.reaction] = (counts[r.reaction] ?? 0) + 1;
+        if (r.user_id === profile.id) myReaction = r.reaction;
+      }
+      return { ...m, reaction_counts: counts, my_reaction: myReaction };
+    }));
+
+    setMilestones(withReactions);
+  }
 
   async function handleShare() {
     await Share.share({
@@ -49,11 +97,12 @@ export default function HomeScreen() {
   useEffect(() => {
     fetchFeed();
     fetchWeekly();
+    fetchMilestones();
     Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, []);
 
   const onRefresh = useCallback(async () => {
-    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly()]);
+    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones()]);
   }, [fetchFeed, refreshChallenges, fetchWeekly]);
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
@@ -158,6 +207,15 @@ export default function HomeScreen() {
                 </View>
               )}
 
+              {milestones.length > 0 && (
+                <View style={s.section}>
+                  <Text style={s.sectionTitle}>🏅 Streak milestones</Text>
+                  {milestones.map(m => (
+                    <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+                  ))}
+                </View>
+              )}
+
               <View style={s.sectionHeader}>
                 <Text style={s.sectionTitle}>Feed</Text>
               </View>
@@ -166,9 +224,12 @@ export default function HomeScreen() {
           renderItem={({ item }) => (
             <WorkoutPostCard
               post={item}
+              currentUserId={profile?.id}
               onReact={toggleReaction}
               onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
               onAddComment={(id: string, text: string) => addComment(id, text)}
+              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+              onDelete={(postId) => deleteWorkout(postId)}
             />
           )}
           ListEmptyComponent={
