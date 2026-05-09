@@ -60,7 +60,8 @@
         "android.health.connect.permission.READ_STEPS",
         "android.health.connect.permission.READ_DISTANCE",
         "android.health.connect.permission.READ_ACTIVE_CALORIES_BURNED",
-        "android.permission.WAKE_LOCK"
+        "android.permission.WAKE_LOCK",
+        "com.google.android.gms.permission.AD_ID"
       ]
     },
     "plugins": [
