@@ -18,7 +18,7 @@
     "ios": {
       "supportsTablet": false,
       "bundleIdentifier": "is.streakwar.app",
-      "buildNumber": "6",
+      "buildNumber": "7",
       "requireFullScreen": true,
       "infoPlist": {
         "NSCameraUsageDescription": "StreakWar needs camera access to take workout proof photos.",
@@ -42,7 +42,7 @@
     "android": {
       "package": "is.streakwar.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 6,
+      "versionCode": 7,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0C1117"
