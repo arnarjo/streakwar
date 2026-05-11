@@ -100,24 +100,15 @@ export async function initHealthConnect(): Promise<boolean> {
 }
 
 /**
- * Opens Health Connect's permission management page for StreakWar directly.
- * On Android 14+, this uses the OS-level MANAGE_HEALTH_PERMISSIONS action which
- * works even for sideloaded APKs (unlike requestPermission which requires Play Store).
- * Falls back to the generic HC settings screen on older Android versions.
+ * Opens Health Connect settings so the user can grant permissions manually.
+ * Uses openHealthConnectSettings() which works on all Android versions and
+ * all install methods (sideloaded + Play Store). The deep link approach
+ * (android-health-connect://manage-health-permissions/) only works on Android 14+
+ * AND only when the app is already registered in HC's connected-apps registry —
+ * which requires a prior successful Play Store install. We avoid it entirely.
  */
 export async function openHealthConnectPermissions(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
-
-  // Android 14+: open StreakWar's specific permission page in Health Connect.
-  // canOpenURL always returns false on Android 11+ without a <queries> declaration,
-  // so we skip that check and try openURL directly.
-  try {
-    const appId = Constants.expoConfig?.android?.package ?? 'is.streakwar.app';
-    await Linking.openURL(`android-health-connect://manage-health-permissions/${appId}`);
-    return true;
-  } catch {}
-
-  // Fallback for Android 13 and below: open generic HC settings page.
   try {
     if (!HealthConnect) return false;
     const { initialize, openHealthConnectSettings } = HealthConnect;
@@ -141,6 +132,10 @@ export async function checkHealthConnectGranted(): Promise<boolean> {
       console.log('[HealthConnect] Not available during check');
       return false;
     }
+    // Give the HC client 600ms to fully stabilize after returning from HC settings.
+    // On many OEM builds (Samsung, Xiaomi) the client reconnects asynchronously
+    // after an app switch and getGrantedPermissions() returns [] if called immediately.
+    await new Promise(r => setTimeout(r, 600));
     const granted: any[] = await getGrantedPermissions();
     console.log('[HealthConnect] Currently granted:', granted);
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
@@ -153,6 +148,14 @@ export async function checkHealthConnectGranted(): Promise<boolean> {
 /** Poll Health Connect for activities since the last sync and write new ones to Supabase */
 export async function pollHealthConnect(userId: string): Promise<number> {
   if (Platform.OS !== 'android' || !HealthConnect) return 0;
+
+  // Check permissions before advancing the sync cursor — if permissions were
+  // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
+  const hasPermission = await checkHealthConnectGranted();
+  if (!hasPermission) {
+    console.log('[HealthConnect] poll skipped — permissions not granted');
+    return 0;
+  }
 
   const { initialize, readRecords } = HealthConnect;
   const available = await initialize().catch(() => false);

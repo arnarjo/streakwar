@@ -58,12 +58,15 @@ export async function scheduleStreakReminder(
 
     if (currentStreak === 0) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    // Use local date (not UTC) to match the user's clock and lastLoggedDate from DB
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
 
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      const d = date;
+      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 
       // Skip today if already logged
       if (i === 0 && lastLoggedDate === todayStr) continue;
@@ -108,7 +111,8 @@ export async function cancelStreakReminders(): Promise<void> {
 /** Cancels today's 8pm reminder (e.g. after logging a workout). */
 export async function cancelTodayStreakReminder(): Promise<void> {
   try {
-    const todayStr = new Date().toISOString().split('T')[0];
+    const now = new Date();
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
     await Notifications.cancelScheduledNotificationAsync(`${EVENING_BASE_ID}${todayStr}`);
   } catch {
     // non-critical

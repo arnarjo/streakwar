@@ -16,7 +16,7 @@ import { useAchievements } from '../hooks/useAchievements';
 import { usePremium } from '../hooks/usePremium';
 import UpgradeModal from '../components/UpgradeModal';
 import { ACHIEVEMENT_META } from '../types/database';
-import { scheduleStreakReminder } from '../lib/streakNotification';
+import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
 
 const C = {
@@ -86,7 +86,7 @@ export default function ProfileScreen() {
     await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
     if (key === 'streakReminder') {
       if (!updated.streakReminder) {
-        await Notifications.cancelAllScheduledNotificationsAsync();
+        await cancelStreakReminders();
       } else {
         const { data: streakData } = await supabase
           .from('user_streaks')
