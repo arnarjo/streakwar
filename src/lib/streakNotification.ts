@@ -9,6 +9,7 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import { toLocalDate } from './dateUtils';
 
 const MORNING_ID = 'streakwar-morning-reminder';
 const EVENING_BASE_ID = 'streakwar-evening-reminder-';
@@ -58,15 +59,12 @@ export async function scheduleStreakReminder(
 
     if (currentStreak === 0) return;
 
-    // Use local date (not UTC) to match the user's clock and lastLoggedDate from DB
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+    const todayStr = toLocalDate(new Date());
 
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
-      const d = date;
-      const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      const dateStr = toLocalDate(date);
 
       // Skip today if already logged
       if (i === 0 && lastLoggedDate === todayStr) continue;
@@ -111,9 +109,7 @@ export async function cancelStreakReminders(): Promise<void> {
 /** Cancels today's 8pm reminder (e.g. after logging a workout). */
 export async function cancelTodayStreakReminder(): Promise<void> {
   try {
-    const now = new Date();
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
-    await Notifications.cancelScheduledNotificationAsync(`${EVENING_BASE_ID}${todayStr}`);
+    await Notifications.cancelScheduledNotificationAsync(`${EVENING_BASE_ID}${toLocalDate(new Date())}`);
   } catch {
     // non-critical
   }

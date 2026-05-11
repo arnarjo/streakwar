@@ -13,6 +13,7 @@
 import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
+import { toLocalDate } from './dateUtils';
 import type { ActivityType } from '../types/database';
 
 let AppleHealthKit: any = null;
@@ -56,15 +57,6 @@ function mapAppleWorkoutType(typeId: number): ActivityType {
   }
 }
 
-/** Returns the device's local date as YYYY-MM-DD, avoiding UTC offset drift. */
-function toLocalDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-');
-}
 
 // Track which userId was initialized so re-auth with a different account
 // doesn't keep delivering workouts to the previous user.

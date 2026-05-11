@@ -15,6 +15,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
+import { toLocalDate } from './dateUtils';
 import type { ActivityType } from '../types/database';
 
 let HealthConnect: any = null;
@@ -60,15 +61,6 @@ function mapHCExerciseType(typeCode: number): ActivityType {
   return map[typeCode] ?? 'other';
 }
 
-/** Returns the device's local date as YYYY-MM-DD, avoiding UTC offset drift. */
-function toLocalDate(date: Date | string): string {
-  const d = typeof date === 'string' ? new Date(date) : date;
-  return [
-    d.getFullYear(),
-    String(d.getMonth() + 1).padStart(2, '0'),
-    String(d.getDate()).padStart(2, '0'),
-  ].join('-');
-}
 
 /**
  * Requests Health Connect permissions and returns true if ExerciseSession was granted.
@@ -121,8 +113,12 @@ export async function openHealthConnectPermissions(): Promise<boolean> {
   }
 }
 
-/** Returns true if ExerciseSession read permission has been granted in Health Connect. */
-export async function checkHealthConnectGranted(): Promise<boolean> {
+/**
+ * Returns true if ExerciseSession read permission has been granted in Health Connect.
+ * Pass stabilize=true after returning from HC settings — on OEM builds (Samsung, Xiaomi)
+ * the client reconnects asynchronously after an app switch and needs a moment to settle.
+ */
+export async function checkHealthConnectGranted(stabilize = false): Promise<boolean> {
   if (Platform.OS !== 'android' || !HealthConnect) return false;
   try {
     const { initialize, getGrantedPermissions } = HealthConnect;
@@ -132,10 +128,9 @@ export async function checkHealthConnectGranted(): Promise<boolean> {
       console.log('[HealthConnect] Not available during check');
       return false;
     }
-    // Give the HC client 600ms to fully stabilize after returning from HC settings.
-    // On many OEM builds (Samsung, Xiaomi) the client reconnects asynchronously
-    // after an app switch and getGrantedPermissions() returns [] if called immediately.
-    await new Promise(r => setTimeout(r, 600));
+    if (stabilize) {
+      await new Promise(r => setTimeout(r, 600));
+    }
     const granted: any[] = await getGrantedPermissions();
     console.log('[HealthConnect] Currently granted:', granted);
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
@@ -149,17 +144,19 @@ export async function checkHealthConnectGranted(): Promise<boolean> {
 export async function pollHealthConnect(userId: string): Promise<number> {
   if (Platform.OS !== 'android' || !HealthConnect) return 0;
 
-  // Check permissions before advancing the sync cursor — if permissions were
-  // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
-  const hasPermission = await checkHealthConnectGranted();
-  if (!hasPermission) {
-    console.log('[HealthConnect] poll skipped — permissions not granted');
-    return 0;
-  }
-
   const { initialize, readRecords } = HealthConnect;
   const available = await initialize().catch(() => false);
   if (!available) return 0;
+
+  // Check permissions before advancing the sync cursor — if permissions were
+  // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
+  // No stabilize delay needed here; we're in a background poll, not a settings return.
+  const { getGrantedPermissions } = HealthConnect;
+  const granted: any[] = await getGrantedPermissions().catch(() => []);
+  if (!granted.some((g: any) => g.recordType === 'ExerciseSession')) {
+    console.log('[HealthConnect] poll skipped — permissions not granted');
+    return 0;
+  }
 
   const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
   const startTime = lastSyncRaw ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -263,10 +260,11 @@ export async function pollHealthConnect(userId: string): Promise<number> {
         synced++;
       }
     }
+    await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
   } catch (e) {
     console.warn('[HealthConnect] poll failed:', e);
+    // Do not advance LAST_SYNC_KEY on failure — retry from same window next poll.
   }
 
-  await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
   return synced;
 }
