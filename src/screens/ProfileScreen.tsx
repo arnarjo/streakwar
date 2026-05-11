@@ -29,7 +29,10 @@ export default function ProfileScreen() {
   const navigation = useNavigation<any>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
-  const { connections, syncing, syncNow, nativeProvider } = useHealthSync(profile?.id ?? '');
+  const {
+    connections, syncing, syncNow, nativeProvider,
+    showBatteryWarning, lastSynced
+  } = useHealthSync(profile?.id ?? '');
   const { achievements } = useAchievements(profile?.id ?? '');
 
   const { isPro, loading: premiumLoading, offering, purchase, restore } = usePremium(profile?.id ?? '');
@@ -85,12 +88,17 @@ export default function ProfileScreen() {
       if (!updated.streakReminder) {
         await Notifications.cancelAllScheduledNotificationsAsync();
       } else {
-        const { data } = await supabase
+        const { data: streakData } = await supabase
           .from('user_streaks')
-          .select('current_streak')
+          .select('current_streak, last_active_date')
           .eq('user_id', profile!.id)
           .single();
-        scheduleStreakReminder(data?.current_streak ?? 0).catch(() => {});
+        const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
+        scheduleStreakReminder(
+          streakData?.current_streak ?? 0,
+          streakData?.last_active_date,
+          firstName
+        ).catch(() => {});
       }
     }
   }
@@ -270,19 +278,44 @@ export default function ProfileScreen() {
         </View>
 
         {connectedSources.length > 0 ? (
-          <View style={s.syncCard}>
-            <View style={s.syncLeft}>
-              <View style={s.syncDot} />
-              <View>
-                <Text style={s.syncTitle}>
-                  {connectedSources.length} source{connectedSources.length !== 1 ? 's' : ''} connected
-                </Text>
-                <Text style={s.syncSub}>Workouts sync automatically in the background</Text>
+          <View>
+            {showBatteryWarning && (
+              <TouchableOpacity
+                style={s.warningRow}
+                onPress={() => {
+                  Alert.alert(
+                    'Background Sync Stale',
+                    'Health Connect has not synced in over 30 minutes. Please disable battery optimization for StreakWar.',
+                    [
+                      { text: 'Cancel', style: 'cancel' },
+                      { text: 'Open Settings', onPress: () => Linking.openSettings() }
+                    ]
+                  );
+                }}
+              >
+                <Text style={s.warningEmoji}>⚠️</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={s.warningTitle}>Background sync delayed</Text>
+                  <Text style={s.warningSub}>Tap to fix battery optimization →</Text>
+                </View>
+              </TouchableOpacity>
+            )}
+            <View style={s.syncCard}>
+              <View style={s.syncLeft}>
+                <View style={s.syncDot} />
+                <View>
+                  <Text style={s.syncTitle}>
+                    {connectedSources.length} source{connectedSources.length !== 1 ? 's' : ''} connected
+                  </Text>
+                  <Text style={s.syncSub}>
+                    Last synced: {lastSynced ? format(lastSynced, 'HH:mm') : 'Recently'}
+                  </Text>
+                </View>
               </View>
+              <TouchableOpacity onPress={handleSyncNow} disabled={syncing} style={s.syncNowBtn}>
+                <Text style={s.syncNowText}>{syncing ? '...' : 'Sync'}</Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity onPress={handleSyncNow} disabled={syncing} style={s.syncNowBtn}>
-              <Text style={s.syncNowText}>{syncing ? '...' : 'Sync'}</Text>
-            </TouchableOpacity>
           </View>
         ) : (
           <TouchableOpacity style={s.connectBanner} onPress={() => navigation.navigate('ConnectDevices')}>
@@ -414,6 +447,21 @@ const s = StyleSheet.create({
   syncSub: { fontSize: 11, color: C.muted, marginTop: 1 },
   syncNowBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   syncNowText: { color: '#000', fontWeight: '800', fontSize: 12 },
+
+  warningRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: C.error + '12',
+    borderWidth: 1,
+    borderColor: C.error + '30',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+  },
+  warningEmoji: { fontSize: 24 },
+  warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
+  warningSub: { fontSize: 12, color: C.muted, marginTop: 2, fontWeight: '600' },
   connectBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.primary + '12', borderWidth: 1, borderColor: C.primary + '30', borderRadius: 12, padding: 14, marginBottom: 8 },
   connectBannerEmoji: { fontSize: 24 },
   connectBannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },

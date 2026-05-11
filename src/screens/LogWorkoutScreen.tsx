@@ -140,8 +140,12 @@ export default function LogWorkoutScreen() {
     } else {
       // Reschedule the streak reminder so the evening notification reflects
       // the updated streak. Edit mode doesn't change the streak count.
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
       scheduleStreakReminder(
-        isEditMode ? (streak?.current_streak ?? 0) : (streak?.current_streak ?? 0) + 1
+        isEditMode ? (streak?.current_streak ?? 0) : (streak?.current_streak ?? 0) + 1,
+        workoutDateStr === todayStr ? todayStr : (streak?.last_active_date ?? null),
+        firstName
       ).catch(() => {});
       navigation.goBack();
     }

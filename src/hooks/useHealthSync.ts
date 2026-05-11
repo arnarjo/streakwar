@@ -28,6 +28,7 @@ export function useHealthSync(userId: string) {
   const [connections, setConnections] = useState<DeviceConnection[]>([]);
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
+  const [showBatteryWarning, setShowBatteryWarning] = useState(false);
 
   const fetchConnections = useCallback(async () => {
     if (!userId) return;
@@ -42,8 +43,20 @@ export function useHealthSync(userId: string) {
     fetchConnections();
   }, [fetchConnections]);
 
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const hcConn = connections.find(c => c.provider === 'health_connect' && c.is_active);
+    if (!hcConn || !hcConn.last_synced_at) {
+      setShowBatteryWarning(false);
+      return;
+    }
+    const lastSync = new Date(hcConn.last_synced_at).getTime();
+    const stale = Date.now() - lastSync > 30 * 60 * 1000;
+    setShowBatteryWarning(stale);
+  }, [connections]);
+
   /** Connect a native health source (HealthKit on iOS / Health Connect on Android). */
-  async function connectNative(): Promise<{ success: boolean; message: string }> {
+  const connectNative = useCallback(async (): Promise<{ success: boolean; message: string }> => {
     if (!userId) return { success: false, message: 'Not logged in' };
 
     let granted = false;
@@ -54,7 +67,10 @@ export function useHealthSync(userId: string) {
     }
 
     if (!granted) {
-      return { success: false, message: 'Permission denied. Please allow access in Health Connect and try again.' };
+      const msg = Platform.OS === 'ios'
+        ? 'Apple Health access denied. Please enable it in Settings > Health > Data Access & Devices.'
+        : 'Health Connect access denied. Please ensure the Health Connect app is installed and permissions are granted.';
+      return { success: false, message: msg };
     }
 
     const provider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
@@ -78,15 +94,17 @@ export function useHealthSync(userId: string) {
     setLastSynced(new Date());
 
     return { success: true, message: 'Connected! Your recent workouts have been synced.' };
-  }
+  }, [userId, fetchConnections]);
 
   /**
    * Called after the user returns from Health Connect settings on Android.
    * Checks if ExerciseSession permission was granted and saves the connection.
    */
-  async function confirmHealthConnectConnection(): Promise<boolean> {
+  const confirmHealthConnectConnection = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
+    console.log('[useHealthSync] Confirming Health Connect connection...');
     const granted = await checkHealthConnectGranted();
+    console.log('[useHealthSync] Granted:', granted);
     if (!granted) return false;
 
     await supabase.from('device_connections').upsert({
@@ -104,10 +122,10 @@ export function useHealthSync(userId: string) {
     setSyncing(false);
     setLastSynced(new Date());
     return true;
-  }
+  }, [userId, fetchConnections]);
 
   /** Trigger a manual foreground sync */
-  async function syncNow(): Promise<number> {
+  const syncNow = useCallback(async (): Promise<number> => {
     if (!userId) return 0;
     setSyncing(true);
 
@@ -128,17 +146,17 @@ export function useHealthSync(userId: string) {
     setSyncing(false);
     setLastSynced(new Date());
     return count;
-  }
+  }, [userId, fetchConnections]);
 
   /** Disconnect a provider */
-  async function disconnect(provider: ProviderKey): Promise<void> {
+  const disconnect = useCallback(async (provider: ProviderKey): Promise<void> => {
     await supabase
       .from('device_connections')
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('provider', provider);
     await fetchConnections();
-  }
+  }, [userId, fetchConnections]);
 
   function isConnected(provider: ProviderKey): boolean {
     return connections.some(c => c.provider === provider && c.is_active);
@@ -156,6 +174,7 @@ export function useHealthSync(userId: string) {
     syncNow,
     disconnect,
     nativeProvider,
+    showBatteryWarning,
     refresh: fetchConnections,
   };
 }

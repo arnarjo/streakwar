@@ -189,7 +189,7 @@ export async function syncTodaySteps(userId: string): Promise<void> {
         const { error: insertErr } = await supabase.from('workout_posts').insert({
           user_id: userId,
           challenge_id: await getActiveChallengeId(userId),
-          activity_type: 'ganga',
+          activity_type: 'walk',
           steps: result.value,
           source: 'apple_health',
           external_activity_id: `steps_${localDate}`,
