@@ -39,6 +39,14 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     const userId = await AsyncStorage.getItem(USER_ID_KEY);
     if (!userId) return BackgroundFetch.BackgroundFetchResult.NoData;
 
+    // JWT may have expired in background — refresh before making authenticated DB calls
+    let { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      const { data } = await supabase.auth.refreshSession();
+      session = data.session;
+    }
+    if (!session) return BackgroundFetch.BackgroundFetchResult.NoData;
+
     let synced = 0;
 
     if (Platform.OS === 'android') {

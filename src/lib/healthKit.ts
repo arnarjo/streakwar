@@ -93,7 +93,7 @@ export function teardownHealthKit() {
 
 /** Fetch workouts recorded in the last 7 days and sync any that are new */
 export async function syncRecentWorkouts(userId: string): Promise<number> {
-  if (Platform.OS !== 'ios' || !AppleHealthKit || !_initializedUserId) return 0;
+  if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return 0;
 
   const yesterday = new Date();
   yesterday.setDate(yesterday.getDate() - 7);
@@ -165,7 +165,7 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
 
 /** Sync step counts for the current day */
 export async function syncTodaySteps(userId: string): Promise<void> {
-  if (Platform.OS !== 'ios' || !AppleHealthKit || !_initializedUserId) return;
+  if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return;
 
   // Use local date — new Date().toISOString() returns UTC which can be yesterday
   const localDate = toLocalDate(new Date());

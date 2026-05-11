@@ -21,9 +21,12 @@ module.exports = function withHealthConnectManifest(config) {
       });
     }
 
-    // 2. Intent filters on MainActivity — find by name, not by index
+    // 2. Intent filters on MainActivity — match short form (.MainActivity) or fully-qualified name
     const mainActivity =
-      application.activity?.find((a) => a.$?.['android:name'] === '.MainActivity') ??
+      application.activity?.find((a) => {
+        const name = a.$?.['android:name'] ?? '';
+        return name === '.MainActivity' || name.endsWith('.MainActivity');
+      }) ??
       application.activity?.[0];
     if (!mainActivity) return config;
     if (!mainActivity['intent-filter']) mainActivity['intent-filter'] = [];

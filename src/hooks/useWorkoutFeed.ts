@@ -152,13 +152,16 @@ export function useWorkoutFeed(userId: string) {
       const ext = params.imageUri.split('.').pop()?.toLowerCase();
       const isVideo = ext === 'mp4' || ext === 'mov';
       const path = `${userId}/${Date.now()}.${ext ?? 'jpg'}`;
-
-      const response = await fetch(params.imageUri);
-      const blob = await response.blob();
       const videoContentType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+      const mimeType = isVideo ? videoContentType : 'image/jpeg';
+
+      // FormData handles both file:// (iOS) and content:// (Android) URIs correctly
+      const formData = new FormData();
+      formData.append('file', { uri: params.imageUri, name: `upload.${ext ?? 'jpg'}`, type: mimeType } as any);
+
       const { error: uploadError } = await supabase.storage
         .from('workout-media')
-        .upload(path, blob, { contentType: isVideo ? videoContentType : 'image/jpeg' });
+        .upload(path, formData, { contentType: mimeType });
 
       if (!uploadError) {
         const { data: urlData } = supabase.storage.from('workout-media').getPublicUrl(path);

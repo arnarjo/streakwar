@@ -26,8 +26,8 @@ export function usePushNotifications(
   userId: string,
   navigationRef: NavigationContainerRef<any>
 ) {
-  const notificationListener = useRef<Notifications.EventSubscription>();
-  const responseListener = useRef<Notifications.EventSubscription>();
+  const notificationListener = useRef<Notifications.EventSubscription>(undefined);
+  const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
   const refreshReminders = useCallback(async () => {
     if (!userId) return;
@@ -107,7 +107,7 @@ function handleNotificationResponse(
   if (data?.screen === 'WeeklyRecap') {
     navigationRef.navigate('WeeklyRecap' as never);
   } else if (data?.challenge_id) {
-    navigationRef.navigate('ChallengeDetail' as never, { challengeId: data.challenge_id } as never);
+    (navigationRef as any).navigate('ChallengeDetail', { challengeId: data.challenge_id });
   }
 }
 

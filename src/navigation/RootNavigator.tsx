@@ -126,16 +126,6 @@ export default function RootNavigator({ onRouteChange }: Props) {
   // Send them through the auth stack so they can pick a username.
   const isAuthenticated = !!session && profileExists === true;
 
-  if (needsPasswordReset) {
-    return (
-      <NavigationContainer ref={navigationRef}>
-        <Stack.Navigator screenOptions={{ headerShown: false }}>
-          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
-        </Stack.Navigator>
-      </NavigationContainer>
-    );
-  }
-
   return (
     <NavigationContainer
       ref={navigationRef}
@@ -145,7 +135,9 @@ export default function RootNavigator({ onRouteChange }: Props) {
       }}
     >
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isAuthenticated ? (
+        {needsPasswordReset ? (
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+        ) : isAuthenticated ? (
           <>
             <Stack.Screen name="Main"            component={MainTabs} />
             <Stack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} />

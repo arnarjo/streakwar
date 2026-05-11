@@ -83,7 +83,7 @@ export async function scheduleStreakReminder(
           sound: true,
           ...(Platform.OS === 'android' && { channelId: 'default' }),
         },
-        trigger: date,
+        trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },
       });
     }
   } catch (e) {
