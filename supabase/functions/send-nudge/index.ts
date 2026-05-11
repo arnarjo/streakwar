@@ -1,4 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+﻿import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const corsHeaders = {
@@ -52,9 +52,9 @@ serve(async (req) => {
   const senderName = sender?.full_name ?? sender?.username ?? 'Someone';
   const notifBody = emoji
     ? `${senderName} sent you ${emoji}`
-    : `${senderName} is cheering you on! 💪`;
+    : `${senderName} is cheering you on! ðŸ’ª`;
 
-  const message = emoji ? `${senderName} sent you ${emoji}` : `Get moving! 💪`;
+  const message = emoji ? `${senderName} sent you ${emoji}` : `Get moving! ðŸ’ª`;
 
   await supabase.from('nudges').insert({ sender_id, receiver_id, message, emoji: emoji ?? null });
 
@@ -70,7 +70,7 @@ serve(async (req) => {
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
         to: receiver.push_token,
-        title: emoji ? `${emoji} Reaction` : '💪 Nudge!',
+        title: emoji ? `${emoji} Reaction` : 'ðŸ’ª Nudge!',
         body: notifBody,
         data: { type: 'nudge' },
         sound: 'default',

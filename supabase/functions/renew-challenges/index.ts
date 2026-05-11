@@ -1,18 +1,18 @@
-/**
+﻿/**
  * renew-challenges
  *
  * Runs daily (via Supabase cron or external scheduler).
  * 1. Updates challenge statuses based on current date.
  * 2. Creates the next instance of every recurring challenge that just ended.
  *
- * Schedule in Supabase Dashboard → Edge Functions → Cron:
+ * Schedule in Supabase Dashboard â†’ Edge Functions â†’ Cron:
  *   0 1 * * *   (daily at 01:00 UTC)
  *
  * Or invoke manually:
  *   supabase functions invoke renew-challenges --no-verify-jwt
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -27,10 +27,10 @@ serve(async (req) => {
   }
 
   try {
-    // Step 1 — refresh all challenge statuses
+    // Step 1 â€” refresh all challenge statuses
     await supabase.rpc('refresh_challenge_statuses');
 
-    // Step 2 — find recurring challenges that just completed
+    // Step 2 â€” find recurring challenges that just completed
     const today = new Date().toISOString().slice(0, 10);
 
     const { data: expired, error: fetchErr } = await supabase
@@ -92,7 +92,7 @@ serve(async (req) => {
         console.error(`Failed to renew challenge ${challenge.id}:`, insertErr);
       } else {
         renewed.push(challenge.id);
-        console.log(`Renewed challenge "${challenge.name}" → ${startDate} to ${endDate}`);
+        console.log(`Renewed challenge "${challenge.name}" â†’ ${startDate} to ${endDate}`);
       }
     }
 
@@ -134,8 +134,8 @@ function nextDateRange(
   };
 }
 
-/** Strip trailing " 🔥" / " 🏆" variants and return a clean recurring name */
+/** Strip trailing " ðŸ”¥" / " ðŸ†" variants and return a clean recurring name */
 function nextName(name: string, renewalType: string): string {
-  // Keep the base name unchanged — the UI appends "Vika X" labels dynamically
+  // Keep the base name unchanged â€” the UI appends "Vika X" labels dynamically
   return name;
 }

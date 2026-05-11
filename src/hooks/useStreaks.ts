@@ -92,7 +92,7 @@ export function useStreaks(userId: string) {
           if (next.current_streak > (prev.current_streak ?? 0)) {
             for (const t of MILESTONE_THRESHOLDS) {
               if (next.current_streak >= t && (prev.current_streak ?? 0) < t) {
-                recordMilestone(userId, t);
+                recordMilestone(userId, t).catch(console.warn);
               }
             }
           }

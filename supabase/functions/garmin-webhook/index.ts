@@ -1,4 +1,4 @@
-/**
+﻿/**
  * garmin-webhook
  *
  * Receives Garmin Health API activity push notifications.
@@ -12,7 +12,7 @@
  * The webhook payload validation uses HMAC-SHA1 with the consumer secret.
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -32,7 +32,7 @@ async function hmacSha1Hex(secret: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Garmin activity type string → our ActivityType
+// Garmin activity type string â†’ our ActivityType
 function garminTypeToActivity(type: string): string {
   const t = (type ?? '').toLowerCase();
   if (t.includes('running') || t.includes('trail_running')) return 'run';

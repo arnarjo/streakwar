@@ -1,4 +1,4 @@
-/**
+﻿/**
  * oauth-callback
  *
  * Receives the authorization code redirect from Strava / Garmin / Fitbit,
@@ -8,7 +8,7 @@
  * Deep link: streakwar://oauth-success   (configure in app.json scheme)
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -78,7 +78,7 @@ serve(async (req) => {
   let externalUserId: string | null = null;
   let expiresAt: Date | null = null;
 
-  // Garmin uses OAuth 1.0a — different flow entirely
+  // Garmin uses OAuth 1.0a â€” different flow entirely
   if (provider === 'garmin') {
     return handleGarminCallback(req, userId);
   }
@@ -129,7 +129,7 @@ serve(async (req) => {
   return Response.redirect('streakwar://oauth-success?provider=' + provider, 302);
 });
 
-// ─── Garmin OAuth 1.0a ────────────────────────────────────────────────────────
+// â”€â”€â”€ Garmin OAuth 1.0a â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function percentEncode(s: string): string {
   return encodeURIComponent(s)
@@ -232,7 +232,7 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
     return Response.redirect('streakwar://oauth-error?reason=garmin_empty_token', 302);
   }
 
-  // Store access token (access_token) + secret (refresh_token field) — Garmin has no expiry
+  // Store access token (access_token) + secret (refresh_token field) â€” Garmin has no expiry
   const { error } = await supabase.from('device_connections').upsert({
     user_id: userId,
     provider: 'garmin',
@@ -254,7 +254,7 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
 
 async function ensureFitbitSubscription(accessToken: string) {
   // Fitbit subscriptions are per-user. Subscribe to the activities collection.
-  // If already subscribed, Fitbit returns 200 or 409 — both are fine.
+  // If already subscribed, Fitbit returns 200 or 409 â€” both are fine.
   await fetch('https://api.fitbit.com/1/user/-/activities/apiSubscriptions/1.json', {
     method: 'POST',
     headers: { Authorization: `Bearer ${accessToken}` },

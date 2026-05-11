@@ -142,8 +142,11 @@ export default function LogWorkoutScreen() {
       // the updated streak. Edit mode doesn't change the streak count.
       const todayStr = format(new Date(), 'yyyy-MM-dd');
       const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
+      // Use current streak value — the server-side increment hasn't arrived yet
+      // via realtime. The notification scheduler will be called again by
+      // usePushNotifications once the streak row updates.
       scheduleStreakReminder(
-        isEditMode ? (streak?.current_streak ?? 0) : (streak?.current_streak ?? 0) + 1,
+        streak?.current_streak ?? 0,
         workoutDateStr === todayStr ? todayStr : (streak?.last_active_date ?? null),
         firstName
       ).catch(() => {});

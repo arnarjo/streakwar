@@ -1,4 +1,4 @@
-/**
+﻿/**
  * fitbit-webhook
  *
  * Receives Fitbit subscription notifications (POST) and verification (GET).
@@ -8,7 +8,7 @@
  * Fitbit docs: https://dev.fitbit.com/build/reference/web-api/subscriptions/
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -18,7 +18,7 @@ const supabase = createClient(
 
 const FITBIT_VERIFY_CODE = Deno.env.get('FITBIT_VERIFY_CODE') ?? '';
 
-// Fitbit activity type id → our ActivityType (best-effort mapping)
+// Fitbit activity type id â†’ our ActivityType (best-effort mapping)
 function fitbitActivityToType(logId: number, activityName: string): string {
   const name = activityName.toLowerCase();
   if (name.includes('run') || name.includes('jog')) return 'run';
@@ -58,7 +58,7 @@ async function refreshFitbitToken(conn: any): Promise<string> {
 }
 
 serve(async (req) => {
-  // ── GET: Fitbit subscriber verification ──────────────────────
+  // â”€â”€ GET: Fitbit subscriber verification â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
   if (req.method === 'GET') {
     const url = new URL(req.url);
     const verify = url.searchParams.get('verify');

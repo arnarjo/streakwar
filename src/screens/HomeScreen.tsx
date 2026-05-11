@@ -68,21 +68,26 @@ export default function HomeScreen() {
 
     if (!data) return;
 
-    const withReactions = await Promise.all(data.map(async (m: any) => {
-      const { data: reactions } = await supabase
-        .from('milestone_reactions')
-        .select('reaction, user_id')
-        .eq('milestone_id', m.id);
-      const counts: Record<string, number> = {};
-      let myReaction: string | null = null;
-      for (const r of reactions ?? []) {
-        counts[r.reaction] = (counts[r.reaction] ?? 0) + 1;
-        if (r.user_id === profile.id) myReaction = r.reaction;
-      }
-      return { ...m, reaction_counts: counts, my_reaction: myReaction };
-    }));
+    const milestoneIds = data.map((m: any) => m.id);
+    const { data: allReactions } = await supabase
+      .from('milestone_reactions')
+      .select('milestone_id, reaction, user_id')
+      .in('milestone_id', milestoneIds);
 
-    setMilestones(withReactions);
+    const reactionsByMilestone = new Map<string, { counts: Record<string, number>; myReaction: string | null }>();
+    for (const r of allReactions ?? []) {
+      if (!reactionsByMilestone.has(r.milestone_id)) {
+        reactionsByMilestone.set(r.milestone_id, { counts: {}, myReaction: null });
+      }
+      const entry = reactionsByMilestone.get(r.milestone_id)!;
+      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
+      if (r.user_id === profile.id) entry.myReaction = r.reaction;
+    }
+
+    setMilestones(data.map((m: any) => {
+      const r = reactionsByMilestone.get(m.id);
+      return { ...m, reaction_counts: r?.counts ?? {}, my_reaction: r?.myReaction ?? null };
+    }));
   }
 
   async function handleShare() {

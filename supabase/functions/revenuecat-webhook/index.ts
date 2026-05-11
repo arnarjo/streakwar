@@ -1,4 +1,4 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+﻿import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const ACTIVATE_EVENTS  = new Set(['INITIAL_PURCHASE', 'RENEWAL', 'PRODUCT_CHANGE', 'UNCANCELLATION']);
@@ -47,7 +47,7 @@ serve(async (req) => {
       .update({ is_pro: false, pro_expires_at: null })
       .eq('id', userId);
   }
-  // CANCELLATION: keep pro until pro_expires_at — no update needed
+  // CANCELLATION: keep pro until pro_expires_at â€” no update needed
 
   return new Response('OK', { status: 200 });
 });

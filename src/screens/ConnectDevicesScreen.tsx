@@ -45,7 +45,10 @@ export default function ConnectDevicesScreen() {
   const nativeMeta = PROVIDER_META[nativeProvider];
 
   useEffect(() => {
-    return () => { mounted.current = false; };
+    return () => {
+      mounted.current = false;
+      awaitingHCReturn.current = false;
+    };
   }, []);
 
   // When user returns from Health Connect settings, re-check if permissions were granted

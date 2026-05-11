@@ -127,6 +127,8 @@ export function useHealthSync(userId: string) {
   /** Trigger a manual foreground sync */
   const syncNow = useCallback(async (): Promise<number> => {
     if (!userId) return 0;
+    const nativeProvider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
+    if (!connections.some(c => c.provider === nativeProvider && c.is_active)) return 0;
     setSyncing(true);
 
     let count = 0;

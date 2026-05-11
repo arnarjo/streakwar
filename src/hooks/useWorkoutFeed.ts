@@ -15,7 +15,7 @@ export function useWorkoutFeed(userId: string) {
       .from('workout_posts')
       .select(`
         *,
-        profile:profiles(*),
+        profile:profiles(id, username, full_name, avatar_url, total_points),
         challenge:fitness_challenges(id, name)
       `)
       .order('posted_at', { ascending: false })
@@ -86,41 +86,30 @@ export function useWorkoutFeed(userId: string) {
   }, [userId]);
 
   async function toggleReaction(postId: string, reaction: string): Promise<void> {
-    // Check if user already has this reaction
-    const { data: existing } = await supabase
-      .from('workout_reactions')
-      .select('id')
-      .eq('post_id', postId)
-      .eq('user_id', userId)
-      .eq('reaction', reaction)
-      .single();
+    const post = feed.find(p => p.id === postId);
+    const currentReaction = post?.my_reaction ?? null;
+    const removing = currentReaction === reaction;
 
-    if (existing) {
-      await supabase.from('workout_reactions').delete().eq('id', existing.id);
-    } else {
-      // Remove any other reaction first
-      await supabase
-        .from('workout_reactions')
-        .delete()
-        .eq('post_id', postId)
-        .eq('user_id', userId);
-      await supabase.from('workout_reactions').insert({ post_id: postId, user_id: userId, reaction });
-    }
-
-    // Optimistic update
+    // Optimistic update first for instant UI response
     setFeed(prev =>
-      prev.map(post => {
-        if (post.id !== postId) return post;
-        const counts = { ...(post.reaction_counts ?? {}) };
-        const currentReaction = post.my_reaction;
-
+      prev.map(p => {
+        if (p.id !== postId) return p;
+        const counts = { ...(p.reaction_counts ?? {}) };
         if (currentReaction) counts[currentReaction] = Math.max(0, (counts[currentReaction] ?? 1) - 1);
-        if (existing) return { ...post, reaction_counts: counts, my_reaction: null };
-
-        counts[reaction] = (counts[reaction] ?? 0) + 1;
-        return { ...post, reaction_counts: counts, my_reaction: reaction };
+        if (!removing) counts[reaction] = (counts[reaction] ?? 0) + 1;
+        return { ...p, reaction_counts: counts, my_reaction: removing ? null : reaction };
       })
     );
+
+    if (removing) {
+      await supabase.from('workout_reactions').delete()
+        .eq('post_id', postId).eq('user_id', userId).eq('reaction', reaction);
+    } else {
+      // Remove any prior reaction then insert new one
+      await supabase.from('workout_reactions').delete()
+        .eq('post_id', postId).eq('user_id', userId);
+      await supabase.from('workout_reactions').insert({ post_id: postId, user_id: userId, reaction });
+    }
   }
 
   async function fetchComments(postId: string): Promise<WorkoutComment[]> {
@@ -166,9 +155,10 @@ export function useWorkoutFeed(userId: string) {
 
       const response = await fetch(params.imageUri);
       const blob = await response.blob();
+      const videoContentType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
       const { error: uploadError } = await supabase.storage
         .from('workout-media')
-        .upload(path, blob, { contentType: isVideo ? 'video/mp4' : 'image/jpeg' });
+        .upload(path, blob, { contentType: isVideo ? videoContentType : 'image/jpeg' });
 
       if (!uploadError) {
         const { data: urlData } = supabase.storage.from('workout-media').getPublicUrl(path);

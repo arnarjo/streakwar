@@ -1,18 +1,18 @@
-/**
+﻿/**
  * oauth-init
  *
  * Kicks off the OAuth dance for Strava, Garmin, or Fitbit.
  * Called from the app via: ${SUPABASE_URL}/functions/v1/oauth-init?provider=strava&user_id=<uuid>
  *
- * - Strava / Fitbit: OAuth 2.0 — redirect straight to provider authorization URL.
- * - Garmin: OAuth 1.0a — must fetch a request token first, then redirect.
+ * - Strava / Fitbit: OAuth 2.0 â€” redirect straight to provider authorization URL.
+ * - Garmin: OAuth 1.0a â€” must fetch a request token first, then redirect.
  *
  * GARMIN SETUP (needs env vars):
- *   GARMIN_CONSUMER_KEY    — from developer.garmin.com
- *   GARMIN_CONSUMER_SECRET — from developer.garmin.com
+ *   GARMIN_CONSUMER_KEY    â€” from developer.garmin.com
+ *   GARMIN_CONSUMER_SECRET â€” from developer.garmin.com
  */
 
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 const supabase = createClient(
@@ -22,7 +22,7 @@ const supabase = createClient(
 
 const CALLBACK_BASE = Deno.env.get('SUPABASE_URL') + '/functions/v1/oauth-callback';
 
-// ─── OAuth 2.0 providers ──────────────────────────────────────────────────────
+// â”€â”€â”€ OAuth 2.0 providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 const OAUTH2_CONFIGS: Record<string, {
   authUrl: string;
@@ -43,7 +43,7 @@ const OAUTH2_CONFIGS: Record<string, {
   },
 };
 
-// ─── OAuth 1.0a helpers ───────────────────────────────────────────────────────
+// â”€â”€â”€ OAuth 1.0a helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 function percentEncode(s: string): string {
   return encodeURIComponent(s)
@@ -96,7 +96,7 @@ async function buildOAuth1Header(
   return headerValue;
 }
 
-// ─── Garmin OAuth 1.0a init ──────────────────────────────────────────────────
+// â”€â”€â”€ Garmin OAuth 1.0a init â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 async function handleGarminInit(userId: string): Promise<Response> {
   const consumerKey = Deno.env.get('GARMIN_CONSUMER_KEY') ?? '';
@@ -151,7 +151,7 @@ async function handleGarminInit(userId: string): Promise<Response> {
   return Response.redirect(authorizeUrl, 302);
 }
 
-// ─── Main handler ─────────────────────────────────────────────────────────────
+// â”€â”€â”€ Main handler â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
 serve(async (req) => {
   const url = new URL(req.url);
@@ -162,7 +162,7 @@ serve(async (req) => {
     return new Response('Missing provider or user_id', { status: 400 });
   }
 
-  // Garmin uses OAuth 1.0a — special handling
+  // Garmin uses OAuth 1.0a â€” special handling
   if (provider === 'garmin') {
     return handleGarminInit(userId);
   }
