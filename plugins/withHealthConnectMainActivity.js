@@ -27,11 +27,11 @@ module.exports = function withHealthConnectMainActivity(config) {
 
     const delegateCall = 'HealthConnectPermissionDelegate.setPermissionDelegate(this)';
     if (!src.includes(delegateCall)) {
-      // Must come BEFORE super.onCreate() so the ActivityResultLauncher is
-      // registered before React Native initialises the bridge.
+      // Per react-native-health-connect docs: delegate goes AFTER super.onCreate()
+      // so that the React Native bridge is initialised before registering the launcher.
       src = src.replace(
         /(super\.onCreate\([^)]*\))/,
-        `${delegateCall}\n    $1`
+        `$1\n    ${delegateCall}`
       );
     }
 

@@ -28,16 +28,20 @@ export async function scheduleStreakReminder(
     const { status } = await Notifications.getPermissionsAsync();
     if (status !== 'granted') return;
 
-    const morningTitle = userName ? `Good morning, ${userName}! 🌅` : 'StreakWar — Good morning! 🌅';
+    const morningTitle = currentStreak >= 7
+      ? `${currentStreak} days strong${userName ? `, ${userName}` : ''}! 🔥`
+      : `Rise and grind${userName ? `, ${userName}` : ''}! 💪`;
+
+    const morningBody = currentStreak > 0
+      ? `Day ${currentStreak + 1} won't log itself — any workout counts.`
+      : 'Day 1 starts now. Log a workout and build your streak!';
 
     // 1. Morning Reminder (Always daily)
     await Notifications.scheduleNotificationAsync({
       identifier: MORNING_ID,
       content: {
         title: morningTitle,
-        body: currentStreak > 0
-          ? `Keep your ${currentStreak}-day streak going — log a workout today! 🔥`
-          : 'Start your streak today 🔥',
+        body: morningBody,
         sound: true,
         ...(Platform.OS === 'android' && { channelId: 'default' }),
       },
@@ -78,8 +82,8 @@ export async function scheduleStreakReminder(
       await Notifications.scheduleNotificationAsync({
         identifier: `${EVENING_BASE_ID}${dateStr}`,
         content: {
-          title: userName ? `${userName}, don't break your streak!` : "StreakWar — Don't break your streak!",
-          body: `Log your workout before midnight to keep your ${currentStreak}-day streak alive 🔥`,
+          title: userName ? `${userName}, clock's ticking! ⏰` : 'StreakWar — Clock\'s ticking! ⏰',
+          body: `${currentStreak}-day streak expires at midnight — any workout saves it 🔥`,
           sound: true,
           ...(Platform.OS === 'android' && { channelId: 'default' }),
         },
