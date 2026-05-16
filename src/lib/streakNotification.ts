@@ -61,17 +61,16 @@ export async function scheduleStreakReminder(
       }
     }
 
-    if (currentStreak === 0) return;
-
     const todayStr = toLocalDate(new Date());
+    const hasStreak = currentStreak > 0;
 
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(date.getDate() + i);
       const dateStr = toLocalDate(date);
 
-      // Skip today if already logged
-      if (i === 0 && lastLoggedDate === todayStr) continue;
+      // Skip today if already logged (only relevant when streak is active)
+      if (hasStreak && i === 0 && lastLoggedDate === todayStr) continue;
 
       // Set to 8:00 PM
       date.setHours(20, 0, 0, 0);
@@ -79,11 +78,19 @@ export async function scheduleStreakReminder(
       // If 8 PM today has already passed, skip today
       if (date.getTime() < Date.now()) continue;
 
+      const title = hasStreak
+        ? (userName ? `${userName}, clock's ticking! ⏰` : "StreakWar — Clock's ticking! ⏰")
+        : (userName ? `${userName}, start tonight! 💪` : 'StreakWar — Start your streak tonight! 💪');
+
+      const body = hasStreak
+        ? `${currentStreak}-day streak expires at midnight — any workout saves it 🔥`
+        : 'Log one workout tonight and day 1 is done. Streaks start somewhere!';
+
       await Notifications.scheduleNotificationAsync({
         identifier: `${EVENING_BASE_ID}${dateStr}`,
         content: {
-          title: userName ? `${userName}, clock's ticking! ⏰` : 'StreakWar — Clock\'s ticking! ⏰',
-          body: `${currentStreak}-day streak expires at midnight — any workout saves it 🔥`,
+          title,
+          body,
           sound: true,
           ...(Platform.OS === 'android' && { channelId: 'default' }),
         },
