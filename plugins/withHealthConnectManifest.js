@@ -17,7 +17,7 @@ module.exports = function withHealthConnectManifest(config) {
     const privacyPolicyKey = 'health_permissions_privacy_policy';
     if (!application['meta-data'].some((m) => m.$?.['android:name'] === privacyPolicyKey)) {
       application['meta-data'].push({
-        $: { 'android:name': privacyPolicyKey, 'android:value': 'https://fitbet.fit/streakwar/policy.html' },
+        $: { 'android:name': privacyPolicyKey, 'android:value': 'https://streakwar.is/privacy' },
       });
     }
 

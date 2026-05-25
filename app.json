@@ -42,7 +42,7 @@
     "android": {
       "package": "is.streakwar.app",
       "googleServicesFile": "./google-services.json",
-      "versionCode": 11,
+      "versionCode": 15,
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0C1117"

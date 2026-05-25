@@ -30,6 +30,10 @@ if (Platform.OS === 'android') {
 
 const LAST_SYNC_KEY = 'health_connect_last_sync';
 
+// Stores the last diagnostic message from initHealthConnect() for surface-level debugging.
+let _lastHCDebug = '';
+export function getLastHCDebug(): string { return _lastHCDebug; }
+
 // Distance and ActiveCaloriesBurned are not yet used — only ExerciseSession and Steps.
 const HC_RECORD_TYPES = [
   'ExerciseSession',
@@ -69,35 +73,34 @@ function mapHCExerciseType(typeCode: number): ActivityType {
  */
 export async function initHealthConnect(): Promise<boolean> {
   if (Platform.OS !== 'android' || !HealthConnect) {
-    console.log('[HealthConnect] init failed: platform or package mismatch');
+    _lastHCDebug = `FAIL: platform=${Platform.OS} packageLoaded=${!!HealthConnect}`;
     return false;
   }
   try {
     const { initialize, requestPermission } = HealthConnect;
-    console.log('[HealthConnect] Initializing...');
     const available = await initialize();
-    console.log('[HealthConnect] Available:', available);
-    if (!available) return false;
+    if (!available) {
+      _lastHCDebug = 'FAIL: initialize() returned false — HC not available on device';
+      return false;
+    }
 
     const requested = HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }));
-    console.log('[HealthConnect] Requesting permissions:', requested);
     const granted: any[] = await requestPermission(requested);
-    console.log('[HealthConnect] Permissions granted result:', granted);
+    _lastHCDebug = `OK: granted=${JSON.stringify(granted)}`;
 
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
-  } catch (e) {
+  } catch (e: any) {
+    _lastHCDebug = `CATCH: ${e?.message ?? String(e)}`;
     console.warn('[HealthConnect] requestPermission failed:', e);
     return false;
   }
 }
 
 /**
- * Opens Health Connect settings so the user can grant permissions manually.
- * Uses openHealthConnectSettings() which works on all Android versions and
- * all install methods (sideloaded + Play Store). The deep link approach
- * (android-health-connect://manage-health-permissions/) only works on Android 14+
- * AND only when the app is already registered in HC's connected-apps registry —
- * which requires a prior successful Play Store install. We avoid it entirely.
+ * Opens the Health Connect permissions page for StreakWar.
+ * On Android 14+ with a Play Store install the deep link takes the user directly
+ * to StreakWar's permission toggles. Falls back to general HC settings on older
+ * Android versions or if the deep link is unavailable.
  */
 export async function openHealthConnectPermissions(): Promise<boolean> {
   if (Platform.OS !== 'android') return false;
@@ -106,6 +109,17 @@ export async function openHealthConnectPermissions(): Promise<boolean> {
     const { initialize, openHealthConnectSettings } = HealthConnect;
     const available = await initialize();
     if (!available) return false;
+
+    // Try the direct per-app permissions deep link (Android 14+, Play Store builds).
+    const deepLink = 'android-health-connect://manage-health-permissions/is.streakwar.app';
+    try {
+      const canOpen = await Linking.canOpenURL(deepLink);
+      if (canOpen) {
+        await Linking.openURL(deepLink);
+        return true;
+      }
+    } catch { /* fall through to settings */ }
+
     openHealthConnectSettings();
     return true;
   } catch {

@@ -9,7 +9,7 @@ import * as WebBrowser from 'expo-web-browser';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
-import { openHealthConnectPermissions } from '../lib/healthConnect';
+import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -84,6 +84,9 @@ export default function ConnectDevicesScreen() {
         Alert.alert('Connected!', message);
         return;
       }
+      // Show debug info so we can diagnose why requestPermission() failed
+      Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
+
       // Permissions not granted via dialog — open HC permissions page directly.
       // AppState listener will detect when user returns and check if granted.
       awaitingHCReturn.current = true;

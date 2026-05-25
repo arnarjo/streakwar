@@ -2,12 +2,12 @@ const { withMainActivity } = require('@expo/config-plugins');
 
 /**
  * Patches MainActivity.kt to call HealthConnectPermissionDelegate.setPermissionDelegate(this)
- * in onCreate(). This must happen before onStart() so the ActivityResultLauncher is registered
- * before requestPermission() is ever called — otherwise the library crashes with
- * UninitializedPropertyAccessException.
+ * as the FIRST statement in onCreate(), before super.onCreate(). This is required by
+ * react-native-health-connect v3.x so the ActivityResultLauncher is registered before
+ * onStart() — otherwise requestPermission() silently fails and the app never appears
+ * in Health Connect's "App permissions" list.
  *
- * Expo SDK 50+ generates super.onCreate(null), not super.onCreate(savedInstanceState),
- * so we match super.onCreate(...) with any argument.
+ * See: https://github.com/matinzd/react-native-health-connect (v3.x setup docs)
  */
 module.exports = function withHealthConnectMainActivity(config) {
   return withMainActivity(config, (config) => {
@@ -27,10 +27,10 @@ module.exports = function withHealthConnectMainActivity(config) {
 
     const delegateCall = 'HealthConnectPermissionDelegate.setPermissionDelegate(this)';
     if (!src.includes(delegateCall)) {
-      // Per react-native-health-connect docs: delegate goes AFTER super.onCreate()
-      // so that the React Native bridge is initialised before registering the launcher.
+      // react-native-health-connect v3.x requires the delegate BEFORE super.onCreate()
+      // so the ActivityResultLauncher is registered before onStart() is reached.
       src = src.replace(
-        /(super\.onCreate\([^)]*\))/,
+        /(override fun onCreate\([^)]*\)\s*\{)/,
         `$1\n    ${delegateCall}`
       );
     }
