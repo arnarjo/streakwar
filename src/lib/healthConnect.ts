@@ -77,16 +77,24 @@ export async function initHealthConnect(): Promise<boolean> {
     return false;
   }
   try {
-    const { initialize, requestPermission } = HealthConnect;
+    const { initialize, requestPermission, getGrantedPermissions } = HealthConnect;
     const available = await initialize();
     if (!available) {
       _lastHCDebug = 'FAIL: initialize() returned false — HC not available on device';
       return false;
     }
 
+    // Check already-granted permissions first — requestPermission() returns []
+    // when called again on already-granted permissions on some HC versions.
+    const alreadyGranted: any[] = await getGrantedPermissions();
+    if (alreadyGranted.some((g: any) => g.recordType === 'ExerciseSession')) {
+      _lastHCDebug = `OK: already granted=${JSON.stringify(alreadyGranted)}`;
+      return true;
+    }
+
     const requested = HC_RECORD_TYPES.map(type => ({ accessType: 'read', recordType: type }));
     const granted: any[] = await requestPermission(requested);
-    _lastHCDebug = `OK: granted=${JSON.stringify(granted)}`;
+    _lastHCDebug = `OK: granted=${JSON.stringify(granted)} alreadyGranted=${JSON.stringify(alreadyGranted)}`;
 
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e: any) {

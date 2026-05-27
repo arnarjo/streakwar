@@ -73,9 +73,11 @@ module.exports = function withHealthConnectManifest(config) {
       queries.intent.push({ action: [{ $: { 'android:name': hcIntentAction } }] });
     }
 
-    // Declare android-health-connect:// scheme so Linking.canOpenURL works on Android 11+
+    // Declare android-health-connect:// scheme so Linking.canOpenURL works on Android 11+.
+    // Must include an action so PackageManager.queryIntentActivities() matches correctly.
     if (!queries.intent.some((i) => i.data?.[0]?.$?.['android:scheme'] === 'android-health-connect')) {
       queries.intent.push({
+        action: [{ $: { 'android:name': 'android.intent.action.VIEW' } }],
         data: [{ $: { 'android:scheme': 'android-health-connect' } }],
       });
     }
