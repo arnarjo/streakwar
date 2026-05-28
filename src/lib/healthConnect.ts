@@ -119,14 +119,12 @@ export async function openHealthConnectPermissions(): Promise<boolean> {
     if (!available) return false;
 
     // Try the direct per-app permissions deep link (Android 14+, Play Store builds).
+    // Skip canOpenURL — it returns false on some OEM builds even when the scheme is declared.
     const deepLink = 'android-health-connect://manage-health-permissions/is.streakwar.app';
     try {
-      const canOpen = await Linking.canOpenURL(deepLink);
-      if (canOpen) {
-        await Linking.openURL(deepLink);
-        return true;
-      }
-    } catch { /* fall through to settings */ }
+      await Linking.openURL(deepLink);
+      return true;
+    } catch { /* deep link not supported, fall through to settings */ }
 
     openHealthConnectSettings();
     return true;
