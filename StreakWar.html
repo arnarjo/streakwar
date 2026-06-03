@@ -1,0 +1,293 @@
+/* StreakWar — shared UI primitives */
+(function () {
+  const { useState, useRef, useEffect } = React;
+
+  // ── Device frame (dark navy, seamless status bar + gesture pill) ──
+  function Phone({ children, statusDark = true }) {
+    return (
+      React.createElement('div', { style:{
+        width: 402, height: 858, borderRadius: 44, padding: 5,
+        background: 'linear-gradient(160deg,#2A323D,#0D1117)',
+        boxShadow: '0 40px 90px -20px rgba(0,0,0,.7), 0 0 0 1px rgba(255,255,255,.04)',
+      }},
+        React.createElement('div', { style:{
+          width:'100%', height:'100%', borderRadius:39, overflow:'hidden',
+          background: C.bg, position:'relative', display:'flex', flexDirection:'column',
+        }},
+          // status bar
+          React.createElement('div', { style:{
+            height:46, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'space-between',
+            padding:'0 26px 0 30px', position:'relative', zIndex:5,
+          }},
+            React.createElement('span', { style:{ font:`600 15px ${F.ui}`, color:C.text, letterSpacing:.3 }}, '9:41'),
+            React.createElement('div', { style:{ position:'absolute', left:'50%', top:13, transform:'translateX(-50%)', width:22, height:22, borderRadius:11, background:'#05080C' }}),
+            React.createElement('div', { style:{ display:'flex', alignItems:'center', gap:6, color:C.text }},
+              React.createElement(Icon, { name:'bolt', size:13, color:C.text, stroke:2.2 }),
+              React.createElement('svg', { width:18, height:12, viewBox:'0 0 18 12' },
+                React.createElement('path', { d:'M9 11 1.2 4.2a11 11 0 0 1 15.6 0L9 11Z', fill:C.text })),
+              React.createElement('svg', { width:24, height:12, viewBox:'0 0 24 12' }, [
+                React.createElement('rect', { key:1, x:1, y:1.5, width:19, height:9, rx:2.5, fill:'none', stroke:C.text, strokeOpacity:.5 }),
+                React.createElement('rect', { key:2, x:3, y:3.5, width:13, height:5, rx:1, fill:C.text }),
+                React.createElement('rect', { key:3, x:21, y:4, width:2, height:4, rx:1, fill:C.text, fillOpacity:.5 }),
+              ]),
+            )
+          ),
+          React.createElement('div', { style:{ flex:1, minHeight:0, position:'relative', display:'flex', flexDirection:'column' }}, children),
+          // gesture pill
+          React.createElement('div', { style:{ height:24, flexShrink:0, display:'flex', alignItems:'center', justifyContent:'center', zIndex:5 }},
+            React.createElement('div', { style:{ width:128, height:5, borderRadius:3, background:'rgba(255,255,255,.22)' }})
+          )
+        )
+      )
+    );
+  }
+
+  // ── Screen: scrollable body + optional sticky header ──
+  function Screen({ children, style }) {
+    return React.createElement('div', {
+      className:'sw-scroll', style:{ flex:1, minHeight:0, position:'relative', ...style },
+    }, children);
+  }
+
+  // ── Header (sticky top bar) ──
+  function Header({ title, subtitle, left, right, big, onBack, style }) {
+    return React.createElement('div', { style:{
+      position:'sticky', top:0, zIndex:10, background:a(C.bg,0.86), backdropFilter:'blur(14px)',
+      padding: big ? '14px 20px 14px' : '12px 16px 12px',
+      borderBottom: `1px solid ${C.line2}`, ...style,
+    }},
+      React.createElement('div', { style:{ display:'flex', alignItems:'center', gap:12 }},
+        onBack && React.createElement(IconBtn, { name:'arrowL', onClick:onBack }),
+        left,
+        React.createElement('div', { style:{ flex:1, minWidth:0 }},
+          React.createElement('div', { style:{ font:`700 ${big?28:21}px ${F.disp}`, color:C.text, letterSpacing:big?'-.5px':'-.2px', textTransform: big?'uppercase':'none', lineHeight:1.08, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}, title),
+          subtitle && React.createElement('div', { style:{ font:`500 12.5px ${F.ui}`, color:C.text2, marginTop:2 }}, subtitle),
+        ),
+        right && React.createElement('div', { style:{ display:'flex', alignItems:'center', gap:8 }}, right),
+      )
+    );
+  }
+
+  // ── Buttons ──
+  function Btn({ children, onClick, variant = 'primary', size = 'md', icon, iconR, full, disabled, style }) {
+    const pads = { sm:'8px 14px', md:'12px 18px', lg:'15px 22px' };
+    const fs = { sm:14, md:15.5, lg:17 };
+    const base = {
+      display:'inline-flex', alignItems:'center', justifyContent:'center', gap:8,
+      padding: pads[size], borderRadius:14, border:'1px solid transparent',
+      font:`700 ${fs[size]}px ${F.ui}`, letterSpacing:.2, cursor:'pointer',
+      width: full?'100%':'auto', minHeight: size==='sm'?40:48, whiteSpace:'nowrap',
+      opacity: disabled?0.45:1, pointerEvents: disabled?'none':'auto', ...style,
+    };
+    const variants = {
+      primary: { background:`linear-gradient(180deg,${C.primaryBri},${C.primary})`, color:C.onPrimary, boxShadow:`0 6px 18px -6px ${a(C.primary,.7)}` },
+      solidDark: { background:C.surface2, color:C.text, border:`1px solid ${C.line}` },
+      outline: { background:'transparent', color:C.text, border:`1px solid ${C.line}` },
+      ghost: { background:'transparent', color:C.text2 },
+      danger: { background:a(C.red,.12), color:C.red, border:`1px solid ${a(C.red,.35)}` },
+      success: { background:a(C.green,.14), color:C.green, border:`1px solid ${a(C.green,.4)}` },
+    };
+    return React.createElement('button', { className:'sw-press', onClick, style:{ ...base, ...variants[variant] }},
+      icon && React.createElement(Icon, { name:icon, size:size==='lg'?20:18, color:'currentColor', stroke:2.1 }),
+      children,
+      iconR && React.createElement(Icon, { name:iconR, size:size==='lg'?20:18, color:'currentColor', stroke:2.1 }),
+    );
+  }
+
+  function IconBtn({ name, onClick, color = C.text, bg = C.surface2, size = 42, ic = 20, active, style }) {
+    return React.createElement('button', { className:'sw-tap', onClick, style:{
+      width:size, height:size, borderRadius:13, flexShrink:0,
+      background: active ? a(C.primary,.16) : bg,
+      border:`1px solid ${active ? a(C.primary,.4) : C.line}`,
+      display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', ...style,
+    }}, React.createElement(Icon, { name, size:ic, color: active ? C.primary : color, stroke:2 }));
+  }
+
+  // ── Card ──
+  function Card({ children, onClick, style, pad = 16, glow }) {
+    return React.createElement('div', {
+      className: onClick ? 'sw-press' : '',
+      onClick, style:{
+        background: C.surface, border:`1px solid ${C.line}`, borderRadius:18, padding:pad,
+        cursor:onClick?'pointer':'default', position:'relative',
+        boxShadow: glow ? `0 0 0 1px ${a(C.primary,.25)}, 0 10px 30px -12px ${a(C.primary,.4)}` : 'none',
+        ...style,
+      }}, children);
+  }
+
+  // ── Avatar (initials w/ accent) ──
+  function Avatar({ user, size = 44, ring, onClick, style }) {
+    const u = typeof user === 'string' ? (DB.U[user] || {}) : (user || {});
+    const accent = u.accent || C.primary;
+    const init = u.initials || (u.full_name||'?').split(' ').map(w=>w[0]).join('').slice(0,2);
+    return React.createElement('div', {
+      className: onClick?'sw-tap':'', onClick, style:{
+        width:size, height:size, borderRadius:size, flexShrink:0,
+        background:`linear-gradient(150deg,${a(accent,.32)},${a(accent,.12)})`,
+        border: ring ? `2px solid ${accent}` : `1px solid ${a(accent,.4)}`,
+        display:'flex', alignItems:'center', justifyContent:'center',
+        font:`700 ${size*0.4}px ${F.disp}`, color:accent, letterSpacing:.5,
+        cursor:onClick?'pointer':'default', ...style,
+      }}, init);
+  }
+
+  // ── Tag / Chip ──
+  function Tag({ children, icon, color = C.text2, bg, style }) {
+    return React.createElement('span', { style:{
+      display:'inline-flex', alignItems:'center', gap:5, padding:'4px 9px', borderRadius:8,
+      background: bg || a('#FFFFFF',.05), border:`1px solid ${C.line}`,
+      font:`600 11.5px ${F.ui}`, color, letterSpacing:.2, whiteSpace:'nowrap', ...style,
+    }}, icon && React.createElement(Icon, { name:icon, size:13, color, stroke:2.1 }), children);
+  }
+
+  // ── Segmented tabs ──
+  function SegTabs({ tabs, value, onChange, style }) {
+    return React.createElement('div', { style:{
+      display:'flex', gap:4, padding:4, background:C.surface, border:`1px solid ${C.line}`,
+      borderRadius:14, ...style,
+    }}, tabs.map(t => {
+      const on = t.key === value;
+      return React.createElement('button', { key:t.key, className:'sw-press', onClick:()=>onChange(t.key), style:{
+        flex:1, display:'flex', alignItems:'center', justifyContent:'center', gap:6,
+        padding:'9px 6px', borderRadius:10, border:'none', cursor:'pointer', minHeight:40,
+        background: on ? `linear-gradient(180deg,${C.primaryBri},${C.primary})` : 'transparent',
+        color: on ? C.onPrimary : C.text2, font:`700 13px ${F.ui}`, transition:'all .18s ease',
+      }},
+        t.icon && React.createElement(Icon, { name:t.icon, size:15, color:'currentColor', stroke:2.1 }),
+        t.label);
+    }));
+  }
+
+  // ── Scroll chips (horizontal) ──
+  function ChipRow({ items, value, onChange, style }) {
+    return React.createElement('div', { className:'sw-scroll', style:{ display:'flex', gap:8, overflowX:'auto', ...style }},
+      items.map(it => {
+        const on = it.key === value;
+        return React.createElement('button', { key:it.key, className:'sw-tap', onClick:()=>onChange(it.key), style:{
+          display:'inline-flex', alignItems:'center', gap:6, padding:'9px 14px', borderRadius:11, cursor:'pointer',
+          flexShrink:0, minHeight:40, whiteSpace:'nowrap',
+          background: on ? a(C.primary,.16) : C.surface,
+          border:`1px solid ${on ? a(C.primary,.45) : C.line}`,
+          color: on ? C.primary : C.text2, font:`600 13.5px ${F.ui}`,
+        }}, it.icon && React.createElement(Icon, { name:it.icon, size:15, color:'currentColor', stroke:2.1 }), it.label);
+      }));
+  }
+
+  // ── Progress bar ──
+  function Bar({ value, color = C.primary, h = 6, track, glow, style }) {
+    return React.createElement('div', { style:{ height:h, borderRadius:h, background: track||a('#FFFFFF',.08), overflow:'hidden', ...style }},
+      React.createElement('div', { style:{
+        height:'100%', width:`${Math.max(0,Math.min(100,value*100))}%`,
+        background: typeof color==='string' && color.includes('gradient') ? color : `linear-gradient(90deg,${a(color,.85)},${color})`,
+        borderRadius:h, transformOrigin:'left',
+        boxShadow: glow ? `0 0 10px ${a(color,.6)}` : 'none',
+      }}));
+  }
+
+  // ── Toggle switch ──
+  function Toggle({ on, onChange }) {
+    return React.createElement('button', { onClick:()=>onChange(!on), style:{
+      width:48, height:28, borderRadius:14, border:'none', cursor:'pointer', padding:3, flexShrink:0,
+      background: on ? C.primary : C.surface3, transition:'background .2s ease', position:'relative',
+    }},
+      React.createElement('div', { style:{
+        width:22, height:22, borderRadius:11, background:'#fff',
+        transform: on ? 'translateX(20px)' : 'translateX(0)', transition:'transform .2s cubic-bezier(.4,1.4,.5,1)',
+        boxShadow:'0 1px 3px rgba(0,0,0,.4)',
+      }}));
+  }
+
+  // ── Field (label + input) ──
+  function Field({ label, value, onChange, placeholder, type='text', icon, right, error, multiline, onFocus, style, inputStyle }) {
+    const [foc, setFoc] = useState(false);
+    return React.createElement('div', { style },
+      label && React.createElement('div', { style:{ font:`700 10.5px ${F.ui}`, letterSpacing:1.4, color:C.text2, marginBottom:8, textTransform:'uppercase' }}, label),
+      React.createElement('div', { style:{
+        display:'flex', alignItems: multiline?'flex-start':'center', gap:10, padding: multiline?'13px 14px':'0 14px',
+        minHeight:50, background:C.surface2, borderRadius:13,
+        border:`1.5px solid ${error ? C.red : foc ? a(C.primary,.6) : C.line}`, transition:'border-color .15s ease',
+      }},
+        icon && React.createElement(Icon, { name:icon, size:18, color: foc?C.primary:C.text3, stroke:2, style:{ flexShrink:0, marginTop:multiline?2:0 }}),
+        React.createElement(multiline ? 'textarea' : 'input', {
+          value, type, placeholder,
+          onChange: e=>onChange(e.target.value),
+          onFocus: ()=>{ setFoc(true); onFocus&&onFocus(); }, onBlur:()=>setFoc(false),
+          rows: multiline?3:undefined,
+          style:{ flex:1, background:'transparent', border:'none', color:C.text, font:`500 15.5px ${F.ui}`,
+            padding: multiline?0:'14px 0', resize:'none', lineHeight:1.5, ...inputStyle },
+        }),
+        right,
+      ),
+      error && React.createElement('div', { style:{ font:`500 12px ${F.ui}`, color:C.red, marginTop:6 }}, error),
+    );
+  }
+
+  // ── Skeleton ──
+  function Skel({ w='100%', h=14, r=7, style }) {
+    return React.createElement('div', { className:'sw-skel', style:{ width:w, height:h, borderRadius:r, ...style }});
+  }
+
+  // ── Bottom sheet ──
+  function Sheet({ open, onClose, children, title }) {
+    if (!open) return null;
+    return React.createElement('div', { onClick:onClose, style:{
+      position:'absolute', inset:0, zIndex:60, background:'rgba(2,5,10,.62)',
+      backdropFilter:'blur(3px)', display:'flex', flexDirection:'column', justifyContent:'flex-end',
+    }},
+      React.createElement('div', { onClick:e=>e.stopPropagation(), style:{
+        background:`linear-gradient(180deg,${C.surface},${C.bg})`, borderTopLeftRadius:26, borderTopRightRadius:26,
+        borderTop:`1px solid ${C.line}`, padding:'12px 20px 30px',
+        maxHeight:'88%', display:'flex', flexDirection:'column',
+      }},
+        React.createElement('div', { style:{ width:40, height:5, borderRadius:3, background:C.surface3, alignSelf:'center', marginBottom:16 }}),
+        title && React.createElement('div', { style:{ font:`700 22px ${F.disp}`, color:C.text, letterSpacing:'-.3px', marginBottom:14, textTransform:'uppercase' }}, title),
+        React.createElement('div', { className:'sw-scroll', style:{ overflowY:'auto' }}, children),
+      )
+    );
+  }
+
+  // ── Center modal ──
+  function Modal({ open, onClose, children, w = 320 }) {
+    if (!open) return null;
+    return React.createElement('div', { onClick:onClose, style:{
+      position:'absolute', inset:0, zIndex:60, background:'rgba(2,5,10,.66)', backdropFilter:'blur(3px)',
+      display:'flex', alignItems:'center', justifyContent:'center', padding:24,
+    }},
+      React.createElement('div', { onClick:e=>e.stopPropagation(), style:{
+        width:w, maxWidth:'100%', background:`linear-gradient(180deg,${C.surface2},${C.surface})`,
+        border:`1px solid ${C.line}`, borderRadius:24, padding:24,
+      }}, children)
+    );
+  }
+
+  // ── Activity badge (icon in tinted circle) ──
+  function ActIcon({ act, size = 44, color = C.primary, style }) {
+    return React.createElement('div', { style:{
+      width:size, height:size, borderRadius:14, flexShrink:0,
+      background:a(color,.14), border:`1px solid ${a(color,.28)}`,
+      display:'flex', alignItems:'center', justifyContent:'center', ...style,
+    }}, React.createElement(Icon, { name: ACT_ICON[act]||'other', size:size*0.5, color, stroke:2 }));
+  }
+
+  // ── Stat tile ──
+  function Stat({ icon, value, label, color = C.text, style }) {
+    return React.createElement('div', { style:{
+      flex:1, background:C.surface, border:`1px solid ${C.line}`, borderRadius:16, padding:'14px 12px',
+      display:'flex', flexDirection:'column', gap:5, ...style,
+    }},
+      icon && React.createElement(Icon, { name:icon, size:18, color, stroke:2 }),
+      React.createElement('div', { style:{ font:`700 26px ${F.disp}`, color:C.text, letterSpacing:'-.3px', lineHeight:1 }}, value),
+      React.createElement('div', { style:{ font:`600 11.5px ${F.ui}`, color:C.text2 }}, label),
+    );
+  }
+
+  // section label
+  function SLabel({ children, style }) {
+    return React.createElement('div', { style:{ font:`700 11px ${F.ui}`, letterSpacing:1.6, color:C.text2, textTransform:'uppercase', ...style }}, children);
+  }
+
+  Object.assign(window, {
+    Phone, Screen, Header, Btn, IconBtn, Card, Avatar, Tag, SegTabs, ChipRow,
+    Bar, Toggle, Field, Skel, Sheet, Modal, ActIcon, Stat, SLabel,
+  });
+})();
