@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, RefreshControl, Share, Image, Alert,
+  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -87,8 +87,8 @@ export default function ChallengeDetailScreen() {
 
   async function shareInvite() {
     if (!challenge) return;
-    const msg = `Keppum saman á StreakWar! 🔥\n\nTaktu þátt í "${challenge.name}" — hlaupaðu, hreyfðu þig og safnaðu stigum.\n\nKóði: ${challenge.invite_code}\n\nSæktu StreakWar: https://streakwar.is`;
-    await Share.share({ message: msg, title: `Boð í ${challenge.name}` });
+    const msg = `Let's compete together on StreakWar! 🔥\n\nJoin "${challenge.name}" — run, move, and rack up points.\n\nCode: ${challenge.invite_code}\n\nDownload StreakWar: https://streakwar.is`;
+    await Share.share({ message: msg, title: `Invite to ${challenge.name}` });
   }
 
   async function shareMyRank() {
@@ -97,7 +97,7 @@ export default function ChallengeDetailScreen() {
     if (!canShare) {
       // Fallback to text share if image sharing not available
       await Share.share({
-        message: `Ég er #${myParticipant.rank ?? '?'} í "${challenge.name}" með ${myParticipant.score} stig á StreakWar! 💪\n\nKóði: ${challenge.invite_code}`,
+        message: `I'm #${myParticipant.rank ?? '?'} in "${challenge.name}" with ${myParticipant.score} points on StreakWar! 💪\n\nCode: ${challenge.invite_code}`,
       });
       return;
     }
@@ -107,16 +107,20 @@ export default function ChallengeDetailScreen() {
       if (!uri) throw new Error('Capture failed');
       await Sharing.shareAsync(uri, {
         mimeType: 'image/png',
-        dialogTitle: `Deila stöðu í ${challenge.name}`,
+        dialogTitle: `Share your rank in ${challenge.name}`,
       });
     } catch {
-      Alert.alert('Villa', 'Ekki tókst að taka skjámynd. Reyndu aftur.');
+      Alert.alert('Error', 'Could not capture screenshot. Please try again.');
     } finally {
       setSharingCard(false);
     }
   }
 
-  if (!challenge) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
+  if (!challenge) return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+    </View>
+  );
 
   const myParticipant = participants.find(p => p.user_id === profile?.id);
   const podium = participants.slice(0, 3);
@@ -187,7 +191,7 @@ export default function ChallengeDetailScreen() {
                     activeOpacity={0.8}
                   >
                     <Text style={s.shareRankBtnText}>
-                      {sharingCard ? '...' : '📤 Deila stöðu minni'}
+                      {sharingCard ? '...' : '📤 Share my rank'}
                     </Text>
                   </TouchableOpacity>
                 </View>

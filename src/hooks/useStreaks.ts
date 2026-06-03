@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { scheduleStreakReminder } from '../lib/streakNotification';
+import { toLocalDate } from '../lib/dateUtils';
 import type { UserStreak } from '../types/database';
 
 /**
@@ -11,8 +12,10 @@ import type { UserStreak } from '../types/database';
 async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
   if (!data.last_active_date || data.current_streak === 0) return data;
 
-  const today = new Date().toISOString().slice(0, 10);
-  const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+  const today = toLocalDate(new Date());
+  const yesterdayDate = new Date();
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
+  const yesterday = toLocalDate(yesterdayDate);
 
   if (data.last_active_date >= yesterday) return data; // still active
 
@@ -47,7 +50,7 @@ export function useStreaks(userId: string) {
 
   const fetchFreezeState = useCallback(async () => {
     if (!userId) return;
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDate(new Date());
     const [{ data: profile }, { data: freeze }] = await Promise.all([
       supabase.from('profiles').select('streak_freeze_credits').eq('id', userId).single(),
       supabase.from('streak_freeze_uses').select('id').eq('user_id', userId).eq('freeze_date', today).maybeSingle(),

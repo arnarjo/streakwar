@@ -1,14 +1,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
-  ActivityIndicator, ScrollView, Platform,
+  ActivityIndicator, ScrollView, Platform, Alert,
 } from 'react-native';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { PremiumOffering } from '../hooks/usePremium';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.08)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316', gold: '#FBBF24',
+  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', gold: '#FBBF24',
 };
 
 const PRO_FEATURES = [
@@ -31,7 +31,9 @@ interface Props {
 
 export default function UpgradeModal({ visible, onClose, offering, onPurchase, onRestore, reason }: Props) {
   const [loading, setLoading] = useState<'monthly' | 'yearly' | 'restore' | null>(null);
-  const [selected, setSelected] = useState<'monthly' | 'yearly'>('yearly');
+  const [selected, setSelected] = useState<'monthly' | 'yearly'>(
+    offering.yearly ? 'yearly' : 'monthly'
+  );
 
   async function handlePurchase() {
     const pkg = selected === 'yearly' ? offering.yearly : offering.monthly;
@@ -39,13 +41,20 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
     setLoading(selected);
     const success = await onPurchase(pkg);
     setLoading(null);
-    if (success) onClose();
+    if (success) {
+      onClose();
+    } else {
+      Alert.alert('Purchase failed', 'Something went wrong. Please try again or restore your purchases.');
+    }
   }
 
   async function handleRestore() {
     setLoading('restore');
-    await onRestore();
+    const success = await onRestore();
     setLoading(null);
+    if (!success) {
+      Alert.alert('Nothing to restore', 'No previous purchases found for this account.');
+    }
   }
 
   const monthlyPrice = offering.monthly?.product.priceString ?? '$4.99';
@@ -59,8 +68,12 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
 
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
           <Text style={s.badge}>STREAKWAR PRO</Text>
-          <Text style={s.headline}>Unlock your{'\n'}full potential ⚡</Text>
+          <Text style={s.headline}>Win more{'\n'}challenges 🏆</Text>
           {reason ? <Text style={s.reason}>{reason}</Text> : null}
+
+          <View style={s.socialProof}>
+            <Text style={s.socialProofText}>⭐ Pro users win 3× more challenges</Text>
+          </View>
 
           <View style={s.featureList}>
             {PRO_FEATURES.map(f => (
@@ -72,12 +85,14 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
           </View>
 
           {noRcKey ? (
-            <View style={s.comingSoon}>
-              <Text style={s.comingSoonText}>
-                RevenueCat not configured yet.{'\n'}
-                Add EXPO_PUBLIC_REVENUECAT_API_KEY_{Platform.OS.toUpperCase()} to eas.json.
-              </Text>
-            </View>
+            __DEV__ ? (
+              <View style={s.comingSoon}>
+                <Text style={s.comingSoonText}>
+                  RevenueCat not configured yet.{'\n'}
+                  Add EXPO_PUBLIC_REVENUECAT_API_KEY_{Platform.OS.toUpperCase()} to eas.json.
+                </Text>
+              </View>
+            ) : null
           ) : (
             <>
               <View style={s.plans}>
@@ -88,7 +103,15 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
                   <View style={s.saveBadge}><Text style={s.saveBadgeText}>BEST VALUE</Text></View>
                   <Text style={s.planTitle}>Yearly</Text>
                   <Text style={s.planPrice}>{yearlyPrice}</Text>
-                  <Text style={s.planSub}>~$2.92/month</Text>
+                  {(() => {
+                    const yearlyProduct = offering.yearly?.product;
+                    if (yearlyProduct?.price && yearlyProduct.price > 0) {
+                      const monthlyPrice = yearlyProduct.price / 12;
+                      const symbol = yearlyProduct.priceString?.replace(/[\d.,\s]/g, '').trim() ?? '$';
+                      return <Text style={s.planSub}>~{symbol}{monthlyPrice.toFixed(2)}/month</Text>;
+                    }
+                    return <Text style={s.planSub}>~$2.92/month</Text>;
+                  })()}
                 </TouchableOpacity>
 
                 <TouchableOpacity
@@ -142,9 +165,11 @@ const s = StyleSheet.create({
   badge: { alignSelf: 'center', backgroundColor: C.gold + '20', borderWidth: 1, borderColor: C.gold + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 1.5, marginBottom: 16 },
   headline: { fontSize: 32, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 38, marginBottom: 8 },
   reason: { fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  socialProof: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E30', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'center', marginBottom: 20 },
+  socialProofText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
   featureList: { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12, marginBottom: 24 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  featureIcon: { fontSize: 20, width: 28, textAlign: 'center' },
+  featureIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   featureText: { fontSize: 15, color: C.text, fontWeight: '600', flex: 1 },
   plans: { flexDirection: 'row', gap: 10, marginBottom: 16 },
   plan: { flex: 1, backgroundColor: C.card, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
@@ -154,8 +179,8 @@ const s = StyleSheet.create({
   planTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   planPrice: { fontSize: 22, fontWeight: '900', color: C.text },
   planSub: { fontSize: 11, color: C.muted },
-  ctaBtn: { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 18, alignItems: 'center', marginBottom: 12 },
-  ctaBtnText: { fontSize: 17, fontWeight: '800', color: '#000' },
+  ctaBtn: { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 20, alignItems: 'center', marginBottom: 12 },
+  ctaBtnText: { fontSize: 18, fontWeight: '800', color: '#000' },
   legal: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 16, marginBottom: 16 },
   restoreBtn: { alignItems: 'center', paddingVertical: 8 },
   restoreText: { color: C.muted, fontSize: 13, fontWeight: '600' },

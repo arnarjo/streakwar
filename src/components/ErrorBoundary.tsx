@@ -15,7 +15,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
     return (
       <View style={s.container}>
         <Text style={s.emoji}>⚡</Text>
-        <Text style={s.title}>Eitthvað fór úrskeiðis</Text>
+        <Text style={s.title}>Something went wrong</Text>
         <Text style={s.errorMsg} selectable>
           {this.state.error?.message ?? 'Unknown error'}
         </Text>
@@ -25,7 +25,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
           </Text>
         )}
         <TouchableOpacity style={s.btn} onPress={() => this.setState({ hasError: false, error: null })}>
-          <Text style={s.btnText}>Reyna aftur</Text>
+          <Text style={s.btnText}>Try again</Text>
         </TouchableOpacity>
       </View>
     );

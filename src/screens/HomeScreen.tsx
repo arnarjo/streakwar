@@ -1,8 +1,11 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
-  TouchableOpacity, StatusBar, Animated,
+  TouchableOpacity, StatusBar, Animated as RNAnimated,
 } from 'react-native';
+import ReAnimated, {
+  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
+} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
@@ -17,12 +20,13 @@ import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
 import type { MilestoneItem } from '../components/StreakMilestoneCard';
+import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
+  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
 };
 
 export default function HomeScreen() {
@@ -35,13 +39,28 @@ export default function HomeScreen() {
   const { myTier, myRank, members: leagueMembers } = useLeague(profile?.id ?? '');
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
   const daysUntilSunday = (() => {
-    const d = new Date().getDay(); // 0=Sun
+    const d = new Date().getDay();
     return d === 0 ? 7 : 7 - d;
   })();
-  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
 
-  async function fetchMilestones() {
+  const streakGlowOpacity = useSharedValue(0.06);
+  useEffect(() => {
+    streakGlowOpacity.value = withRepeat(
+      withSequence(
+        withTiming(0.18, { duration: 1800 }),
+        withTiming(0.06, { duration: 1800 }),
+      ),
+      -1,
+      false,
+    );
+  }, []);
+  const streakGlowStyle = useAnimatedStyle(() => ({
+    opacity: streakGlowOpacity.value,
+  }));
+
+  const fetchMilestones = useCallback(async () => {
     if (!profile?.id) return;
     const { data: parts } = await supabase
       .from('challenge_participants')
@@ -88,7 +107,7 @@ export default function HomeScreen() {
       const r = reactionsByMilestone.get(m.id);
       return { ...m, reaction_counts: r?.counts ?? {}, my_reaction: r?.myReaction ?? null };
     }));
-  }
+  }, [profile?.id]);
 
   async function handleShare() {
     await Share.share({
@@ -103,12 +122,12 @@ export default function HomeScreen() {
     fetchFeed();
     fetchWeekly();
     fetchMilestones();
-    Animated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
-  }, []);
+    RNAnimated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
+  }, [fetchMilestones, fetchFeed, fetchWeekly]);
 
   const onRefresh = useCallback(async () => {
     await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones()]);
-  }, [fetchFeed, refreshChallenges, fetchWeekly]);
+  }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones]);
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
 
@@ -117,29 +136,34 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <View>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
+          <View style={s.headerAvatar}>
+            <Text style={s.headerAvatarText}>
+              {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
+        <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.greeting}>
-            Hey{profile?.full_name ? `, ${profile.full_name.split(' ')[0]}` : ''}! 👋
+            Hæ, {profile?.full_name?.split(' ')[0] ?? 'there'}!
           </Text>
-          <Text style={s.subGreeting}>What's your workout today?</Text>
+          <Text style={s.subGreeting}>Ready to move today?</Text>
         </View>
+
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
-            <TouchableOpacity
-              style={s.rankBadge}
-              onPress={() => navigation.navigate('Leaderboard')}
-            >
-              <Text style={s.rankPts}>{(profile!.total_points).toLocaleString()}</Text>
-              <Text style={s.rankLabel}>pts  ⭐</Text>
+            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
+              <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <Animated.View style={{ flex: 1, opacity: fadeAnim }}>
+      <RNAnimated.View style={{ flex: 1, opacity: fadeAnim }}>
         <FlatList
           data={feed}
           keyExtractor={item => item.id}
@@ -148,56 +172,86 @@ export default function HomeScreen() {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           ListHeaderComponent={
             <>
-              {streak && streak.current_streak > 0 && (
-                <TouchableOpacity style={s.streakBanner} onPress={handleShare} activeOpacity={0.85}>
-                  <Text style={s.streakFire}>🔥</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.streakCount}>{streak.current_streak}-day streak</Text>
-                    <Text style={s.streakSub}>Best streak: {streak.longest_streak} days</Text>
+              {streak && streak.current_streak > 0 && (() => {
+                const toNext = 10 - (streak.current_streak % 10);
+                const milestone = Math.ceil(streak.current_streak / 10) * 10;
+                const progress = (streak.current_streak % 10) / 10 * 100;
+                return (
+                  <View style={{ position: 'relative', marginBottom: 14 }}>
+                    <ReAnimated.View style={[
+                      {
+                        position: 'absolute',
+                        top: -6, left: -6, right: -6, bottom: -6,
+                        borderRadius: 28,
+                        backgroundColor: '#F97316',
+                      },
+                      streakGlowStyle,
+                    ]} />
+                    <View style={[s.streakHero, { marginBottom: 0 }]}>
+                      <View style={s.streakHeroTop}>
+                        <View style={s.streakHeroLeft}>
+                          <Text style={s.streakHeroNumber}>{streak.current_streak}</Text>
+                          <Text style={s.streakHeroUnit}>day streak</Text>
+                          {streak.longest_streak > 0 && (
+                            <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
+                          )}
+                        </View>
+                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
+                          <Text style={s.streakShareText}>📤  Share</Text>
+                        </TouchableOpacity>
+                      </View>
+                      <View style={s.streakProgress}>
+                        <View style={[s.streakProgressFill, { width: `${Math.min(100, progress)}%` as any }]} />
+                      </View>
+                      <View style={s.streakProgressRow}>
+                        <Text style={s.streakProgressLabel}>
+                          <Text style={s.streakProgressToNext}>{toNext}</Text>
+                          {` days to ${milestone}-day milestone`}
+                        </Text>
+                        <Text style={s.streakMilestoneRight}>{milestone} 🔥</Text>
+                      </View>
+                    </View>
                   </View>
-                  <Text style={s.streakShare}>📤</Text>
+                );
+              })()}
+
+              {streak && streak.current_streak === 0 && (
+                <TouchableOpacity style={s.streakStart} onPress={() => navigation.navigate('LogWorkout')} activeOpacity={0.85}>
+                  <Text style={s.streakStartTitle}>Start your streak today! 🔥</Text>
+                  <Text style={s.streakStartSub}>Log one workout to begin your journey.</Text>
                 </TouchableOpacity>
               )}
 
               {leagueMembers.length > 0 && myRank !== null && (
-                <TouchableOpacity
-                  style={s.leagueBanner}
-                  onPress={() => navigation.navigate('Leaderboard')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.leagueBannerEmoji}>{tierMeta?.emoji ?? '🥉'}</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.leagueBannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>
-                      #{myRank} in {tierMeta?.label} League
-                    </Text>
-                    <Text style={s.leagueBannerSub}>
-                      {daysUntilSunday} day{daysUntilSunday !== 1 ? 's' : ''} left · {leagueMembers.length} competitors
-                    </Text>
+                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                  <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
+                    <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
                   </View>
-                  <Text style={s.leagueBannerArrow}>→</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[s.bannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>#{myRank} in {tierMeta?.label} League</Text>
+                    <Text style={s.bannerSub}>{daysUntilSunday} days left · {leagueMembers.length} competitors</Text>
+                  </View>
+                  <Text style={s.bannerChev}>›</Text>
                 </TouchableOpacity>
               )}
 
               {rival && (
-                <TouchableOpacity
-                  style={s.rivalBanner}
-                  onPress={() => navigation.navigate('Leaderboard')}
-                  activeOpacity={0.85}
-                >
-                  <Text style={s.rivalEmoji}>🎯</Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.rivalTitle}>
-                      {rival.full_name ?? rival.username} er {rivalDiff} {rivalDiff === 1 ? 'stigi' : 'stigum'} á undan þér
-                    </Text>
-                    <Text style={s.rivalSub}>Sjá leaderboard →</Text>
+                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                  <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
+                    <Text style={{ fontSize: 22 }}>🎯</Text>
                   </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.bannerTitle}>{rival.full_name ?? rival.username} is {rivalDiff} pts ahead</Text>
+                    <Text style={s.bannerSub}>Your rival this week · catch up</Text>
+                  </View>
+                  <Text style={s.bannerChev}>›</Text>
                 </TouchableOpacity>
               )}
 
               {activeChallenges.length > 0 && (
                 <View style={s.section}>
                   <View style={s.sectionHeader}>
-                    <Text style={s.sectionTitle}>Active challenges</Text>
+                    <Text style={s.sectionLabel}>Active challenges</Text>
                     <TouchableOpacity onPress={() => navigation.navigate('Challenges')}>
                       <Text style={s.seeAll}>See all →</Text>
                     </TouchableOpacity>
@@ -206,6 +260,7 @@ export default function HomeScreen() {
                     <ChallengeCard
                       key={c.id}
                       challenge={c}
+                      compact
                       onPress={() => navigation.navigate('ChallengeDetail', { challengeId: c.id })}
                     />
                   ))}
@@ -214,16 +269,18 @@ export default function HomeScreen() {
 
               {milestones.length > 0 && (
                 <View style={s.section}>
-                  <Text style={s.sectionTitle}>🏅 Streak milestones</Text>
+                  <Text style={s.sectionLabel}>Streak milestones</Text>
                   {milestones.map(m => (
                     <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
                   ))}
                 </View>
               )}
 
-              <View style={s.sectionHeader}>
-                <Text style={s.sectionTitle}>Feed</Text>
-              </View>
+              {!loading && feed.length > 0 && (
+                <View style={s.sectionHeader}>
+                  <Text style={s.sectionLabel}>Friends feed</Text>
+                </View>
+              )}
             </>
           }
           renderItem={({ item }) => (
@@ -238,7 +295,11 @@ export default function HomeScreen() {
             />
           )}
           ListEmptyComponent={
-            !loading ? (
+            loading ? (
+              <View style={{ paddingHorizontal: 16 }}>
+                {[1, 2, 3].map(k => <WorkoutPostSkeleton key={k} />)}
+              </View>
+            ) : (
               <View style={s.empty}>
                 <Text style={s.emptyEmoji}>🏃</Text>
                 <Text style={s.emptyTitle}>Feed is empty</Text>
@@ -249,38 +310,74 @@ export default function HomeScreen() {
                   <Text style={s.emptyBtnText}>Discover challenges</Text>
                 </TouchableOpacity>
               </View>
-            ) : null
+            )
           }
         />
-      </Animated.View>
+      </RNAnimated.View>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
+  headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
   greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
-  subGreeting: { fontSize: 13, color: C.muted, marginTop: 2 },
+  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center' },
+  rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   rankPts: { fontSize: 13, fontWeight: '900', color: C.primary },
-  rankLabel: { fontSize: 9, color: C.muted, fontWeight: '600' },
-  logBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  logBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  logBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
+  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
-  streakBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.primary + '15', borderWidth: 1, borderColor: C.primary + '30', borderRadius: 14, padding: 14, marginBottom: 10 },
-  streakFire: { fontSize: 32 },
-  streakCount: { fontSize: 16, fontWeight: '800', color: C.primary },
-  streakSub: { fontSize: 12, color: C.muted, marginTop: 2 },
-  streakShare: { fontSize: 18 },
-  rivalBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1E1428', borderWidth: 1, borderColor: '#7C3AED40', borderRadius: 14, padding: 14, marginBottom: 16 },
-  rivalEmoji: { fontSize: 28 },
-  rivalTitle: { fontSize: 14, fontWeight: '700', color: C.text },
-  rivalSub: { fontSize: 12, color: '#7C3AED', marginTop: 2, fontWeight: '600' },
+  streakHero: {
+    backgroundColor: C.card,
+    borderWidth: 1,
+    borderColor: C.primary + '30',
+    borderRadius: 22,
+    padding: 20,
+    marginBottom: 0,
+    overflow: 'hidden',
+    shadowColor: C.primary,
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.35,
+    shadowRadius: 32,
+    elevation: 12,
+  },
+  streakHeroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
+  streakHeroLeft: { gap: 2 },
+  streakHeroNumber: { fontSize: 64, fontWeight: '800', color: C.primary, letterSpacing: -2, lineHeight: 60 },
+  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text },
+  streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.muted },
+  streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
+  streakProgress: { height: 7, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
+  streakProgressFill: { height: '100%' as any, backgroundColor: C.primary, borderRadius: 4 },
+  streakProgressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  streakProgressLabel: { fontSize: 12, fontWeight: '500', color: C.muted },
+  streakProgressToNext: { fontSize: 12, fontWeight: '700', color: C.text },
+  streakMilestoneRight: { fontSize: 12, fontWeight: '700', color: C.primary },
+  streakStart: {
+    backgroundColor: C.primary + '12',
+    borderWidth: 1.5,
+    borderColor: C.primary + '30',
+    borderRadius: 18,
+    padding: 18,
+    marginBottom: 12,
+    alignItems: 'center',
+    gap: 4,
+  },
+  streakStartTitle: { fontSize: 16, fontWeight: '800', color: C.primary },
+  streakStartSub: { fontSize: 13, color: C.muted },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: 10, borderRadius: 16, backgroundColor: C.card, borderWidth: 1 },
+  bannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  bannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
+  bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
+  bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  sectionTitle: { fontSize: 15, fontWeight: '800', color: C.text, letterSpacing: -0.2 },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
   emptyEmoji: { fontSize: 48 },
@@ -288,9 +385,4 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
   emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
-  leagueBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1C1828', borderWidth: 1, borderColor: '#7C3AED30', borderRadius: 14, padding: 14, marginBottom: 10 },
-  leagueBannerEmoji: { fontSize: 28 },
-  leagueBannerTitle: { fontSize: 15, fontWeight: '800' },
-  leagueBannerSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
-  leagueBannerArrow: { fontSize: 18, color: '#7C3AED', fontWeight: '700' },
 });

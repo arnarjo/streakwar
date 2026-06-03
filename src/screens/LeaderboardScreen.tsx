@@ -14,7 +14,7 @@ import type { LeaderboardEntry, LeagueTier } from '../types/database';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
+  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
   gold: '#F59E0B', silver: '#9CA3AF', bronze: '#B45309',
 };
 
@@ -80,12 +80,12 @@ export default function LeaderboardScreen() {
       );
       const json = await resp.json();
       if (resp.status === 429) {
-        Alert.alert('Þegar sent', 'Þú hefur þegar hvatt þennan í dag.');
+        Alert.alert('Already sent', 'You have already nudged this person today.');
       } else if (json.success) {
         setNudgedToday(prev => new Set(prev).add(receiverId));
       }
     } catch {
-      Alert.alert('Villa', 'Gat ekki sent.');
+      Alert.alert('Error', 'Could not send nudge.');
     }
     setNudgeSending(false);
     setNudgeTarget(null);
@@ -128,7 +128,13 @@ export default function LeaderboardScreen() {
     const pts = tab === 'week' ? (item.weekly_points ?? 0) : item.total_points;
 
     return (
-      <View style={[s.row, isMe && s.rowMe]}>
+      <View style={[
+        s.row,
+        isMe && s.rowMe,
+        rank === 1 && s.rowGold,
+        rank === 2 && s.rowSilver,
+        rank === 3 && s.rowBronze,
+      ]}>
         <Text style={[s.rank, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
 
         <View style={[s.avatar, isMe && s.avatarMe]}>
@@ -180,7 +186,9 @@ export default function LeaderboardScreen() {
         <View>
           <Text style={s.title}>Leaderboard</Text>
           <Text style={s.subtitle}>
-            {myRank ? `#${myRank} ${tab === 'week' ? 'this week' : 'globally'}` : 'Log workouts to rank up'}
+            {myRank
+              ? `#${myRank} ${tab === 'week' ? 'this week' : 'globally'} · ${myRank === 1 ? 'You\'re leading! 🥇' : `Keep pushing to reach #${myRank - 1}!`}`
+              : 'Log workouts to rank up'}
           </Text>
         </View>
         <View style={s.headerRight}>
@@ -239,7 +247,15 @@ export default function LeaderboardScreen() {
               <Text style={[{ fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 }, { color: tierMeta?.color ?? '#B45309' }]}>
                 {tierMeta?.emoji} {tierMeta?.label} League
               </Text>
-              <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>Top 5 promote · Bottom 5 relegate</Text>
+              {(() => {
+                const dayOfWeek = new Date().getDay(); // 0=Sun
+                const daysLeft = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+                return (
+                  <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+                    Top 5 promote · Bottom 5 relegate · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
+                  </Text>
+                );
+              })()}
               {leagueMembers.length === 0 && !leagueLoading && (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 }}>
@@ -262,6 +278,9 @@ export default function LeaderboardScreen() {
                 isMe && s.leagueRowMe,
                 isPromotion && s.leagueRowPromotion,
                 isRelegation && s.leagueRowRelegation,
+                rank === 1 && s.leagueRowGold,
+                rank === 2 && s.leagueRowSilver,
+                rank === 3 && s.leagueRowBronze,
               ]}>
                 <Text style={[s.leagueRankText, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
                 <View style={s.leagueAvatar}>
@@ -293,7 +312,7 @@ export default function LeaderboardScreen() {
       <Modal visible={!!nudgeTarget} transparent animationType="fade" onRequestClose={() => setNudgeTarget(null)}>
         <TouchableOpacity style={s.modalOverlay} activeOpacity={1} onPress={() => setNudgeTarget(null)}>
           <View style={s.nudgeModal}>
-            <Text style={s.nudgeModalTitle}>Hvetja {nudgeTarget?.name?.split(' ')[0]}</Text>
+            <Text style={s.nudgeModalTitle}>Nudge {nudgeTarget?.name?.split(' ')[0]}</Text>
             <View style={s.nudgeEmojiRow}>
               {NUDGE_EMOJIS.map(emoji => (
                 <TouchableOpacity
@@ -328,6 +347,36 @@ export default function LeaderboardScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={renderRow}
+          ListFooterComponent={(() => {
+            const userInData = data.some(item => item.id === userId);
+            if (userInData || myRank === null || !profile) return null;
+            const myPts = tab === 'week'
+              ? (weeklyBoard.find(p => p.id === userId)?.weekly_points ?? 0)
+              : (profile.total_points ?? 0);
+            const myInitials = (profile.full_name ?? profile.username ?? '?')
+              .trim().split(/\s+/).map((w: string) => w[0] ?? '').filter(Boolean).join('').slice(0, 2).toUpperCase();
+            return (
+              <View style={s.pinnedFooter}>
+                <Text style={s.pinnedLabel}>YOUR POSITION</Text>
+                <View style={[s.row, s.rowMe]}>
+                  <Text style={[s.rank, { color: C.primary }]}>#{myRank}</Text>
+                  <View style={[s.avatar, s.avatarMe]}>
+                    <Text style={[s.avatarText, { color: C.primary }]}>{myInitials}</Text>
+                  </View>
+                  <View style={s.info}>
+                    <Text style={s.name} numberOfLines={1}>
+                      {profile.full_name ?? profile.username} (you)
+                    </Text>
+                    <Text style={s.username}>@{profile.username}</Text>
+                  </View>
+                  <View style={s.ptsBadge}>
+                    <Text style={[s.pts, { color: C.primary }]}>{myPts.toLocaleString()}</Text>
+                    <Text style={s.ptsLabel}>pts</Text>
+                  </View>
+                </View>
+              </View>
+            );
+          })()}
           ListEmptyComponent={
             !loading ? (
               <View style={s.empty}>
@@ -375,6 +424,9 @@ const s = StyleSheet.create({
   list:         { paddingHorizontal: 16, paddingBottom: 100 },
   row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
   rowMe:        { borderColor: C.primary + '50', backgroundColor: C.primary + '08' },
+  rowGold:      { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
+  rowSilver:    { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
+  rowBronze:    { borderLeftWidth: 3, borderLeftColor: '#B45309' },
   rank:         { width: 30, fontSize: 13, fontWeight: '800', textAlign: 'center' },
   avatar:       { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E2A35', alignItems: 'center', justifyContent: 'center' },
   avatarMe:     { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
@@ -383,7 +435,7 @@ const s = StyleSheet.create({
   name:         { fontSize: 14, fontWeight: '700', color: C.text },
   username:     { fontSize: 11, color: C.muted, marginTop: 1 },
   ptsBadge:     { alignItems: 'flex-end' },
-  pts:          { fontSize: 15, fontWeight: '900', color: C.text },
+  pts:          { fontSize: 16, fontWeight: '900', color: C.text },
   ptsLabel:     { fontSize: 9, color: C.muted, fontWeight: '600' },
   followBtn:    { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   followingBtn: { backgroundColor: C.primary },
@@ -397,14 +449,17 @@ const s = StyleSheet.create({
   leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
   leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
   leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  leagueRowRelegation:{ borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  leagueRowGold:       { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
+  leagueRowSilver:     { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
+  leagueRowBronze:     { borderLeftWidth: 3, borderLeftColor: '#B45309' },
   leagueRankText:     { fontSize: 14, fontWeight: '800', width: 32, textAlign: 'center' },
   leagueAvatar:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + '20', alignItems: 'center', justifyContent: 'center' },
   leagueAvatarText:   { fontSize: 13, fontWeight: '800', color: C.primary },
   leagueMemberName:   { fontSize: 14, fontWeight: '700', color: C.text },
   leaguePts:          { fontSize: 15, fontWeight: '900', color: C.primary },
 
-  nudgeBtn:     { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
+  nudgeBtn:     { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
   nudgeBtnDone: { backgroundColor: C.primary + '20', borderColor: C.primary },
   nudgeBtnText: { fontSize: 14, lineHeight: 16 },
 
@@ -416,4 +471,15 @@ const s = StyleSheet.create({
   nudgeEmoji: { fontSize: 26 },
   nudgeTextBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
   nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+
+  pinnedFooter: {
+    paddingTop: 10,
+    marginTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.07)',
+  },
+  pinnedLabel: {
+    fontSize: 9, fontWeight: '700', color: '#637C8F',
+    letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4,
+  },
 });

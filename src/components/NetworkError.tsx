@@ -5,10 +5,10 @@ export function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
     <View style={s.container}>
       <Text style={s.emoji}>📡</Text>
-      <Text style={s.title}>Engin nettenging</Text>
-      <Text style={s.msg}>Athugaðu nettenginguna þína og reyndu aftur.</Text>
+      <Text style={s.title}>No connection</Text>
+      <Text style={s.msg}>Check your internet connection and try again.</Text>
       <TouchableOpacity style={s.btn} onPress={onRetry}>
-        <Text style={s.btnText}>Reyna aftur</Text>
+        <Text style={s.btnText}>Try again</Text>
       </TouchableOpacity>
     </View>
   );

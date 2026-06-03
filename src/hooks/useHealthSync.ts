@@ -3,7 +3,7 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { initHealthKit, syncRecentWorkouts } from '../lib/healthKit';
 import { initHealthConnect, checkHealthConnectGranted, pollHealthConnect } from '../lib/healthConnect';
-import { persistUserId } from '../lib/backgroundSync';
+import { persistUserId, clearUserId, unregisterBackgroundSync } from '../lib/backgroundSync';
 
 export type ProviderKey =
   | 'apple_health'
@@ -126,7 +126,7 @@ export function useHealthSync(userId: string) {
 
   /** Trigger a manual foreground sync */
   const syncNow = useCallback(async (): Promise<number> => {
-    if (!userId) return 0;
+    if (!userId || syncing) return 0;
     const nativeProvider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
     if (!connections.some(c => c.provider === nativeProvider && c.is_active)) return 0;
     setSyncing(true);
@@ -148,7 +148,7 @@ export function useHealthSync(userId: string) {
     setSyncing(false);
     setLastSynced(new Date());
     return count;
-  }, [userId, fetchConnections]);
+  }, [userId, fetchConnections, syncing]);
 
   /** Disconnect a provider */
   const disconnect = useCallback(async (provider: ProviderKey): Promise<void> => {
@@ -157,6 +157,13 @@ export function useHealthSync(userId: string) {
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('provider', provider);
+
+    const nativeProv: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
+    if (provider === nativeProv) {
+      await clearUserId();
+      await unregisterBackgroundSync();
+    }
+
     await fetchConnections();
   }, [userId, fetchConnections]);
 

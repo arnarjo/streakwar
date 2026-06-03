@@ -45,7 +45,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
       const { data } = await supabase.auth.refreshSession();
       session = data.session;
     }
-    if (!session) return BackgroundFetch.BackgroundFetchResult.NoData;
+    if (!session) return BackgroundFetch.BackgroundFetchResult.Failed;
 
     let synced = 0;
 
@@ -60,7 +60,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
       synced += workoutsSynced;
     }
 
-    // Always update last_synced_at so the UI reflects when sync last ran
+    // Always update last_synced_at to reflect that sync ran (even if 0 new workouts)
     await supabase
       .from('device_connections')
       .update({ last_synced_at: new Date().toISOString() })
@@ -107,5 +107,7 @@ export async function unregisterBackgroundSync(): Promise<void> {
     if (isRegistered) {
       await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     }
-  } catch {}
+  } catch (err) {
+    console.warn('[BackgroundSync] unregister failed:', err);
+  }
 }

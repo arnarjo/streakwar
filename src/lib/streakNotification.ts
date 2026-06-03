@@ -36,13 +36,15 @@ export async function scheduleStreakReminder(
       ? `Day ${currentStreak + 1} won't log itself — any workout counts.`
       : 'Day 1 starts now. Log a workout and build your streak!';
 
-    // 1. Morning Reminder (Always daily)
+    // 1. Morning Reminder (Always daily) — cancel first to prevent Android duplicate triggers
+    await Notifications.cancelScheduledNotificationAsync(MORNING_ID).catch(() => {});
     await Notifications.scheduleNotificationAsync({
       identifier: MORNING_ID,
       content: {
         title: morningTitle,
         body: morningBody,
         sound: true,
+        data: { screen: 'LogWorkout' },
         ...(Platform.OS === 'android' && { channelId: 'default' }),
       },
       trigger: {
@@ -92,6 +94,7 @@ export async function scheduleStreakReminder(
           title,
           body,
           sound: true,
+          data: { screen: 'LogWorkout' },
           ...(Platform.OS === 'android' && { channelId: 'default' }),
         },
         trigger: { type: Notifications.SchedulableTriggerInputTypes.DATE, date },

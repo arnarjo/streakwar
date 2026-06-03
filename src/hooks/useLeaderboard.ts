@@ -1,16 +1,17 @@
 import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { LeaderboardEntry } from '../types/database';
+import { toLocalDate } from '../lib/dateUtils';
 
 const ALL_COLS = 'id, username, full_name, total_points';
 
-/** ISO Monday for the current week */
+/** ISO Monday for the current week in local time */
 function currentWeekStart(): string {
   const d = new Date();
   const day = d.getDay(); // 0 = Sun
   const diff = day === 0 ? -6 : 1 - day;
   d.setDate(d.getDate() + diff);
-  return d.toISOString().slice(0, 10);
+  return toLocalDate(d);
 }
 
 export function useLeaderboard(userId: string) {
@@ -64,7 +65,7 @@ export function useLeaderboard(userId: string) {
     if (idx > 0) {
       const r = board[idx - 1];
       setRival(r);
-      setRivalDiff((r.weekly_points ?? 0) - (board[idx]?.weekly_points ?? 0));
+      setRivalDiff(Math.max(0, (r.weekly_points ?? 0) - (board[idx]?.weekly_points ?? 0)));
     } else {
       setRival(null);
       setRivalDiff(0);

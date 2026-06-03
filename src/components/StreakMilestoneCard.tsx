@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useState, useRef } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '../lib/supabase';
 
 const C = {
   bg: '#0C1117', card: '#1A1208', border: '#F97316',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
+  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
 };
 
 const REACTIONS = ['🔥', '💪', '⚡', '👏', '🏆'];
@@ -37,30 +37,55 @@ interface Props {
 export default function StreakMilestoneCard({ item, currentUserId }: Props) {
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(item.reaction_counts ?? {});
   const [myReaction, setMyReaction] = useState<string | null>(item.my_reaction ?? null);
+  const [reacting, setReacting] = useState(false);
+
+  const reactionScales = useRef(new Map<string, Animated.Value>()).current;
+  function getReactionScale(key: string) {
+    if (!reactionScales.has(key)) reactionScales.set(key, new Animated.Value(1));
+    return reactionScales.get(key)!;
+  }
+  function animateReaction(key: string) {
+    const scale = getReactionScale(key);
+    Animated.sequence([
+      Animated.spring(scale, { toValue: 1.4, useNativeDriver: true, tension: 200, friction: 6 }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, tension: 200, friction: 6 }),
+    ]).start();
+  }
 
   const name = item.profile?.full_name ?? item.profile?.username ?? 'Someone';
-  const timeAgo = formatDistanceToNow(new Date(item.achieved_at), { addSuffix: true });
+  const achievedAt = item.achieved_at ? new Date(item.achieved_at) : null;
+  const timeAgo = achievedAt && !isNaN(achievedAt.getTime())
+    ? formatDistanceToNow(achievedAt, { addSuffix: true })
+    : '';
 
   async function handleReact(emoji: string) {
-    const prev = myReaction;
-    const counts = { ...reactionCounts };
+    if (reacting) return;
+    setReacting(true);
+    try {
+      const prev = myReaction;
+      const counts = { ...reactionCounts };
 
-    if (prev) counts[prev] = Math.max(0, (counts[prev] ?? 1) - 1);
+      if (prev) counts[prev] = Math.max(0, (counts[prev] ?? 0) - 1);
 
-    if (prev === emoji) {
-      setMyReaction(null);
-      setReactionCounts(counts);
-      await supabase.from('milestone_reactions')
-        .delete()
-        .eq('milestone_id', item.id)
-        .eq('user_id', currentUserId);
-    } else {
-      counts[emoji] = (counts[emoji] ?? 0) + 1;
-      setMyReaction(emoji);
-      setReactionCounts(counts);
-      await supabase.from('milestone_reactions')
-        .upsert({ milestone_id: item.id, user_id: currentUserId, reaction: emoji },
-          { onConflict: 'milestone_id,user_id' });
+      if (prev === emoji) {
+        setMyReaction(null);
+        setReactionCounts(counts);
+        await supabase.from('milestone_reactions')
+          .delete()
+          .eq('milestone_id', item.id)
+          .eq('user_id', currentUserId);
+      } else {
+        counts[emoji] = (counts[emoji] ?? 0) + 1;
+        setMyReaction(emoji);
+        setReactionCounts(counts);
+        await supabase.from('milestone_reactions')
+          .upsert({ milestone_id: item.id, user_id: currentUserId, reaction: emoji },
+            { onConflict: 'milestone_id,user_id' });
+      }
+    } catch (err) {
+      console.warn('[StreakMilestoneCard] react failed:', err);
+    } finally {
+      setReacting(false);
     }
   }
 
@@ -86,11 +111,14 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
             <TouchableOpacity
               key={emoji}
               style={[s.reactBtn, active && s.reactBtnActive]}
-              onPress={() => handleReact(emoji)}
+              onPress={() => { animateReaction(emoji); handleReact(emoji); }}
               activeOpacity={0.7}
+              disabled={reacting}
             >
-              <Text style={s.reactEmoji}>{emoji}</Text>
-              {count > 0 && <Text style={[s.reactCount, active && { color: C.primary }]}>{count}</Text>}
+              <Animated.View style={{ transform: [{ scale: getReactionScale(emoji) }] }}>
+                <Text style={s.reactEmoji}>{emoji}</Text>
+                {count > 0 && <Text style={[s.reactCount, active && { color: C.primary }]}>{count}</Text>}
+              </Animated.View>
             </TouchableOpacity>
           );
         })}
@@ -114,7 +142,7 @@ const s = StyleSheet.create({
   bigEmoji: { fontSize: 32 },
   title: { fontSize: 14, color: C.text, lineHeight: 20, flex: 1 },
   name: { fontWeight: '800', color: C.primary },
-  count: { fontWeight: '800', color: '#FBBF24' },
+  count: { fontSize: 22, fontWeight: '800', color: '#FBBF24' },
   time: { fontSize: 11, color: C.muted, marginTop: 3 },
   reactRow: { flexDirection: 'row', gap: 6 },
   reactBtn: {
@@ -122,8 +150,9 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
+    minHeight: 44,
   },
   reactBtnActive: { backgroundColor: '#F9731615', borderColor: '#F9731640' },
   reactEmoji: { fontSize: 15 },
-  reactCount: { fontSize: 12, fontWeight: '700', color: '#4A6070' },
+  reactCount: { fontSize: 12, fontWeight: '700', color: C.muted },
 });

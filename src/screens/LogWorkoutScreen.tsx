@@ -2,8 +2,9 @@ import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   TextInput, Alert, Image, ActivityIndicator, Platform,
-  KeyboardAvoidingView, StatusBar,
+  KeyboardAvoidingView, StatusBar, Animated, Easing,
 } from 'react-native';
+
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import DateTimePicker from '@react-native-community/datetimepicker';
@@ -16,13 +17,16 @@ import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
 
+let HapticsModule: any = null;
+try { HapticsModule = require('expo-haptics'); } catch {}
+
 const C = {
   bg: '#0C1117',
   card: '#151C24',
   border: 'rgba(255,255,255,0.07)',
   borderFocus: '#F97316',
   text: '#EEF4F8',
-  muted: '#4A6070',
+  muted: '#637C8F',
   dimmed: '#1E2A35',
   primary: '#F97316',
   error: '#EF4444',
@@ -55,6 +59,9 @@ export default function LogWorkoutScreen() {
   const [showDatePicker, setShowDatePicker] = useState(false);
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
+  const successScale = useRef(new Animated.Value(0)).current;
+  const successOpacity = useRef(new Animated.Value(0)).current;
 
   // Timer
   const [timerRunning, setTimerRunning] = useState(false);
@@ -85,6 +92,21 @@ export default function LogWorkoutScreen() {
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active');
 
+  function showSuccessAndGoBack() {
+    HapticsModule?.notificationAsync?.(HapticsModule?.NotificationFeedbackType?.Success)?.catch?.(() => {});
+    setShowSuccess(true);
+    Animated.parallel([
+      Animated.spring(successScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
+      Animated.timing(successOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
+    ]).start(() => {
+      setTimeout(() => {
+        Animated.timing(successOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
+          navigation.goBack();
+        });
+      }, 900);
+    });
+  }
+
   async function handlePickMedia() {
     const uri = await pickMedia();
     if (uri) setMediaUri(uri);
@@ -93,12 +115,29 @@ export default function LogWorkoutScreen() {
   async function handleSave() {
     if (!profile?.id) return;
 
-    const durationVal = duration ? parseFloat(duration) : null;
-    const distanceVal = distance ? parseFloat(distance) : null;
-    const caloriesVal = calories ? parseInt(calories, 10) : null;
-    const stepsVal = steps ? parseInt(steps, 10) : null;
+    const durationVal = duration !== '' ? parseFloat(duration) : null;
+    const distanceVal = distance !== '' ? parseFloat(distance) : null;
+    const caloriesVal = calories !== '' ? parseInt(calories, 10) : null;
+    const stepsVal = steps !== '' ? parseInt(steps, 10) : null;
 
-    const hasMetric = durationVal || distanceVal || caloriesVal || stepsVal || caption.trim();
+    if (durationVal !== null && (isNaN(durationVal) || durationVal <= 0)) {
+      Alert.alert('Invalid Input', 'Duration must be a positive number.');
+      return;
+    }
+    if (distanceVal !== null && (isNaN(distanceVal) || distanceVal <= 0)) {
+      Alert.alert('Invalid Input', 'Distance must be a positive number.');
+      return;
+    }
+    if (caloriesVal !== null && (isNaN(caloriesVal) || caloriesVal <= 0)) {
+      Alert.alert('Invalid Input', 'Calories must be a positive number.');
+      return;
+    }
+    if (stepsVal !== null && (isNaN(stepsVal) || stepsVal <= 0)) {
+      Alert.alert('Invalid Input', 'Steps must be a positive number.');
+      return;
+    }
+
+    const hasMetric = durationVal !== null || distanceVal !== null || caloriesVal !== null || stepsVal !== null || caption.trim();
     if (!hasMetric) {
       Alert.alert('Missing info', 'Add at least one stat or a note before saving.');
       return;
@@ -150,7 +189,7 @@ export default function LogWorkoutScreen() {
         workoutDateStr === todayStr ? todayStr : (streak?.last_active_date ?? null),
         firstName
       ).catch(() => {});
-      navigation.goBack();
+      showSuccessAndGoBack();
     }
   }
 
@@ -232,10 +271,13 @@ export default function LogWorkoutScreen() {
           {/* Stats */}
           <Text style={s.sectionLabel}>STATS (optional)</Text>
           <View style={s.statsGrid}>
-            <View style={s.statInput}>
-              <Text style={s.statLabel}>Duration (min)</Text>
+            <View style={s.statCard}>
+              <View style={s.statCardHeader}>
+                <Text style={s.statCardEmoji}>⏱</Text>
+                <Text style={s.statCardLabel}>Duration (min)</Text>
+              </View>
               <TextInput
-                style={s.statField}
+                style={s.statCardField}
                 placeholder="45"
                 placeholderTextColor={C.dimmed}
                 value={duration}
@@ -243,10 +285,13 @@ export default function LogWorkoutScreen() {
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={s.statInput}>
-              <Text style={s.statLabel}>Distance (km)</Text>
+            <View style={s.statCard}>
+              <View style={s.statCardHeader}>
+                <Text style={s.statCardEmoji}>📍</Text>
+                <Text style={s.statCardLabel}>Distance (km)</Text>
+              </View>
               <TextInput
-                style={s.statField}
+                style={s.statCardField}
                 placeholder="5.0"
                 placeholderTextColor={C.dimmed}
                 value={distance}
@@ -254,10 +299,13 @@ export default function LogWorkoutScreen() {
                 keyboardType="decimal-pad"
               />
             </View>
-            <View style={s.statInput}>
-              <Text style={s.statLabel}>Calories</Text>
+            <View style={s.statCard}>
+              <View style={s.statCardHeader}>
+                <Text style={s.statCardEmoji}>🔥</Text>
+                <Text style={s.statCardLabel}>Calories</Text>
+              </View>
               <TextInput
-                style={s.statField}
+                style={s.statCardField}
                 placeholder="300"
                 placeholderTextColor={C.dimmed}
                 value={calories}
@@ -265,10 +313,13 @@ export default function LogWorkoutScreen() {
                 keyboardType="number-pad"
               />
             </View>
-            <View style={s.statInput}>
-              <Text style={s.statLabel}>Steps</Text>
+            <View style={s.statCard}>
+              <View style={s.statCardHeader}>
+                <Text style={s.statCardEmoji}>👟</Text>
+                <Text style={s.statCardLabel}>Steps</Text>
+              </View>
               <TextInput
-                style={s.statField}
+                style={s.statCardField}
                 placeholder="8000"
                 placeholderTextColor={C.dimmed}
                 value={steps}
@@ -280,9 +331,40 @@ export default function LogWorkoutScreen() {
 
           {/* Date */}
           <Text style={s.sectionLabel}>DATE</Text>
-          <TouchableOpacity style={s.dateBtn} onPress={() => setShowDatePicker(!showDatePicker)}>
-            <Text style={s.dateBtnText}>📅 {format(workoutDate, 'EEEE, MMMM d, yyyy')}</Text>
-          </TouchableOpacity>
+          <View style={s.dateChipRow}>
+            {(() => {
+              const today = new Date();
+              const yesterday = new Date(today);
+              yesterday.setDate(yesterday.getDate() - 1);
+              const isToday = format(workoutDate, 'yyyy-MM-dd') === format(today, 'yyyy-MM-dd');
+              const isYesterday = format(workoutDate, 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd');
+              const isCustom = !isToday && !isYesterday;
+              return (
+                <>
+                  <TouchableOpacity
+                    style={[s.dateChip, isToday && s.dateChipActive]}
+                    onPress={() => { setWorkoutDate(today); setShowDatePicker(false); }}
+                  >
+                    <Text style={[s.dateChipText, isToday && s.dateChipTextActive]}>Today</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.dateChip, isYesterday && s.dateChipActive]}
+                    onPress={() => { setWorkoutDate(yesterday); setShowDatePicker(false); }}
+                  >
+                    <Text style={[s.dateChipText, isYesterday && s.dateChipTextActive]}>Yesterday</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[s.dateChip, isCustom && s.dateChipActive]}
+                    onPress={() => setShowDatePicker(!showDatePicker)}
+                  >
+                    <Text style={[s.dateChipText, isCustom && s.dateChipTextActive]}>
+                      {isCustom ? format(workoutDate, 'MMM d') : 'Pick date'}
+                    </Text>
+                  </TouchableOpacity>
+                </>
+              );
+            })()}
+          </View>
           {showDatePicker && (
             <DateTimePicker
               value={workoutDate}
@@ -371,6 +453,18 @@ export default function LogWorkoutScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {showSuccess && (
+        <Animated.View style={[s.successOverlay, { opacity: successOpacity }]}>
+          <Animated.View style={[s.successCard, { transform: [{ scale: successScale }] }]}>
+            <View style={s.successIconCircle}>
+              <Text style={s.successIconText}>✓</Text>
+            </View>
+            <Text style={s.successTitle}>Workout logged! 💪</Text>
+            <Text style={s.successSub}>Keep that streak going!</Text>
+          </Animated.View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -420,12 +514,13 @@ const s = StyleSheet.create({
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.border,
-    borderRadius: 10,
-    paddingHorizontal: 12,
+    borderRadius: 12,
+    paddingHorizontal: 13,
     paddingVertical: 9,
+    minHeight: 42,
   },
   activityBtnActive: {
-    borderColor: C.primary + '60',
+    borderColor: C.primary + '50',
     backgroundColor: C.primary + '15',
   },
   activityEmoji: { fontSize: 16 },
@@ -436,29 +531,43 @@ const s = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  statInput: { width: '47%' },
-  statLabel: { fontSize: 11, color: C.muted, fontWeight: '600', marginBottom: 5 },
-  statField: {
+  statCard: {
+    width: '48%',
     backgroundColor: C.card,
+    borderRadius: 14,
     borderWidth: 1,
     borderColor: C.border,
-    borderRadius: 10,
-    paddingHorizontal: 14,
     paddingVertical: 11,
+    paddingHorizontal: 13,
+  },
+  statCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
+  statCardEmoji: { fontSize: 13 },
+  statCardLabel: { fontSize: 11.5, fontWeight: '600', color: C.muted },
+  statCardField: {
     color: C.text,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 24,
+    fontWeight: '700',
+    padding: 0,
   },
 
-  dateBtn: {
+  dateChipRow: { flexDirection: 'row', gap: 8 },
+  dateChip: {
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.border,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 13,
+    borderRadius: 20,
+    paddingVertical: 9,
+    paddingHorizontal: 14,
+    minHeight: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  dateBtnText: { color: C.text, fontSize: 14, fontWeight: '600' },
+  dateChipActive: {
+    backgroundColor: C.primary + '15',
+    borderColor: C.primary + '50',
+  },
+  dateChipText: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  dateChipTextActive: { color: C.primary },
 
   challengeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   challengeChip: {
@@ -536,4 +645,36 @@ const s = StyleSheet.create({
     marginTop: 24,
   },
   saveBigBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+
+  successOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  successCard: {
+    backgroundColor: '#151C24',
+    borderRadius: 24,
+    padding: 36,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: '#22C55E40',
+    width: 260,
+  },
+  successIconCircle: {
+    width: 72,
+    height: 72,
+    borderRadius: 36,
+    backgroundColor: '#22C55E20',
+    borderWidth: 2,
+    borderColor: '#22C55E60',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 8,
+  },
+  successIconText: { fontSize: 36, color: '#22C55E', fontWeight: '900', lineHeight: 40 },
+  successTitle: { fontSize: 20, fontWeight: '900', color: '#EEF4F8' },
+  successSub: { fontSize: 14, color: '#637C8F' },
 });

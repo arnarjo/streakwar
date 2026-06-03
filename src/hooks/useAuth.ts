@@ -4,6 +4,8 @@ import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 import { configurePurchases, logOutPurchases } from './usePremium';
 import { cancelStreakReminders } from '../lib/streakNotification';
+import { clearUserId, unregisterBackgroundSync } from '../lib/backgroundSync';
+import { teardownHealthKit } from '../lib/healthKit';
 import type { Profile } from '../types/database';
 import type { Session } from '@supabase/supabase-js';
 
@@ -17,39 +19,49 @@ export function useAuth() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    // onAuthStateChange fires INITIAL_SESSION on mount with the current session,
+    // so we don't need a separate getSession() call.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
-      if (session) { configurePurchases(session.user.id); fetchProfile(session.user.id); }
-      else setLoading(false);
-    });
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) { configurePurchases(session.user.id); fetchProfile(session.user.id); }
-      else { logOutPurchases(); cancelStreakReminders().catch(() => {}); setProfile(null); setProfileMissing(false); setLoading(false); }
+      if (session) {
+        // Only configure purchases on actual sign-in events, not on every state change
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+          configurePurchases(session.user.id);
+        }
+        fetchProfile(session.user.id);
+      } else {
+        logOutPurchases();
+        cancelStreakReminders().catch(() => {});
+        setProfile(null);
+        setProfileMissing(false);
+        setLoading(false);
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
   async function fetchProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single();
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, username, full_name, avatar_url, total_points, streak_freeze_credits, bio, is_admin, created_at')
+        .eq('id', userId)
+        .single();
 
-    if (!error && data) {
-      setProfile(data);
-      setProfileMissing(false);
-    } else {
-      // No profile row yet (e.g. first OAuth sign-in before the trigger runs,
-      // or the trigger hasn't created a row because username is unknown).
+      if (!error && data) {
+        setProfile(data);
+        setProfileMissing(false);
+      } else {
+        setProfile(null);
+        setProfileMissing(error?.code !== 'PGRST116'); // only flag missing if it's truly not found
+      }
+    } catch {
       setProfile(null);
-      setProfileMissing(true);
+      setProfileMissing(false);
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }
 
   async function signUp(email: string, password: string, username: string, fullName: string) {
@@ -104,6 +116,9 @@ export function useAuth() {
 
   async function signOut() {
     await supabase.auth.signOut();
+    clearUserId().catch(() => {});
+    unregisterBackgroundSync().catch(() => {});
+    teardownHealthKit();
   }
 
   return {

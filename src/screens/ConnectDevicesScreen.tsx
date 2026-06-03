@@ -85,7 +85,7 @@ export default function ConnectDevicesScreen() {
         return;
       }
       // Show debug info so we can diagnose why requestPermission() failed
-      Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
+      if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
 
       // Permissions not granted via dialog — open HC permissions page directly.
       // AppState listener will detect when user returns and check if granted.

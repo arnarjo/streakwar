@@ -25,17 +25,21 @@ export default function DiscoverScreen() {
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [joining, setJoining] = useState<string | null>(null);
+  const [error, setError] = useState(false);
 
   const fetchPublic = useCallback(async () => {
     setLoading(true);
-    const { data } = await supabase
+    setError(false);
+    const { data, error: fetchError } = await supabase
       .from('fitness_challenges')
       .select(`*, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name), participant_count:challenge_participants(count)`)
       .eq('is_public', true)
       .in('status', ['upcoming', 'active'])
       .order('created_at', { ascending: false })
       .limit(50);
-    if (data) {
+    if (fetchError) {
+      setError(true);
+    } else if (data) {
       setChallenges(data.map((c: any) => ({ ...c, participant_count: c.participant_count?.[0]?.count ?? 0 })));
     }
     setLoading(false);
@@ -44,6 +48,20 @@ export default function DiscoverScreen() {
   useEffect(() => { fetchPublic(); }, [fetchPublic]);
 
   const filtered = challenges.filter(c => !search || c.name.toLowerCase().includes(search.toLowerCase()));
+
+  if (error) return (
+    <SafeAreaView style={s.container} edges={['top']}>
+      <StatusBar barStyle="light-content" backgroundColor={C.bg} />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+        <Text style={{ color: '#9CA3AF', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
+          Could not load public challenges. Check your connection and try again.
+        </Text>
+        <TouchableOpacity onPress={fetchPublic} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+          <Text style={{ color: '#000', fontWeight: '600' }}>Try Again</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 
   async function handleJoin(challengeId: string, name: string) {
     setJoining(challengeId);

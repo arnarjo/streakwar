@@ -104,6 +104,10 @@ function handleNotificationResponse(
 ) {
   if (!navigationRef.isReady()) return;
   const data = response.notification.request.content.data as any;
+  if (data?.screen === 'LogWorkout') {
+    navigationRef.navigate('LogWorkout' as never);
+    return;
+  }
   if (data?.screen === 'WeeklyRecap') {
     navigationRef.navigate('WeeklyRecap' as never);
   } else if (data?.challenge_id) {

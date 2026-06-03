@@ -34,9 +34,9 @@ const CHALLENGE_TEMPLATES: Array<{
   icon: string; label: string; name: string; days: number;
   scoring: ScoringMode[]; pw?: string; ps?: string; pk?: string; pd?: string;
 }> = [
-  { icon: '💪', label: '30 dagar', name: '30 Day Fitness', days: 30, scoring: ['workouts'], pw: '1' },
-  { icon: '👟', label: 'Skref', name: 'Step Warriors', days: 14, scoring: ['steps'], ps: '1' },
-  { icon: '🏃', label: 'Hlaupavik', name: 'Run This Week', days: 7, scoring: ['distance_km'], pk: '1' },
+  { icon: '💪', label: '30 Days', name: '30 Day Fitness', days: 30, scoring: ['workouts'], pw: '1' },
+  { icon: '👟', label: 'Steps', name: 'Step Warriors', days: 14, scoring: ['steps'], ps: '1' },
+  { icon: '🏃', label: 'Running Week', name: 'Run This Week', days: 7, scoring: ['distance_km'], pk: '1' },
   { icon: '🔥', label: 'HIIT', name: 'HIIT Week Blitz', days: 7, scoring: ['duration_min'], pd: '2' },
 ];
 const TIE_BREAK_OPTIONS: TieBreakRule[] = ['first_to_score', 'most_recent_activity', 'most_workouts'];
@@ -48,11 +48,11 @@ const MAX_PARTICIPANT_OPTIONS: Array<{ label: string; value: number | null }> = 
   { label: '∞', value: null },
 ];
 const DURATION_PRESETS: Array<{ label: string; days: number | null }> = [
-  { label: '1 vika',    days: 7   },
-  { label: '2 vikur',   days: 14  },
-  { label: '1 mánuður', days: 30  },
-  { label: '3 mánuðar', days: 90  },
-  { label: 'Sérsniðið', days: null },
+  { label: '1 Week',    days: 7   },
+  { label: '2 Weeks',   days: 14  },
+  { label: '1 Month',   days: 30  },
+  { label: '3 Months',  days: 90  },
+  { label: 'Custom',    days: null },
 ];
 
 type Step = 1 | 2 | 3 | 4;
@@ -129,6 +129,15 @@ export default function CreateChallengeScreen() {
     return true;
   }
 
+  function validateStep3(): boolean {
+    const backlogNum = parseInt(backlogDays, 10);
+    if (isNaN(backlogNum) || backlogNum < 0) {
+      Alert.alert('Invalid Backlog', 'Backlog days must be 0 or a positive number.');
+      return false;
+    }
+    return true;
+  }
+
   async function handleCreate() {
     setSaving(true);
     const { error, challenge } = await createChallenge({
@@ -201,7 +210,7 @@ export default function CreateChallengeScreen() {
             <>
               {/* Quick templates */}
               <View style={s.inputGroup}>
-                <Text style={s.label}>SNÖGG UPPSETNING</Text>
+                <Text style={s.label}>QUICK SETUP</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
                   {CHALLENGE_TEMPLATES.map(t => (
                     <TouchableOpacity
@@ -218,7 +227,7 @@ export default function CreateChallengeScreen() {
 
               {/* Duration presets */}
               <View style={s.inputGroup}>
-                <Text style={s.label}>LENGD</Text>
+                <Text style={s.label}>DURATION</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {DURATION_PRESETS.map(preset => {
                     const active = preset.days === durationPreset;
@@ -445,13 +454,13 @@ export default function CreateChallengeScreen() {
               {/* Recurring — only for public challenges */}
               {isPublic && (
                 <View style={s.inputGroup}>
-                  <Text style={s.label}>ENDURNÝJAST SJÁLFKRAFA?</Text>
-                  <Text style={s.hint}>Nýtt challenge byrjar strax þegar þetta lýkur</Text>
+                  <Text style={s.label}>AUTO-RENEW?</Text>
+                  <Text style={s.hint}>A new challenge starts immediately when this one ends</Text>
                   <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
                     {([
-                      { value: 'none',    label: 'Nei' },
-                      { value: 'weekly',  label: '🔥 Vikulegt' },
-                      { value: 'monthly', label: '🏆 Mánaðarlegt' },
+                      { value: 'none',    label: 'No' },
+                      { value: 'weekly',  label: '🔥 Weekly' },
+                      { value: 'monthly', label: '🏆 Monthly' },
                     ] as Array<{ value: RenewalType; label: string }>).map(opt => (
                       <TouchableOpacity
                         key={opt.value}
@@ -551,6 +560,7 @@ export default function CreateChallengeScreen() {
               onPress={() => {
                 if (step === 1 && !validateStep1()) return;
                 if (step === 2 && !validateStep2()) return;
+                if (step === 3 && !validateStep3()) return;
                 setStep((step + 1) as Step);
               }}
               activeOpacity={0.85}

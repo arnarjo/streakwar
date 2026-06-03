@@ -61,13 +61,17 @@ function mapAppleWorkoutType(typeId: number): ActivityType {
 // Track which userId was initialized so re-auth with a different account
 // doesn't keep delivering workouts to the previous user.
 let _initializedUserId: string | null = null;
+let _initInProgress = false;
 
 export async function initHealthKit(userId: string): Promise<boolean> {
   if (Platform.OS !== 'ios' || !AppleHealthKit) return false;
   if (_initializedUserId === userId) return true;
+  if (_initInProgress) return false;
+  _initInProgress = true;
 
   return new Promise(resolve => {
     AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (err: any) => {
+      _initInProgress = false;
       if (err) {
         console.warn('[HealthKit] init failed:', err);
         resolve(false);
@@ -78,6 +82,7 @@ export async function initHealthKit(userId: string): Promise<boolean> {
       // iOS wakes the app in background when new workouts arrive
       AppleHealthKit.observeWorkouts({}, async (_err: any, results: any[]) => {
         if (_err || !results?.length) return;
+        if (_initializedUserId !== userId) return;
         await syncNewWorkouts(userId, results);
       });
 
@@ -89,19 +94,20 @@ export async function initHealthKit(userId: string): Promise<boolean> {
 /** Call on sign-out so the next sign-in re-initializes with the correct user. */
 export function teardownHealthKit() {
   _initializedUserId = null;
+  _initInProgress = false;
 }
 
 /** Fetch workouts recorded in the last 7 days and sync any that are new */
 export async function syncRecentWorkouts(userId: string): Promise<number> {
   if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return 0;
 
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 7);
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
   return new Promise(resolve => {
     AppleHealthKit.getSamples(
       {
-        startDate: yesterday.toISOString(),
+        startDate: sevenDaysAgo.toISOString(),
         endDate: new Date().toISOString(),
         type: 'Workout',
         includeManuallyAdded: true,
@@ -157,7 +163,11 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
     .filter((row): row is NonNullable<typeof row> => row !== null);
 
   if (toInsert.length > 0) {
-    await supabase.from('workout_posts').insert(toInsert);
+    const { error: batchErr } = await supabase.from('workout_posts').insert(toInsert);
+    if (batchErr) {
+      console.error('[HealthKit] batch insert failed:', batchErr.message, batchErr.code);
+      return 0;
+    }
   }
 
   return toInsert.length;

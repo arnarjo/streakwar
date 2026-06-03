@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { toLocalDate } from '../lib/dateUtils';
 import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
@@ -14,21 +15,21 @@ import type { LeagueTier } from '../types/database';
 
 const C = {
   bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
+  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
 };
 
 function getLastMonday(): string {
   const d = new Date();
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.getFullYear(), d.getMonth(), diff - 7).toISOString().slice(0, 10);
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day) - 7);
+  return toLocalDate(d);
 }
 
 function getCurrentMonday(): string {
   const d = new Date();
   const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.getFullYear(), d.getMonth(), diff).toISOString().slice(0, 10);
+  d.setDate(d.getDate() + (day === 0 ? -6 : 1 - day));
+  return toLocalDate(d);
 }
 
 export default function WeeklyRecapScreen() {
@@ -38,8 +39,11 @@ export default function WeeklyRecapScreen() {
   const isCurrentWeek = route.params?.week === 'current';
 
   const weekStart = isCurrentWeek ? getCurrentMonday() : getLastMonday();
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekEnd.getDate() + 6);
+  const weekEndStr = (() => {
+    const d = new Date(`${weekStart}T12:00:00`);
+    d.setDate(d.getDate() + 6);
+    return toLocalDate(d);
+  })();
 
   const { streak } = useStreaks(profile?.id ?? '');
   const { myTier, myRank, members } = useLeague(profile?.id ?? '');
@@ -49,18 +53,19 @@ export default function WeeklyRecapScreen() {
   const [totalSteps, setTotalSteps] = useState(0);
   const [totalPts, setTotalPts] = useState(0);
   const [prevWorkouts, setPrevWorkouts] = useState(0);
+  const [error, setError] = useState(false);
 
-  useEffect(() => {
+  async function load() {
     if (!profile?.id) return;
-    async function load() {
-      const weekEndStr = weekEnd.toISOString().slice(0, 10);
-
-      const { data: workouts } = await supabase
+    try {
+      const { data: workouts, error: workoutsError } = await supabase
         .from('workout_posts')
         .select('steps, duration_minutes, distance_km')
         .eq('user_id', profile!.id)
         .gte('workout_date', weekStart)
         .lte('workout_date', weekEndStr);
+
+      if (workoutsError) { setError(true); return; }
 
       const count = workouts?.length ?? 0;
       setWorkoutCount(count);
@@ -80,15 +85,23 @@ export default function WeeklyRecapScreen() {
       const prevEnd = new Date(weekStart);
       prevEnd.setDate(prevEnd.getDate() - 1);
 
-      const { count: prevCount } = await supabase
+      const { count: prevCount, error: prevError } = await supabase
         .from('workout_posts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile!.id)
         .gte('workout_date', prevStart.toISOString().slice(0, 10))
         .lte('workout_date', prevEnd.toISOString().slice(0, 10));
 
+      if (prevError) { setError(true); return; }
+
       setPrevWorkouts(prevCount ?? 0);
+    } catch {
+      setError(true);
     }
+  }
+
+  useEffect(() => {
+    if (!profile?.id) return;
     load();
   }, [profile?.id, weekStart]);
 
@@ -108,6 +121,26 @@ export default function WeeklyRecapScreen() {
 
   const workoutDiff = workoutCount - prevWorkouts;
 
+  function getWeeklyHeadline(): string {
+    const diff = workoutCount - prevWorkouts;
+    if (workoutCount === 0) return "Tough week — bounce back! 💪";
+    if (workoutCount >= 5) return "Incredible week! 🔥 You're on fire!";
+    if (diff >= 2) return "You crushed it this week! 🚀";
+    if (diff >= 0) return "Solid week — keep it up! 💪";
+    return "Tough week — you'll come back stronger! 💪";
+  }
+
+  if (error) return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+      <Text style={{ color: '#9CA3AF', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
+        Could not load your weekly recap. Check your connection and try again.
+      </Text>
+      <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: '#22C55E', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+        <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -122,6 +155,14 @@ export default function WeeklyRecapScreen() {
       </View>
 
       <ScrollView contentContainerStyle={s.scroll}>
+        <View style={s.heroSection}>
+          <Text style={s.heroHeadline}>{getWeeklyHeadline()}</Text>
+          <Text style={s.heroSub}>
+            Week of {new Date(weekStart).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+            {' — '}{new Date(`${weekEndStr}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+          </Text>
+        </View>
+
         <View style={[s.leagueCard, { borderColor: (tierMeta?.color ?? '#B45309') + '40' }]}>
           <Text style={[s.leagueTier, { color: tierMeta?.color ?? '#B45309' }]}>
             {tierMeta?.emoji} {tierMeta?.label} League
@@ -132,16 +173,19 @@ export default function WeeklyRecapScreen() {
 
         <View style={s.statsGrid}>
           {[
-            { icon: '💪', value: workoutCount, label: 'Workouts', sub: workoutDiff > 0 ? `+${workoutDiff} vs last week` : workoutDiff < 0 ? `${workoutDiff} vs last week` : '= last week' },
-            { icon: '👟', value: totalSteps.toLocaleString(), label: 'Steps', sub: '' },
-            { icon: '⭐', value: `+${totalPts}`, label: 'Points', sub: 'earned this week' },
-            { icon: '🔥', value: streak?.current_streak ?? 0, label: 'Streak', sub: `${streak?.longest_streak ?? 0} day best` },
-          ].map(({ icon, value, label, sub }) => (
+            { icon: '💪', value: workoutCount, label: 'Workouts',
+              sub: workoutDiff > 0 ? `↑ ${workoutDiff} vs last week` : workoutDiff < 0 ? `↓ ${Math.abs(workoutDiff)} vs last week` : '= last week',
+              subColor: workoutDiff > 0 ? '#22C55E' : workoutDiff < 0 ? '#EF4444' : C.muted,
+            },
+            { icon: '👟', value: totalSteps.toLocaleString(), label: 'Steps', sub: '', subColor: C.muted },
+            { icon: '⭐', value: `+${totalPts}`, label: 'Points', sub: 'earned this week', subColor: C.muted },
+            { icon: '🔥', value: streak?.current_streak ?? 0, label: 'Streak', sub: `${streak?.longest_streak ?? 0} day best`, subColor: C.muted },
+          ].map(({ icon, value, label, sub, subColor }) => (
             <View key={label} style={s.statCard}>
               <Text style={s.statIcon}>{icon}</Text>
               <Text style={s.statValue}>{value}</Text>
               <Text style={s.statLabel}>{label}</Text>
-              {sub ? <Text style={s.statSub}>{sub}</Text> : null}
+              {sub ? <Text style={[s.statSub, { color: subColor }]}>{sub}</Text> : null}
             </View>
           ))}
         </View>
@@ -169,9 +213,12 @@ const s = StyleSheet.create({
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 16, alignItems: 'center', gap: 4 },
   statIcon: { fontSize: 24 },
-  statValue: { fontSize: 26, fontWeight: '900', color: C.text },
+  statValue: { fontSize: 30, fontWeight: '900', color: C.text },
   statLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
   statSub: { fontSize: 10, color: C.muted, textAlign: 'center' },
+  heroSection:   { alignItems: 'center', paddingBottom: 4 },
+  heroHeadline:  { fontSize: 26, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 32 },
+  heroSub:       { fontSize: 13, color: C.muted, marginTop: 4, textAlign: 'center' },
   shareCard: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 18, alignItems: 'center', gap: 4, marginTop: 8 },
   shareCardTitle: { color: '#000', fontSize: 16, fontWeight: '800' },
   shareCardSub: { color: '#00000080', fontSize: 12 },

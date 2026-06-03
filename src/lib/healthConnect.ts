@@ -160,13 +160,17 @@ export async function checkHealthConnectGranted(stabilize = false): Promise<bool
   }
 }
 
+let _pollInFlight = false;
+
 /** Poll Health Connect for activities since the last sync and write new ones to Supabase */
 export async function pollHealthConnect(userId: string): Promise<number> {
   if (Platform.OS !== 'android' || !HealthConnect) return 0;
+  if (_pollInFlight) return 0;
+  _pollInFlight = true;
 
   const { initialize, readRecords } = HealthConnect;
   const available = await initialize().catch(() => false);
-  if (!available) return 0;
+  if (!available) { _pollInFlight = false; return 0; }
 
   // Check permissions before advancing the sync cursor — if permissions were
   // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
@@ -175,6 +179,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   const granted: any[] = await getGrantedPermissions().catch(() => []);
   if (!granted.some((g: any) => g.recordType === 'ExerciseSession')) {
     console.log('[HealthConnect] poll skipped — permissions not granted');
+    _pollInFlight = false;
     return 0;
   }
 
@@ -185,14 +190,15 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   let synced = 0;
 
   try {
+    let insertFailed = false;
     // Fetch once — reused by both the sessions batch and the steps insert
     const challengeId = await getActiveChallengeId(userId);
 
-    const { records: sessions } = await readRecords('ExerciseSession', {
+    const rawSessions = await readRecords('ExerciseSession', {
       timeRangeFilter: { operator: 'between', startTime, endTime },
     });
 
-    const sessionList = sessions ?? [];
+    const sessionList = Array.isArray(rawSessions) ? rawSessions : (rawSessions?.records ?? []);
 
     if (sessionList.length > 0) {
       // Single batch existence check instead of one SELECT per session
@@ -230,8 +236,13 @@ export async function pollHealthConnect(userId: string): Promise<number> {
         });
 
       if (toInsert.length > 0) {
-        await supabase.from('workout_posts').insert(toInsert);
-        synced = toInsert.length;
+        const { error: batchErr } = await supabase.from('workout_posts').insert(toInsert);
+        if (batchErr) {
+          console.error('[HealthConnect] batch insert failed:', batchErr.message, batchErr.code);
+          insertFailed = true;
+        } else {
+          synced = toInsert.length;
+        }
       }
     }
 
@@ -241,7 +252,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    const { records: stepRecords } = await readRecords('Steps', {
+    const rawSteps = await readRecords('Steps', {
       timeRangeFilter: {
         operator: 'between',
         startTime: startOfDay.toISOString(),
@@ -249,7 +260,8 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       },
     });
 
-    const totalSteps = (stepRecords ?? []).reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
+    const stepRecords = Array.isArray(rawSteps) ? rawSteps : (rawSteps?.records ?? []);
+    const totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
 
     if (totalSteps > 0) {
       // Atomic insert — if the row already exists, update steps in place.
@@ -280,10 +292,14 @@ export async function pollHealthConnect(userId: string): Promise<number> {
         synced++;
       }
     }
-    await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
+    if (!insertFailed) {
+      await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
+    }
   } catch (e) {
     console.warn('[HealthConnect] poll failed:', e);
     // Do not advance LAST_SYNC_KEY on failure — retry from same window next poll.
+  } finally {
+    _pollInFlight = false;
   }
 
   return synced;

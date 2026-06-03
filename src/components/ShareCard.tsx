@@ -15,8 +15,8 @@ interface Props {
 const ShareCard = forwardRef<View, Props>(
   ({ challengeName, renewalType, rank, score, username, inviteCode }, ref) => {
     const badge =
-      renewalType === 'weekly' ? { label: 'VIKU', color: '#F97316' } :
-      renewalType === 'monthly' ? { label: 'MÁNAÐAR', color: '#F59E0B' } :
+      renewalType === 'weekly' ? { label: 'WEEKS', color: '#F97316' } :
+      renewalType === 'monthly' ? { label: 'MONTHS', color: '#F59E0B' } :
       { label: 'CHALLENGE', color: '#8B5CF6' };
 
     const rankLabel = rank ? `#${rank}` : '–';
@@ -37,26 +37,26 @@ const ShareCard = forwardRef<View, Props>(
         {/* Rank */}
         <View style={s.rankArea}>
           <Text style={[s.rankNum, { color: badge.color }]}>{rankLabel}</Text>
-          <Text style={s.rankLabel}>SÆTI</Text>
+          <Text style={s.rankLabel}>RANK</Text>
         </View>
 
         {/* Stats row */}
         <View style={s.statsRow}>
           <View style={s.stat}>
             <Text style={s.statValue}>{score}</Text>
-            <Text style={s.statLabel}>STIG</Text>
+            <Text style={s.statLabel}>PTS</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.stat}>
             <Text style={s.statValue}>@{username}</Text>
-            <Text style={s.statLabel}>NOTANDI</Text>
+            <Text style={s.statLabel}>USER</Text>
           </View>
         </View>
 
         {/* Footer */}
         <View style={s.footer}>
           <Text style={s.footerBrand}>STREAKWAR</Text>
-          <Text style={s.footerCode}>Kóði: {inviteCode}</Text>
+          <Text style={s.footerCode}>Code: {inviteCode}</Text>
         </View>
       </View>
     );
