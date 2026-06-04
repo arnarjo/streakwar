@@ -31,7 +31,7 @@ export function useWorkoutFeed(userId: string) {
           .select('challenge_id')
           .eq('user_id', userId);
 
-        const challengeIds = (participations ?? []).map((p: any) => p.challenge_id);
+        const challengeIds = (participations ?? []).map((p: { challenge_id: string }) => p.challenge_id);
         if (challengeIds.length > 0) {
           query = query.in('challenge_id', challengeIds);
         } else {
@@ -43,7 +43,7 @@ export function useWorkoutFeed(userId: string) {
       const { data } = await query;
 
       if (data) {
-        const postIds = data.map((p: any) => p.id);
+        const postIds = data.map((p: { id: string }) => p.id);
 
         // Two batched queries instead of 2×N individual ones
         const [{ data: allReactions }, { data: allCommentCounts }] = await Promise.all([
@@ -73,7 +73,7 @@ export function useWorkoutFeed(userId: string) {
           commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1);
         }
 
-        setFeed(data.map((post: any) => {
+        setFeed((data as Array<WorkoutPost & Record<string, unknown>>).map((post) => {
           const r = reactionsByPost.get(post.id);
           return {
             ...post,

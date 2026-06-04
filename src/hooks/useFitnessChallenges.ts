@@ -36,8 +36,15 @@ export function useFitnessChallenges(userId: string) {
     }
 
     if (data) {
-      const challenges = data
-        .map((row: any) => ({
+      type ParticipantRow = {
+        score: number;
+        rank: number;
+        fitness_challenges: (FitnessChallenge & {
+          challenge_participants?: Array<{ count: number | string }>;
+        }) | null;
+      };
+      const challenges = (data as ParticipantRow[])
+        .map((row) => ({
           ...row.fitness_challenges,
           my_score: row.score,
           my_rank: row.rank,

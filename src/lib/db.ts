@@ -16,5 +16,5 @@ export async function getActiveChallengeId(userId: string): Promise<string | nul
   }
 
   // PostgREST join returns nested object — extract the scalar field
-  return (data as any)?.challenge_id ?? null;
+  return (data as { challenge_id: string } | null)?.challenge_id ?? null;
 }

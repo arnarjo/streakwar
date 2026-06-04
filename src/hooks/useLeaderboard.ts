@@ -32,7 +32,7 @@ export function useLeaderboard(userId: string) {
       .from('friendships')
       .select('following_id')
       .eq('follower_id', userId);
-    setFollowing(new Set(data?.map((f: any) => f.following_id) ?? []));
+    setFollowing(new Set(data?.map((f: { following_id: string }) => f.following_id) ?? []));
   }, [userId]);
 
   // ── All-time top-100 ─────────────────────────────────────────
@@ -80,7 +80,7 @@ export function useLeaderboard(userId: string) {
       .select('following_id')
       .eq('follower_id', userId);
 
-    const ids = [...(follows?.map((f: any) => f.following_id) ?? []), userId];
+    const ids = [...(follows?.map((f: { following_id: string }) => f.following_id) ?? []), userId];
     const { data } = await supabase
       .from('profiles')
       .select(ALL_COLS)
