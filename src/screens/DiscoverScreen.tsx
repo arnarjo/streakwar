@@ -29,7 +29,7 @@ export default function DiscoverScreen() {
     setError(false);
     const { data, error: fetchError } = await supabase
       .from('fitness_challenges')
-      .select(`*, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name), participant_count:challenge_participants(count)`)
+      .select(`id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name), participant_count:challenge_participants(count)`)
       .eq('is_public', true)
       .in('status', ['upcoming', 'active'])
       .order('created_at', { ascending: false })

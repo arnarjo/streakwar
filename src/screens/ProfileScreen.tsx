@@ -3,7 +3,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, RefreshControl, Alert, Linking, Switch, Animated,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
@@ -171,7 +171,7 @@ export default function ProfileScreen() {
 
   async function loadNotifPrefs() {
     if (!profile?.id) return;
-    const stored = await AsyncStorage.getItem(`notif_prefs_${profile.id}`);
+    const stored = await SecureStore.getItemAsync(`notif_prefs_${profile.id}`);
     if (stored) {
       try { setNotifPrefs(p => ({ ...p, ...JSON.parse(stored) })); } catch {}
     }
@@ -180,7 +180,7 @@ export default function ProfileScreen() {
   async function toggleNotifPref(key: keyof typeof notifPrefs) {
     const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(updated);
-    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
+    await SecureStore.setItemAsync(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
     if (key === 'streakReminder') {
       if (!updated.streakReminder) {
         await cancelStreakReminders();

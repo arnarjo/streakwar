@@ -49,7 +49,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       // Global (StreakWar-managed) challenges — always at top
       supabase
         .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
+        .select('id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, renewal_type, scoring_modes, max_participants, name, status, is_global, challenge_participants(count)')
         .eq('is_global', true)
         .in('status', ['active', 'upcoming'])
         .order('renewal_type', { ascending: true }), // weekly before monthly
@@ -57,7 +57,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       // User-created public challenges
       supabase
         .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
+        .select('id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, renewal_type, scoring_modes, max_participants, name, status, is_global, challenge_participants(count)')
         .eq('is_public', true)
         .eq('is_global', false)
         .in('status', ['active', 'upcoming'])

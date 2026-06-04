@@ -6,3 +6,5 @@ dist/
 ios/
 android/
 GoogleService-Info.plist
+eas.json
+google-services.json

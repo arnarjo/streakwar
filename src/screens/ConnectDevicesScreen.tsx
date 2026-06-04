@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
@@ -76,8 +77,6 @@ export default function ConnectDevicesScreen() {
         return;
       }
       // Show debug info so we can diagnose why requestPermission() failed
-      if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
-
       // Permissions not granted via dialog — open HC permissions page directly.
       // AppState listener will detect when user returns and check if granted.
       awaitingHCReturn.current = true;
@@ -99,10 +98,15 @@ export default function ConnectDevicesScreen() {
   async function handleOAuthConnect(provider: ProviderKey) {
     if (!profile?.id) return;
     setConnecting(provider);
-    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}&user_id=${profile.id}`;
+    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}`;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       // openAuthSessionAsync closes the custom tab when it detects the streakwar:// redirect
-      const result = await WebBrowser.openAuthSessionAsync(url, 'streakwar://');
+      const result = await WebBrowser.openAuthSessionAsync(
+        url,
+        'streakwar://',
+        { headers: { 'Authorization': `Bearer ${session?.access_token}` } } as any,
+      );
       if (result.type === 'success' && result.url?.includes('oauth-success')) {
         const parsedProvider = new URL(result.url).searchParams.get('provider') as ProviderKey | null;
         await fetchConnections();
