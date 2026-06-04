@@ -29,6 +29,8 @@ export function SkeletonPulse({ width = '100%', height = 16, radius = 6, style }
 
   return (
     <Animated.View
+      accessibilityLabel="Loading"
+      accessibilityLiveRegion="polite"
       style={[
         { width: width as any, height, borderRadius: radius, backgroundColor: '#1A2332' },
         animStyle,

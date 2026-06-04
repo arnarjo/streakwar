@@ -35,3 +35,12 @@ export const R = {
 export const FS = {
   xs: 10, sm: 12, md: 14, lg: 16, xl: 18, '2xl': 22, '3xl': 28, '4xl': 38, hero: 64,
 };
+
+// Font family constants (Saira loaded via useFonts in App.tsx)
+export const F = {
+  ui: 'Saira_400Regular',
+  uiBold: 'Saira_700Bold',
+  uiHeavy: 'Saira_800ExtraBold',
+  disp: 'SairaCondensed_700Bold',
+  dispHeavy: 'SairaCondensed_800ExtraBold',
+};

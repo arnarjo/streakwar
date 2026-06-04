@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert, Linking, Switch,
+  StatusBar, RefreshControl, Alert, Linking, Switch, Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -27,23 +27,27 @@ function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i+
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
-  const animRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+  const listenerRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (target === 0) { setDisplay(0); return; }
-    if (animRef.current) clearInterval(animRef.current);
-    const startTime = Date.now();
-    animRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setDisplay(Math.round(target * eased));
-      if (progress >= 1) {
-        clearInterval(animRef.current!);
-        animRef.current = null;
+    if (target === 0) { animatedValue.setValue(0); setDisplay(0); return; }
+    if (listenerRef.current) animatedValue.removeListener(listenerRef.current);
+    animatedValue.setValue(0);
+    listenerRef.current = animatedValue.addListener(({ value }) => {
+      setDisplay(Math.round(value));
+    });
+    Animated.timing(animatedValue, {
+      toValue: target,
+      duration,
+      useNativeDriver: false,
+    }).start();
+    return () => {
+      if (listenerRef.current) {
+        animatedValue.removeListener(listenerRef.current);
+        listenerRef.current = null;
       }
-    }, 16);
-    return () => { if (animRef.current) clearInterval(animRef.current); };
+    };
   }, [target, duration]);
 
   return display;
@@ -232,7 +236,12 @@ export default function ProfileScreen() {
 
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={s.settingsBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          style={s.settingsBtn}
+          accessibilityLabel="Settings"
+          accessibilityRole="button"
+        >
           <Text style={s.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
@@ -268,7 +277,12 @@ export default function ProfileScreen() {
               <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.editProfileBtn} onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}>
+          <TouchableOpacity
+            style={s.editProfileBtn}
+            onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}
+            accessibilityLabel="Edit profile"
+            accessibilityRole="button"
+          >
             <Text style={s.editProfileBtnText}>Edit profile</Text>
           </TouchableOpacity>
         </View>
@@ -289,7 +303,12 @@ export default function ProfileScreen() {
             { label: 'Challenges joined', value: animChallenge,                 icon: '🏆', color: C.text },
             { label: 'Streak days',       value: animStreak,                    icon: '🔥', color: C.text },
           ].map(({ label, value, icon, color }) => (
-            <View key={label} style={s.statCard}>
+            <View
+              key={label}
+              style={s.statCard}
+              accessible
+              accessibilityLabel={`${value} ${label}`}
+            >
               <Text style={s.statIcon}>{icon}</Text>
               <Text style={[s.statValue, { color }]}>{value}</Text>
               <Text style={s.statLabel}>{label}</Text>
@@ -389,7 +408,12 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={[s.connectBanner, { marginBottom: 24 }]} onPress={() => navigation.navigate('ConnectDevices')}>
+          <TouchableOpacity
+            style={[s.connectBanner, { marginBottom: 24 }]}
+            onPress={() => navigation.navigate('ConnectDevices')}
+            accessibilityLabel="Connect health devices"
+            accessibilityRole="button"
+          >
             <Text style={s.connectBannerEmoji}>⚡</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.connectBannerTitle}>Connect your health apps</Text>
@@ -463,7 +487,12 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+        <TouchableOpacity
+          style={s.signOutBtn}
+          onPress={handleSignOut}
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
+        >
           <Text style={s.signOutBtnText}>Sign out</Text>
         </TouchableOpacity>
 

@@ -26,6 +26,7 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const postedAt = post.posted_at ? new Date(post.posted_at) : null;
   const timeAgo = postedAt && !isNaN(postedAt.getTime())
@@ -63,14 +64,15 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
   async function submitComment() {
     if (!commentText.trim()) return;
     setSubmitting(true);
+    setActionError(null);
     try {
       const { error } = await onAddComment(post.id, commentText.trim());
-      if (error) { Alert.alert('Error', error); return; }
+      if (error) { setActionError(error); return; }
       const updated = await onFetchComments(post.id);
       setComments(updated);
       setCommentText('');
     } catch {
-      Alert.alert('Error', 'Could not post comment.');
+      setActionError('Could not post comment.');
     } finally {
       setSubmitting(false);
     }
@@ -132,7 +134,12 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
           )}
         </View>
         {isOwnPost && (
-          <TouchableOpacity onPress={showPostMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={showPostMenu}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
+          >
             <Text style={s.menuDots}>⋯</Text>
           </TouchableOpacity>
         )}
@@ -175,6 +182,8 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
                   style={[s.reactBtn, active && s.reactBtnActive]}
                   onPress={() => { animateReaction(emoji); onReact(post.id, emoji); }}
                   activeOpacity={0.7}
+                  accessibilityLabel={active ? `Remove ${emoji} reaction` : `React with ${emoji}`}
+                  accessibilityRole="button"
                 >
                   <Text style={s.reactEmoji}>{emoji}</Text>
                   {count > 0 && <Text style={[s.reactCount, active && { color: '#F97316' }]}>{count}</Text>}
@@ -183,12 +192,21 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
             );
           })}
         </View>
-        <TouchableOpacity style={s.commentBtn} onPress={openComments}>
+        <TouchableOpacity
+          style={s.commentBtn}
+          onPress={openComments}
+          accessibilityLabel="Comment on post"
+          accessibilityRole="button"
+        >
           <Text style={s.commentBtnText}>
             💬 {post.comment_count ?? 0}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {actionError && (
+        <Text style={s.actionError}>{actionError}</Text>
+      )}
 
       <Modal visible={commentsOpen} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView
@@ -341,6 +359,7 @@ const s = StyleSheet.create({
   commentBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
 
   muted: { color: C.muted, fontSize: 14 },
+  actionError: { fontSize: 12, color: C.error, marginTop: 6, paddingHorizontal: 2 },
 
   commentsModal: { flex: 1, backgroundColor: C.bg },
   commentsHeader: {
