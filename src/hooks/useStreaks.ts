@@ -6,8 +6,10 @@ import { toLocalDate } from '../lib/dateUtils';
 import type { UserStreak } from '../types/database';
 
 /**
- * If last_active_date is 2+ days ago the streak is broken.
- * Returns the streak with current_streak set to 0 and persists the reset to the DB.
+ * If last_active_date is 2+ days ago the streak would be broken.
+ * First checks if a streak freeze is available and unused today.
+ * If so, consumes the freeze instead of resetting the streak.
+ * Otherwise, resets current_streak to 0 and persists the change.
  */
 async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
   if (!data.last_active_date || data.current_streak === 0) return data;
@@ -19,19 +21,54 @@ async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
 
   if (data.last_active_date >= yesterday) return data; // still active
 
-  // Streak is broken — reset in DB and update notification
-  const { error } = await supabase
-    .from('user_streaks')
-    .update({ current_streak: 0, updated_at: new Date().toISOString() })
-    .eq('user_id', data.user_id);
+  // Streak would decay — check for available freeze first
+  const { data: freezeData } = await supabase
+    .from('streak_freeze_uses')
+    .select('id')
+    .eq('user_id', data.user_id)
+    .eq('freeze_date', today)
+    .maybeSingle();
 
-  if (error) {
-    console.warn('[streak] decay DB update failed:', error.message);
+  // Already used a freeze today, can't use another
+  if (freezeData) {
+    // Streak is broken — reset in DB and update notification
+    const { error } = await supabase
+      .from('user_streaks')
+      .update({ current_streak: 0, updated_at: new Date().toISOString() })
+      .eq('user_id', data.user_id);
+
+    if (error) {
+      console.warn('[streak] decay DB update failed:', error.message);
+    }
+
+    scheduleStreakReminder(0).catch(() => {});
+
+    return { ...data, current_streak: 0 };
   }
 
-  scheduleStreakReminder(0).catch(() => {});
+  // Check if user has freeze credits available (via RPC)
+  const { data: freezeResult, error: freezeError } = await supabase.rpc('use_streak_freeze', {
+    p_user_id: data.user_id,
+  });
 
-  return { ...data, current_streak: 0 };
+  if (freezeError || !freezeResult) {
+    // No freeze available or RPC failed — reset streak
+    const { error } = await supabase
+      .from('user_streaks')
+      .update({ current_streak: 0, updated_at: new Date().toISOString() })
+      .eq('user_id', data.user_id);
+
+    if (error) {
+      console.warn('[streak] decay DB update failed:', error.message);
+    }
+
+    scheduleStreakReminder(0).catch(() => {});
+
+    return { ...data, current_streak: 0 };
+  }
+
+  // Freeze was successfully consumed — streak preserved
+  return data;
 }
 
 const MILESTONE_THRESHOLDS = [7, 14, 30, 50, 100, 365];
