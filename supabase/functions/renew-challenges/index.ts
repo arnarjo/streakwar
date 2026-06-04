@@ -33,12 +33,13 @@ serve(async (req) => {
     // Step 2 â€” find recurring challenges that just completed
     const today = new Date().toISOString().slice(0, 10);
 
+    // No time-window restriction — NOT EXISTS in the loop prevents duplicate instances.
+    // This ensures chains that were missed by the cron get caught on the next run.
     const { data: expired, error: fetchErr } = await supabase
       .from('fitness_challenges')
       .select('*')
       .neq('renewal_type', 'none')
       .eq('status', 'completed')
-      .gte('end_date', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) // only recently ended
       .lte('end_date', today);
 
     if (fetchErr) {

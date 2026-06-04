@@ -10,7 +10,9 @@
       "backgroundColor": "#0A0E14",
       "resizeMode": "contain"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": false
     },
@@ -21,6 +23,9 @@
     },
     "web": {
       "bundler": "metro"
-    }
+    },
+    "plugins": [
+      "react-native-health-connect"
+    ]
   }
 }
