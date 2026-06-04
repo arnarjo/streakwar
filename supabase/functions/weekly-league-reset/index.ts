@@ -11,6 +11,12 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
+// Helper to chunk arrays for batch processing
+const chunkArray = <T>(arr: T[], size: number): T[][] =>
+  Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    arr.slice(i * size, i * size + size)
+  );
+
 const TIERS = ['bronze', 'silver', 'gold', 'platinum', 'diamond'] as const;
 type Tier = typeof TIERS[number];
 
@@ -68,68 +74,114 @@ Deno.serve(async () => {
       const promotionCutoff = Math.min(5, rows.length);
       const relegationCutoff = Math.max(rows.length - 5, 0);
 
+      // Collect all updates and notifications for batch processing
+      const membershipUpdates = [];
+      const tierUpserts = [];
+      const pushNotifications: any[] = [];
+
       for (let i = 0; i < rows.length; i++) {
         const member = rows[i];
         const rank = i + 1;
         const promoted = rank <= promotionCutoff && group.tier !== 'diamond';
         const relegated = rank > relegationCutoff && group.tier !== 'bronze';
 
-        // Update membership final rank
-        const { error: updateError } = await supabase
-          .from('league_memberships')
-          .update({ final_rank: rank, promoted, relegated })
-          .eq('user_id', member.user_id)
-          .eq('week_start', lastWeek);
+        // Collect membership update
+        membershipUpdates.push({
+          user_id: member.user_id,
+          week_start: lastWeek,
+          final_rank: rank,
+          promoted,
+          relegated,
+        });
 
-        if (updateError) throw new Error(`Failed to update membership for user ${member.user_id}: ${updateError.message}`);
-
-        // Update user's tier
+        // Collect tier upsert
         const newTier = promoted
           ? nextTier(group.tier as Tier)
           : relegated
             ? prevTier(group.tier as Tier)
             : group.tier;
 
-        const { error: upsertError } = await supabase
+        tierUpserts.push({
+          user_id: member.user_id,
+          tier: newTier,
+          updated_at: new Date().toISOString(),
+        });
+
+        // Prepare push notification info (will fetch tokens and batch later)
+        pushNotifications.push({
+          user_id: member.user_id,
+          rank,
+          promoted,
+          relegated,
+          tier: group.tier as Tier,
+        });
+      }
+
+      // Batch update memberships
+      if (membershipUpdates.length > 0) {
+        const { error: batchUpdateError } = await supabase
+          .from('league_memberships')
+          .upsert(membershipUpdates, { onConflict: 'user_id,week_start' });
+
+        if (batchUpdateError) throw new Error(`Failed to batch update memberships: ${batchUpdateError.message}`);
+      }
+
+      // Batch upsert tiers
+      if (tierUpserts.length > 0) {
+        const { error: batchUpsertError } = await supabase
           .from('user_league_tier')
-          .upsert({ user_id: member.user_id, tier: newTier, updated_at: new Date().toISOString() });
+          .upsert(tierUpserts, { onConflict: 'user_id' });
 
-        if (upsertError) throw new Error(`Failed to upsert tier for user ${member.user_id}: ${upsertError.message}`);
+        if (batchUpsertError) throw new Error(`Failed to batch upsert tiers: ${batchUpsertError.message}`);
+      }
 
-        // Send push notification
-        const { data: profile, error: profileError } = await supabase
+      // Fetch all push tokens for this group in one query
+      if (pushNotifications.length > 0) {
+        const userIds = pushNotifications.map(n => n.user_id);
+        const { data: profiles, error: profilesError } = await supabase
           .from('profiles')
-          .select('push_token')
-          .eq('id', member.user_id)
-          .maybeSingle();
+          .select('id, push_token')
+          .in('id', userIds);
 
-        if (profileError) throw new Error(`Failed to fetch profile for user ${member.user_id}: ${profileError.message}`);
+        if (profilesError) throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
 
-        if ((profile as any)?.push_token) {
-          const title = promoted
-            ? `Promoted to ${nextTier(group.tier as Tier)} league! 🎉`
-            : relegated
-              ? `Relegated to ${prevTier(group.tier as Tier)} league`
-              : `League week complete`;
-          const body = promoted
-            ? `You finished #${rank} — keep it up! 🔥`
-            : relegated
-              ? `Finish in the top half next week to move back up`
-              : `You finished #${rank} in ${group.tier} league`;
+        const tokenMap = new Map((profiles ?? []).map(p => [p.id, p.push_token]));
 
-          try {
-            await fetch('https://exp.host/--/api/v2/push/send', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                to: (profile as any).push_token,
-                title,
-                body,
-                sound: 'default',
-              }),
-            });
-          } catch (_) {
-            // ignore individual push failures
+        // Build expo push notifications
+        const expoNotifications = pushNotifications
+          .filter(n => tokenMap.has(n.user_id) && tokenMap.get(n.user_id))
+          .map(n => {
+            const title = n.promoted
+              ? `Promoted to ${nextTier(n.tier as Tier)} league! 🎉`
+              : n.relegated
+                ? `Relegated to ${prevTier(n.tier as Tier)} league`
+                : `League week complete`;
+            const body = n.promoted
+              ? `You finished #${n.rank} — keep it up! 🔥`
+              : n.relegated
+                ? `Finish in the top half next week to move back up`
+                : `You finished #${n.rank} in ${n.tier} league`;
+
+            return {
+              to: tokenMap.get(n.user_id)!,
+              title,
+              body,
+              sound: 'default',
+            };
+          });
+
+        // Send notifications in batches of 100 (Expo API limit)
+        if (expoNotifications.length > 0) {
+          for (const batch of chunkArray(expoNotifications, 100)) {
+            try {
+              await fetch('https://exp.host/--/api/v2/push/send', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(batch),
+              });
+            } catch (_) {
+              // ignore batch push failures
+            }
           }
         }
       }
@@ -159,12 +211,18 @@ Deno.serve(async () => {
     if (allProfilesError) throw new Error(`Failed to fetch all profiles: ${allProfilesError.message}`);
 
     const tieredIds = new Set((allTiers ?? []).map(r => r.user_id));
+    const newBronzeUsers = [];
     for (const p of allProfiles ?? []) {
       if (!tieredIds.has(p.id)) {
         byTier.bronze.push(p.id);
-        const { error: newUserError } = await supabase.from('user_league_tier').upsert({ user_id: p.id, tier: 'bronze' });
-        if (newUserError) throw new Error(`Failed to add user ${p.id} to bronze tier: ${newUserError.message}`);
+        newBronzeUsers.push({ user_id: p.id, tier: 'bronze' });
       }
+    }
+
+    // Batch upsert new users to bronze tier
+    if (newBronzeUsers.length > 0) {
+      const { error: newUserError } = await supabase.from('user_league_tier').upsert(newBronzeUsers, { onConflict: 'user_id' });
+      if (newUserError) throw new Error(`Failed to add new users to bronze tier: ${newUserError.message}`);
     }
 
     // Bucket each tier into groups of 20
