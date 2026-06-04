@@ -116,6 +116,18 @@ export default function LeaderboardScreen() {
   const data = tab === 'week' ? weeklyBoard : tab === 'world' ? globalBoard : friendsBoard;
   const myRank = tab === 'week' ? myWeeklyRank : tab === 'world' ? myGlobalRank : null;
 
+  const leagueDayOfWeek = new Date().getDay();
+  const leagueDaysLeft = leagueDayOfWeek === 0 ? 7 : 7 - leagueDayOfWeek;
+
+  const footerUserInData = data.some(item => item.id === userId);
+  const footerMyPts = tab === 'week'
+    ? (weeklyBoard.find(p => p.id === userId)?.weekly_points ?? 0)
+    : (profile?.total_points ?? 0);
+  const footerMyInitials = profile
+    ? (profile.full_name ?? profile.username ?? '?')
+        .trim().split(/\s+/).map((w: string) => w[0] ?? '').filter(Boolean).join('').slice(0, 2).toUpperCase()
+    : '?';
+
   function renderRow({ item, index }: { item: LeaderboardEntry; index: number }) {
     const rank = index + 1;
     const isMe = item.id === userId;
@@ -242,15 +254,9 @@ export default function LeaderboardScreen() {
               <Text style={[{ fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 }, { color: tierMeta?.color ?? '#B45309' }]}>
                 {tierMeta?.emoji} {tierMeta?.label} League
               </Text>
-              {(() => {
-                const dayOfWeek = new Date().getDay(); // 0=Sun
-                const daysLeft = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
-                return (
-                  <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
-                    Top 5 promote · Bottom 5 relegate · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
-                  </Text>
-                );
-              })()}
+              <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+                Top 5 promote · Bottom 5 relegate · {leagueDaysLeft} day{leagueDaysLeft !== 1 ? 's' : ''} left
+              </Text>
               {leagueMembers.length === 0 && !leagueLoading && (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 }}>
@@ -342,21 +348,14 @@ export default function LeaderboardScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={renderRow}
-          ListFooterComponent={(() => {
-            const userInData = data.some(item => item.id === userId);
-            if (userInData || myRank === null || !profile) return null;
-            const myPts = tab === 'week'
-              ? (weeklyBoard.find(p => p.id === userId)?.weekly_points ?? 0)
-              : (profile.total_points ?? 0);
-            const myInitials = (profile.full_name ?? profile.username ?? '?')
-              .trim().split(/\s+/).map((w: string) => w[0] ?? '').filter(Boolean).join('').slice(0, 2).toUpperCase();
-            return (
+          ListFooterComponent={
+            !footerUserInData && myRank !== null && profile ? (
               <View style={s.pinnedFooter}>
                 <Text style={s.pinnedLabel}>YOUR POSITION</Text>
                 <View style={[s.row, s.rowMe]}>
                   <Text style={[s.rank, { color: C.primary }]}>#{myRank}</Text>
                   <View style={[s.avatar, s.avatarMe]}>
-                    <Text style={[s.avatarText, { color: C.primary }]}>{myInitials}</Text>
+                    <Text style={[s.avatarText, { color: C.primary }]}>{footerMyInitials}</Text>
                   </View>
                   <View style={s.info}>
                     <Text style={s.name} numberOfLines={1}>
@@ -365,13 +364,13 @@ export default function LeaderboardScreen() {
                     <Text style={s.username}>@{profile.username}</Text>
                   </View>
                   <View style={s.ptsBadge}>
-                    <Text style={[s.pts, { color: C.primary }]}>{myPts.toLocaleString()}</Text>
+                    <Text style={[s.pts, { color: C.primary }]}>{footerMyPts.toLocaleString()}</Text>
                     <Text style={s.ptsLabel}>pts</Text>
                   </View>
                 </View>
               </View>
-            );
-          })()}
+            ) : null
+          }
           ListEmptyComponent={
             !loading ? (
               <View style={s.empty}>

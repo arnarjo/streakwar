@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
   TouchableOpacity, StatusBar, Animated as RNAnimated,
@@ -23,7 +23,7 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
@@ -34,10 +34,8 @@ export default function HomeScreen() {
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
   const { myTier, myRank, members: leagueMembers } = useLeague(profile?.id ?? '');
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
-  const daysUntilSunday = (() => {
-    const d = new Date().getDay();
-    return d === 0 ? 7 : 7 - d;
-  })();
+  const currentDayOfWeek = new Date().getDay();
+  const daysUntilSunday = currentDayOfWeek === 0 ? 7 : 7 - currentDayOfWeek;
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
 
@@ -127,6 +125,126 @@ export default function HomeScreen() {
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
 
+  const streakToNext = streak ? 10 - (streak.current_streak % 10) : 0;
+  const streakMilestone = streak ? Math.ceil(streak.current_streak / 10) * 10 : 0;
+  const streakProgress = streak ? (streak.current_streak % 10) / 10 * 100 : 0;
+
+  const listHeader = useMemo(() => (
+    <>
+      {streak && streak.current_streak > 0 && (
+        <View style={{ position: 'relative', marginBottom: 14 }}>
+          <ReAnimated.View style={[
+            {
+              position: 'absolute',
+              top: -6, left: -6, right: -6, bottom: -6,
+              borderRadius: 28,
+              backgroundColor: '#F97316',
+            },
+            streakGlowStyle,
+          ]} />
+          <View style={[s.streakHero, { marginBottom: 0 }]}>
+            <View style={s.streakHeroTop}>
+              <View style={s.streakHeroLeft}>
+                <Text style={s.streakHeroNumber}>{streak.current_streak}</Text>
+                <Text style={s.streakHeroUnit}>day streak</Text>
+                {streak.longest_streak > 0 && (
+                  <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
+                )}
+              </View>
+              <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
+                <Text style={s.streakShareText}>📤  Share</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={s.streakProgress}>
+              <View style={[s.streakProgressFill, { width: `${Math.min(100, streakProgress)}%` as any }]} />
+            </View>
+            <View style={s.streakProgressRow}>
+              <Text style={s.streakProgressLabel}>
+                <Text style={s.streakProgressToNext}>{streakToNext}</Text>
+                {` days to ${streakMilestone}-day milestone`}
+              </Text>
+              <Text style={s.streakMilestoneRight}>{streakMilestone} 🔥</Text>
+            </View>
+          </View>
+        </View>
+      )}
+
+      {streak && streak.current_streak === 0 && (
+        <TouchableOpacity style={s.streakStart} onPress={() => navigation.navigate('LogWorkout')} activeOpacity={0.85}>
+          <Text style={s.streakStartTitle}>Start your streak today! 🔥</Text>
+          <Text style={s.streakStartSub}>Log one workout to begin your journey.</Text>
+        </TouchableOpacity>
+      )}
+
+      {leagueMembers.length > 0 && myRank !== null && (
+        <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+          <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
+            <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.bannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>#{myRank} in {tierMeta?.label} League</Text>
+            <Text style={s.bannerSub}>{daysUntilSunday} days left · {leagueMembers.length} competitors</Text>
+          </View>
+          <Text style={s.bannerChev}>›</Text>
+        </TouchableOpacity>
+      )}
+
+      {rival && (
+        <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+          <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
+            <Text style={{ fontSize: 22 }}>🎯</Text>
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.bannerTitle}>{rival.full_name ?? rival.username} is {rivalDiff} pts ahead</Text>
+            <Text style={s.bannerSub}>Your rival this week · catch up</Text>
+          </View>
+          <Text style={s.bannerChev}>›</Text>
+        </TouchableOpacity>
+      )}
+
+      {activeChallenges.length > 0 && (
+        <View style={s.section}>
+          <View style={s.sectionHeader}>
+            <Text style={s.sectionLabel}>Active challenges</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('Challenges')}>
+              <Text style={s.seeAll}>See all →</Text>
+            </TouchableOpacity>
+          </View>
+          {activeChallenges.map(c => (
+            <ChallengeCard
+              key={c.id}
+              challenge={c}
+              compact
+              onPress={() => navigation.navigate('ChallengeDetail', { challengeId: c.id })}
+            />
+          ))}
+        </View>
+      )}
+
+      {milestones.length > 0 && (
+        <View style={s.section}>
+          <Text style={s.sectionLabel}>Streak milestones</Text>
+          {milestones.map(m => (
+            <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+          ))}
+        </View>
+      )}
+
+      {!loading && feed.length > 0 && (
+        <View style={s.sectionHeader}>
+          <Text style={s.sectionLabel}>Friends feed</Text>
+        </View>
+      )}
+    </>
+  ), [
+    streak, streakToNext, streakMilestone, streakProgress, streakGlowStyle,
+    leagueMembers, myRank, tierMeta, daysUntilSunday,
+    rival, rivalDiff,
+    activeChallenges, milestones,
+    profile?.id, loading, feed.length,
+    navigation, handleShare,
+  ]);
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -166,119 +284,7 @@ export default function HomeScreen() {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
-          ListHeaderComponent={
-            <>
-              {streak && streak.current_streak > 0 && (() => {
-                const toNext = 10 - (streak.current_streak % 10);
-                const milestone = Math.ceil(streak.current_streak / 10) * 10;
-                const progress = (streak.current_streak % 10) / 10 * 100;
-                return (
-                  <View style={{ position: 'relative', marginBottom: 14 }}>
-                    <ReAnimated.View style={[
-                      {
-                        position: 'absolute',
-                        top: -6, left: -6, right: -6, bottom: -6,
-                        borderRadius: 28,
-                        backgroundColor: '#F97316',
-                      },
-                      streakGlowStyle,
-                    ]} />
-                    <View style={[s.streakHero, { marginBottom: 0 }]}>
-                      <View style={s.streakHeroTop}>
-                        <View style={s.streakHeroLeft}>
-                          <Text style={s.streakHeroNumber}>{streak.current_streak}</Text>
-                          <Text style={s.streakHeroUnit}>day streak</Text>
-                          {streak.longest_streak > 0 && (
-                            <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
-                          )}
-                        </View>
-                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
-                          <Text style={s.streakShareText}>📤  Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={s.streakProgress}>
-                        <View style={[s.streakProgressFill, { width: `${Math.min(100, progress)}%` as any }]} />
-                      </View>
-                      <View style={s.streakProgressRow}>
-                        <Text style={s.streakProgressLabel}>
-                          <Text style={s.streakProgressToNext}>{toNext}</Text>
-                          {` days to ${milestone}-day milestone`}
-                        </Text>
-                        <Text style={s.streakMilestoneRight}>{milestone} 🔥</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })()}
-
-              {streak && streak.current_streak === 0 && (
-                <TouchableOpacity style={s.streakStart} onPress={() => navigation.navigate('LogWorkout')} activeOpacity={0.85}>
-                  <Text style={s.streakStartTitle}>Start your streak today! 🔥</Text>
-                  <Text style={s.streakStartSub}>Log one workout to begin your journey.</Text>
-                </TouchableOpacity>
-              )}
-
-              {leagueMembers.length > 0 && myRank !== null && (
-                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
-                  <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
-                    <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.bannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>#{myRank} in {tierMeta?.label} League</Text>
-                    <Text style={s.bannerSub}>{daysUntilSunday} days left · {leagueMembers.length} competitors</Text>
-                  </View>
-                  <Text style={s.bannerChev}>›</Text>
-                </TouchableOpacity>
-              )}
-
-              {rival && (
-                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
-                  <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
-                    <Text style={{ fontSize: 22 }}>🎯</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.bannerTitle}>{rival.full_name ?? rival.username} is {rivalDiff} pts ahead</Text>
-                    <Text style={s.bannerSub}>Your rival this week · catch up</Text>
-                  </View>
-                  <Text style={s.bannerChev}>›</Text>
-                </TouchableOpacity>
-              )}
-
-              {activeChallenges.length > 0 && (
-                <View style={s.section}>
-                  <View style={s.sectionHeader}>
-                    <Text style={s.sectionLabel}>Active challenges</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Challenges')}>
-                      <Text style={s.seeAll}>See all →</Text>
-                    </TouchableOpacity>
-                  </View>
-                  {activeChallenges.map(c => (
-                    <ChallengeCard
-                      key={c.id}
-                      challenge={c}
-                      compact
-                      onPress={() => navigation.navigate('ChallengeDetail', { challengeId: c.id })}
-                    />
-                  ))}
-                </View>
-              )}
-
-              {milestones.length > 0 && (
-                <View style={s.section}>
-                  <Text style={s.sectionLabel}>Streak milestones</Text>
-                  {milestones.map(m => (
-                    <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
-                  ))}
-                </View>
-              )}
-
-              {!loading && feed.length > 0 && (
-                <View style={s.sectionHeader}>
-                  <Text style={s.sectionLabel}>Friends feed</Text>
-                </View>
-              )}
-            </>
-          }
+          ListHeaderComponent={listHeader}
           renderItem={({ item }) => (
             <WorkoutPostCard
               post={item}
@@ -319,7 +325,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
   headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
-  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
+  greeting: { fontSize: 20, fontFamily: F.disp, color: C.text, letterSpacing: -0.3 },
   subGreeting: { fontSize: 13, color: C.muted, marginTop: 1 },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
@@ -343,15 +349,15 @@ const s = StyleSheet.create({
   },
   streakHeroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
   streakHeroLeft: { gap: 2 },
-  streakHeroNumber: { fontSize: 64, fontWeight: '800', color: C.primary, letterSpacing: -2, lineHeight: 60 },
-  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text },
-  streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.muted },
+  streakHeroNumber: { fontSize: 64, fontFamily: F.disp, color: C.primary, letterSpacing: -2, lineHeight: 60 },
+  streakHeroUnit: { fontSize: 17, fontFamily: F.bold, color: C.text },
+  streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.text2 },
   streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
   streakProgress: { height: 7, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
   streakProgressFill: { height: '100%' as any, backgroundColor: C.primary, borderRadius: 4 },
   streakProgressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  streakProgressLabel: { fontSize: 12, fontWeight: '500', color: C.muted },
+  streakProgressLabel: { fontSize: 12, fontWeight: '500', color: C.text2 },
   streakProgressToNext: { fontSize: 12, fontWeight: '700', color: C.text },
   streakMilestoneRight: { fontSize: 12, fontWeight: '700', color: C.primary },
   streakStart: {
@@ -369,7 +375,7 @@ const s = StyleSheet.create({
   banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: 10, borderRadius: 16, backgroundColor: C.card, borderWidth: 1 },
   bannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
-  bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
+  bannerSub: { fontSize: 12, color: C.text2, marginTop: 2 },
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
@@ -377,8 +383,8 @@ const s = StyleSheet.create({
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontFamily: F.disp, color: C.text },
+  emptyText: { fontSize: 14, color: C.text2, textAlign: 'center', lineHeight: 20 },
   emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
 });
