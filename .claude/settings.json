@@ -166,7 +166,13 @@
       "Bash(npx @claude-flow*)",
       "Bash(npx claude-flow*)",
       "Bash(node .claude/*)",
-      "mcp__claude-flow__:*"
+      "mcp__claude-flow__:*",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git push *)",
+      "Bash(npx tsc --noEmit)",
+      "Bash(npx tsc --noEmit *)"
     ],
     "deny": [
       "Read(./.env)",
