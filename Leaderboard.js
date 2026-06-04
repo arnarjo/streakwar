@@ -95,8 +95,8 @@ const Divider = () => (
 
 // ── Login ──
 export function Login({ nav, signIn }) {
-  const [email, setEmail] = useState('arnar@streakwar.app');
-  const [pw, setPw] = useState('streakwar1');
+  const [email, setEmail] = useState('');
+  const [pw, setPw] = useState('');
   const [show, setShow] = useState(false);
   return (
     <AuthShell onBack={() => nav('onboarding')}>
