@@ -1,136 +1,181 @@
-/* StreakWar — Log Workout + celebration */
-(function () {
-  const { useState, useRef, useEffect } = React;
-  const e = React.createElement;
+// StreakWar — Home feed
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity } from 'react-native';
+import Icon from '../components/Icon';
+import { Screen, Header, Avatar, IconBtn, Card, Bar, Skel, SLabel, Grad } from '../components/ui';
+import PostCard from '../components/PostCard';
+import ChallengeRow from '../components/ChallengeRow';
+import { C, a, f, nfmt } from '../theme';
+import { DB } from '../data';
 
-  function Confetti() {
-    const cols = [C.primary, C.amber, C.green, C.blue, C.primaryBri, '#fff'];
-    const pieces = Array.from({length:30}, (_,i)=>({
-      left: Math.random()*100, color: cols[i%cols.length],
-      delay: Math.random()*0.5, dur: 1.6+Math.random()*1.2,
-      w: 6+Math.random()*7, rot: Math.random()*360, round: Math.random()>0.6,
-    }));
-    return e('div', { style:{ position:'absolute', inset:0, overflow:'hidden', pointerEvents:'none', zIndex:1 }},
-      pieces.map((p,i)=> e('div', { key:i, style:{
-        position:'absolute', top:-20, left:`${p.left}%`, width:p.w, height:p.w*(p.round?1:0.5),
-        background:p.color, borderRadius: p.round?'50%':2, transform:`rotate(${p.rot}deg)`,
-        animation:`sw-confetti ${p.dur}s ${p.delay}s ease-in forwards`,
-      }})));
-  }
-  window.Confetti = Confetti;
+function StreakHero({ streak, best, onShare }) {
+  const toNext = 10 - (streak % 10 || 0) || 10;
+  const milestone = Math.ceil((streak + 1) / 10) * 10;
+  const prog = (streak % 10) / 10;
+  return (
+    <TouchableOpacity activeOpacity={0.9} onPress={onShare} style={{ marginBottom: 14 }}>
+      <Grad colors={[a(C.primary, 0.20), a(C.primaryDeep, 0.10), C.surface]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={{
+        borderRadius: 22, paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18,
+        borderWidth: 1, borderColor: a(C.primary, 0.3), overflow: 'hidden',
+      }}>
+        <View style={{ position: 'absolute', right: -30, top: -30, width: 160, height: 160, borderRadius: 80, backgroundColor: a(C.primary, 0.10) }} />
+        <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <View>
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8 }}>
+              <Text style={f('disp', 800, 64, { color: C.primary, letterSpacing: -2, lineHeight: 60, textShadowColor: a(C.primary, 0.5), textShadowRadius: 20, textShadowOffset: { width: 0, height: 4 } })}>{streak}</Text>
+              <Icon name="flame" size={30} color={C.primaryBri} stroke={1.8} />
+            </View>
+            <Text style={f('ui', 700, 17, { color: C.text, marginTop: 2 })}>day streak</Text>
+            <Text style={f('ui', 500, 12.5, { color: C.text2, marginTop: 2 })}>
+              Personal best · <Text style={f('ui', 700, 12.5, { color: C.amber })}>{best + ' days'}</Text>
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 11, borderRadius: 11, backgroundColor: a(C.bg, 0.4), borderWidth: 1, borderColor: C.line }}>
+            <Icon name="share" size={14} color={C.text} stroke={2} />
+            <Text style={f('ui', 700, 12.5, { color: C.text })}>Share</Text>
+          </View>
+        </View>
+        <View style={{ marginTop: 16 }}>
+          <Bar value={prog} color={C.primary} h={7} glow />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
+            <Text style={f('ui', 500, 12, { color: C.text2 })}>
+              <Text style={f('ui', 700, 12, { color: C.text })}>{toNext + ' days'}</Text> to {milestone}-day milestone
+            </Text>
+            <Text style={f('ui', 700, 12, { color: C.primary })}>{milestone}</Text>
+          </View>
+        </View>
+      </Grad>
+    </TouchableOpacity>
+  );
+}
 
-  // Celebration overlay — used on log + milestones
-  function Celebration({ streak, milestone, onDone }) {
-    return e('div', { style:{
-      position:'absolute', inset:0, zIndex:80, background:'rgba(4,7,12,.82)', backdropFilter:'blur(4px)',
-      display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:30, animation:'sw-fade .25s ease',
-    }},
-      e(Confetti, null),
-      e('div', { style:{ position:'relative', textAlign:'center', animation:'sw-pop .5s cubic-bezier(.2,.9,.2,1)' }},
-        e('div', { style:{ position:'relative', width:148, height:148, margin:'0 auto 24px' }},
-          [0,1].map(k=> e('div', { key:k, style:{ position:'absolute', inset:0, borderRadius:'50%', border:`2px solid ${a(C.primary,.5)}`, animation:`sw-ring 1.6s ${k*0.5}s ease-out infinite` }})),
-          e('div', { style:{ position:'absolute', inset:0, borderRadius:'50%', background:`radial-gradient(circle,${a(C.primary,.3)},${a(C.primary,.06)})`, border:`2px solid ${a(C.primary,.6)}`, display:'flex', alignItems:'center', justifyContent:'center' }},
-            e('div', { style:{ animation:'sw-flame 1.8s ease-in-out infinite', transformOrigin:'bottom' }}, e(Icon, { name:'flame', size:74, color:C.primary, stroke:1.7 }))),
-        ),
-        e('div', { style:{ font:`800 80px ${F.disp}`, color:C.primary, letterSpacing:'-3px', lineHeight:.85, textShadow:`0 6px 30px ${a(C.primary,.6)}` }}, streak),
-        e('div', { style:{ font:`700 22px ${F.disp}`, color:C.text, textTransform:'uppercase', letterSpacing:'.5px', marginTop:4 }}, milestone ? `${streak}-day milestone!` : 'Day streak'),
-        e('div', { style:{ font:`400 15px ${F.ui}`, color:C.text2, marginTop:8, maxWidth:260 }},
-          milestone ? 'Legendary. Your peers just got notified — flex it.' : 'Workout logged. Streak alive. Keep the fire going.'),
-        e(Btn, { size:'lg', onClick:onDone, style:{ marginTop:26, minWidth:200 }, icon: milestone?'share':'check' }, milestone?'Share milestone':'Nice'),
-      ),
-    );
-  }
-  window.Celebration = Celebration;
+function Banner({ icon, iconColor, title, sub, onPress, accent }) {
+  return (
+    <TouchableOpacity activeOpacity={0.85} onPress={onPress} style={{
+      flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15,
+      marginBottom: 10, borderRadius: 16, backgroundColor: C.surface, borderWidth: 1, borderColor: a(accent || iconColor, 0.28),
+    }}>
+      <View style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: a(iconColor, 0.14), borderWidth: 1, borderColor: a(iconColor, 0.3), alignItems: 'center', justifyContent: 'center' }}>
+        <Icon name={icon} size={22} color={iconColor} stroke={2} />
+      </View>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={f('ui', 700, 14.5, { color: C.text })}>{title}</Text>
+        <Text style={f('ui', 500, 12.5, { color: C.text2, marginTop: 1 })}>{sub}</Text>
+      </View>
+      <Icon name="chevR" size={18} color={C.text3} />
+    </TouchableOpacity>
+  );
+}
 
-  function LogWorkout({ back, params }) {
-    const [act, setAct] = useState('run');
-    const [mins, setMins] = useState('');
-    const [km, setKm] = useState('');
-    const [kcal, setKcal] = useState('');
-    const [steps, setSteps] = useState('');
-    const [caption, setCaption] = useState('');
-    const [photo, setPhoto] = useState(false);
-    const [ch, setCh] = useState(params?.challengeId || null);
-    const [date, setDate] = useState('Today');
-    const [run, setRun] = useState(false);
-    const [sec, setSec] = useState(0);
-    const [celebrate, setCelebrate] = useState(false);
-    const tref = useRef(null);
-    useEffect(()=>()=>clearInterval(tref.current), []);
-    function toggleTimer(){ if(run){ clearInterval(tref.current); setRun(false);} else { tref.current=setInterval(()=>setSec(s=>s+1),1000); setRun(true);} }
-    const tdisp = `${String(Math.floor(sec/60)).padStart(2,'0')}:${String(sec%60).padStart(2,'0')}`;
-    const active = DB.challenges.filter(c=>c.status==='active');
-    const valid = mins||km||kcal||steps||caption.trim();
+function MilestoneCard({ m, onReact, openProfile }) {
+  const u = DB.U[m.user];
+  return (
+    <Card pad={14} style={{ marginBottom: 10, borderColor: a(C.amber, 0.25), backgroundColor: C.surface }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+        <View>
+          <Avatar user={u} size={44} onPress={() => openProfile(m.user)} />
+          <View style={{ position: 'absolute', right: -4, bottom: -4, width: 22, height: 22, borderRadius: 11, backgroundColor: C.amber, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.surface }}>
+            <Icon name="flame" size={12} color={C.onPrimary} stroke={2.4} />
+          </View>
+        </View>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={f('ui', 700, 14, { color: C.text })}>
+            {u.full_name} hit a <Text style={{ color: C.amber }}>{m.streak + '-day'}</Text> streak
+          </Text>
+          <Text style={f('ui', 500, 12, { color: C.text2, marginTop: 1 })}>{m.ago} ago · send some hype</Text>
+        </View>
+      </View>
+      <View style={{ flexDirection: 'row', gap: 7, marginTop: 12 }}>
+        {DB.reactionsList.map((r) => {
+          const on = m.myReaction === r;
+          return (
+            <TouchableOpacity key={r} activeOpacity={0.7} onPress={() => onReact(m.id, r)} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 6, paddingHorizontal: 10, borderRadius: 10, minHeight: 36,
+              backgroundColor: on ? a(C.amber, 0.18) : C.surface2, borderWidth: 1, borderColor: on ? a(C.amber, 0.45) : C.line,
+            }}>
+              <Icon name={DB.REACTION_ICON[r]} size={14} color={on ? C.amber : C.text2} stroke={2} />
+              {m.reactions[r] ? <Text style={f('ui', 700, 12, { color: on ? C.amber : C.text2 })}>{m.reactions[r]}</Text> : null}
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </Card>
+  );
+}
 
-    return e(React.Fragment, null,
-      e('div', { style:{ position:'sticky', top:0, zIndex:10, display:'flex', alignItems:'center', justifyContent:'space-between', padding:'12px 16px', background:a(C.bg,.9), backdropFilter:'blur(12px)', borderBottom:`1px solid ${C.line2}` }},
-        e('button', { className:'sw-tap', onClick:back, style:{ background:'none', border:'none', color:C.text2, font:`600 15px ${F.ui}`, cursor:'pointer', padding:6 }}, 'Cancel'),
-        e('div', { style:{ font:`700 18px ${F.disp}`, color:C.text, textTransform:'uppercase', letterSpacing:'.3px', whiteSpace:'nowrap' }}, 'Log workout'),
-        e(Btn, { size:'sm', disabled:!valid, onClick:()=>setCelebrate(true) }, 'Save'),
-      ),
-      e(Screen, { style:{ padding:'18px 16px 40px' }},
-        e(SLabel, { style:{ marginBottom:11 }}, 'Activity'),
-        e('div', { style:{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:24 }},
-          DB.ACT_OPTIONS.map(t=>{
-            const on = act===t;
-            return e('button', { key:t, className:'sw-tap', onClick:()=>setAct(t), style:{
-              display:'flex', alignItems:'center', gap:7, padding:'9px 13px', borderRadius:12, cursor:'pointer', minHeight:42,
-              background: on?a(C.primary,.15):C.surface, border:`1.5px solid ${on?a(C.primary,.5):C.line}`,
-            }},
-              e(Icon, { name:ACT_ICON[t], size:18, color:on?C.primary:C.text2, stroke:2 }),
-              e('span', { style:{ font:`600 13.5px ${F.ui}`, color:on?C.text:C.text2 }}, DB.ACT_LABEL[t]));
-          })),
-        // timer
-        e(SLabel, { style:{ marginBottom:11 }}, 'Live timer'),
-        e('div', { style:{ background:`linear-gradient(160deg,${C.surface2},${C.surface})`, border:`1px solid ${C.line}`, borderRadius:18, padding:'20px 18px', marginBottom:24, textAlign:'center' }},
-          e('div', { style:{ font:`700 56px ${F.disp}`, color: run?C.primary:C.text, letterSpacing:'2px', fontVariantNumeric:'tabular-nums', lineHeight:1 }}, tdisp),
-          e('div', { style:{ display:'flex', gap:10, justifyContent:'center', marginTop:16 }},
-            e(Btn, { variant: run?'danger':'success', icon: run?'x':'stopwatch', onClick:toggleTimer }, run?'Pause':sec>0?'Resume':'Start'),
-            sec>0 && !run && e(Btn, { onClick:()=>{ setMins(String(Math.max(1,Math.round(sec/60)))); setSec(0); }, iconR:'arrowR' }, 'Use time'),
-            sec>0 && e(Btn, { variant:'ghost', onClick:()=>{ clearInterval(tref.current); setRun(false); setSec(0); }}, 'Reset'),
-          ),
-        ),
-        // stats
-        e(SLabel, { style:{ marginBottom:11 }}, 'Stats'),
-        e('div', { style:{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:24 }},
-          [['Duration','min',mins,setMins,'stopwatch'],['Distance','km',km,setKm,'ruler'],['Calories','kcal',kcal,setKcal,'flame'],['Steps','',steps,setSteps,'footsteps']].map(([l,u,v,set,ic])=>
-            e('div', { key:l, style:{ background:C.surface, border:`1px solid ${C.line}`, borderRadius:14, padding:'11px 13px' }},
-              e('div', { style:{ display:'flex', alignItems:'center', gap:6, marginBottom:7 }}, e(Icon,{name:ic,size:14,color:C.text2,stroke:2}), e('span',{style:{font:`600 11.5px ${F.ui}`,color:C.text2}}, l)),
-              e('div', { style:{ display:'flex', alignItems:'baseline', gap:5 }},
-                e('input', { value:v, onChange:ev=>set(ev.target.value.replace(/[^0-9.]/g,'')), placeholder:'0', inputMode:'decimal', style:{ width:'100%', background:'transparent', border:'none', color:C.text, font:`700 24px ${F.disp}`, padding:0 }}),
-                u && e('span', { style:{ font:`600 12px ${F.ui}`, color:C.text3 }}, u)),
-            )),
-        ),
-        // date
-        e(SLabel, { style:{ marginBottom:11 }}, 'Date'),
-        e(ChipRow, { items:[{key:'Today',label:'Today',icon:'calendar'},{key:'Yesterday',label:'Yesterday'},{key:'pick',label:'Pick date…'}], value:date, onChange:setDate, style:{ marginBottom:24 }}),
-        // challenge
-        active.length>0 && e('div', null,
-          e(SLabel, { style:{ marginBottom:11 }}, 'Attach to challenge'),
-          e('div', { style:{ display:'flex', flexWrap:'wrap', gap:8, marginBottom:24 }},
-            [{id:null,name:'None'},...active].map(c=>{
-              const on = ch===c.id;
-              return e('button', { key:c.id||'none', className:'sw-tap', onClick:()=>setCh(c.id), style:{
-                padding:'9px 14px', borderRadius:20, cursor:'pointer', maxWidth:200, minHeight:40,
-                background:on?a(C.primary,.15):C.surface, border:`1.5px solid ${on?a(C.primary,.5):C.line}`,
-                font:`600 13px ${F.ui}`, color:on?C.primary:C.text2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
-              }}, c.name);
-            })),
-        ),
-        // photo
-        e(SLabel, { style:{ marginBottom:11 }}, 'Photo'),
-        photo
-          ? e('div', null, e(PhotoSlot, { h:180, label:'your photo' }),
-              e('button', { className:'sw-tap', onClick:()=>setPhoto(false), style:{ display:'block', margin:'8px auto 0', background:'none', border:'none', color:C.red, font:`600 13px ${F.ui}`, cursor:'pointer' }}, 'Remove photo'))
-          : e('button', { className:'sw-press', onClick:()=>setPhoto(true), style:{ width:'100%', display:'flex', flexDirection:'column', alignItems:'center', gap:8, padding:'26px', borderRadius:16, background:C.surface, border:`1.5px dashed ${C.line}`, cursor:'pointer' }},
-              e(Icon, { name:'camera', size:28, color:C.text3, stroke:1.8 }), e('span', { style:{ font:`600 13.5px ${F.ui}`, color:C.text2 }}, 'Add a photo')),
-        e('div', { style:{ marginTop:24 }}, e(SLabel, { style:{ marginBottom:11 }}, 'Caption')),
-        e(Field, { value:caption, onChange:setCaption, multiline:true, placeholder:'How did it go?' }),
-        e(Btn, { full:true, size:'lg', icon:'flame', disabled:!valid, onClick:()=>setCelebrate(true), style:{ marginTop:24 }}, 'Save workout'),
-      ),
-      celebrate && e(Celebration, { streak: DB.me.current_streak+1, milestone:false, onDone:back }),
-    );
-  }
+const reactReducer = (id, r) => (arr) => arr.map((p) => {
+  if (p.id !== id) return p;
+  const rc = { ...p.reactions }; const prev = p.myReaction;
+  if (prev) rc[prev] = (rc[prev] || 1) - 1;
+  if (prev === r) return { ...p, myReaction: null, reactions: rc };
+  rc[r] = (rc[r] || 0) + 1; return { ...p, myReaction: r, reactions: rc };
+});
 
-  Object.assign(window, { LogWorkout });
-})();
+export default function Home({ nav, openProfile }) {
+  const [loading, setLoading] = useState(true);
+  const [feed, setFeed] = useState(DB.feed);
+  const [ms, setMs] = useState(DB.milestones);
+  useEffect(() => { const t = setTimeout(() => setLoading(false), 950); return () => clearTimeout(t); }, []);
+
+  const me = DB.me;
+  const active = DB.challenges.filter((c) => c.status === 'active').slice(0, 2);
+  const tier = DB.TIER[me.tier];
+
+  return (
+    <View style={{ flex: 1 }}>
+      <Header
+        big
+        title={`Hæ, ${me.full_name.split(' ')[0]}`}
+        subtitle="Ready to move today?"
+        left={<Avatar user={me} size={42} onPress={() => nav('profile')} />}
+        right={[
+          <TouchableOpacity key="p" activeOpacity={0.7} onPress={() => nav('leaderboard')} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 8, paddingHorizontal: 11, borderRadius: 12, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line }}>
+            <Icon name="star" size={14} color={C.primary} stroke={2} />
+            <Text style={f('disp', 700, 14, { color: C.text, letterSpacing: 0.3 })}>{nfmt(me.total_points)}</Text>
+          </TouchableOpacity>,
+          <IconBtn key="b" name="bell" onPress={() => nav('profile')} />,
+        ]}
+      />
+      <Screen contentStyle={{ paddingHorizontal: 16, paddingTop: 14, paddingBottom: 24 }}>
+        {loading ? (
+          <View>
+            <Skel h={150} r={22} style={{ marginBottom: 14 }} />
+            <Skel h={64} r={16} style={{ marginBottom: 10 }} />
+            <Skel h={64} r={16} style={{ marginBottom: 18 }} />
+            {[0, 1].map((k) => (
+              <View key={k} style={{ marginBottom: 12, padding: 15, backgroundColor: C.surface, borderWidth: 1, borderColor: C.line, borderRadius: 18 }}>
+                <View style={{ flexDirection: 'row', gap: 11, alignItems: 'center' }}>
+                  <Skel w={42} h={42} r={21} />
+                  <View style={{ flex: 1 }}>
+                    <Skel w="55%" h={13} style={{ marginBottom: 7 }} />
+                    <Skel w="35%" h={11} />
+                  </View>
+                  <Skel w={40} h={40} r={13} />
+                </View>
+                <Skel h={13} style={{ marginTop: 14 }} />
+                <Skel w="80%" h={13} style={{ marginTop: 8 }} />
+              </View>
+            ))}
+          </View>
+        ) : (
+          <View>
+            <StreakHero streak={me.current_streak} best={me.longest_streak} onShare={() => nav('recap')} />
+            <Banner icon={tier.icon} iconColor={tier.color} accent={tier.color} title={`#5 in ${tier.label} League`} sub="3 days left · top 5 promote" onPress={() => nav('leaderboard')} />
+            <Banner icon="target" iconColor={C.primary} title="Katrín is 162 pts ahead of you" sub="Your rival this week · catch up" onPress={() => nav('leaderboard')} />
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 12, marginHorizontal: 2 }}>
+              <SLabel>Active challenges</SLabel>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => nav('challenges')}>
+                <Text style={f('ui', 700, 12.5, { color: C.primary })}>See all</Text>
+              </TouchableOpacity>
+            </View>
+            {active.map((c) => <ChallengeRow key={c.id} c={c} onPress={() => nav('challengeDetail', { id: c.id })} />)}
+            <View style={{ marginTop: 20, marginBottom: 12, marginHorizontal: 2 }}><SLabel>Streak milestones</SLabel></View>
+            {ms.map((m) => <MilestoneCard key={m.id} m={m} onReact={(id, r) => setMs(reactReducer(id, r))} openProfile={openProfile} />)}
+            <View style={{ marginTop: 20, marginBottom: 12, marginHorizontal: 2 }}><SLabel>Friends feed</SLabel></View>
+            {feed.map((p) => <PostCard key={p.id} post={p} onReact={(id, r) => setFeed(reactReducer(id, r))} openProfile={openProfile} onOpenSheet={(post) => nav('comments', { post })} />)}
+          </View>
+        )}
+      </Screen>
+    </View>
+  );
+}
