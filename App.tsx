@@ -1,6 +1,7 @@
 import 'react-native-url-polyfill/auto';
 import './src/lib/backgroundSync';
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View } from 'react-native';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -13,6 +14,16 @@ import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
 import { initHealthConnect } from './src/lib/healthConnect';
 import { Platform, Linking } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
+import {
+  useFonts,
+  Inter_400Regular,
+  Inter_500Medium,
+  Inter_700Bold,
+  Inter_800ExtraBold,
+} from '@expo-google-fonts/inter';
+import * as SplashScreen from 'expo-splash-screen';
+
+SplashScreen.preventAutoHideAsync();
 
 function AppInner() {
   const [session, setSession] = useState<Session | null>(null);
@@ -90,13 +101,30 @@ async function bootHealthSync(userId: string) {
 }
 
 export default function App() {
+  const [fontsLoaded, fontError] = useFonts({
+    Inter_400Regular,
+    Inter_500Medium,
+    Inter_700Bold,
+    Inter_800ExtraBold,
+  });
+
+  const onLayout = useCallback(async () => {
+    if (fontsLoaded || fontError) {
+      await SplashScreen.hideAsync();
+    }
+  }, [fontsLoaded, fontError]);
+
+  if (!fontsLoaded && !fontError) return null;
+
   return (
-    <ErrorBoundary>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
-          <AppInner />
-        </SafeAreaView>
-      </SafeAreaProvider>
-    </ErrorBoundary>
+    <View style={{ flex: 1 }} onLayout={onLayout}>
+      <ErrorBoundary>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
+            <AppInner />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </ErrorBoundary>
+    </View>
   );
 }
