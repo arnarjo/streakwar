@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { WorkoutPost, WorkoutComment, ActivityType, WorkoutSource } from '../types/database';
 import * as ImagePicker from 'expo-image-picker';
@@ -89,6 +89,32 @@ export function useWorkoutFeed(userId: string) {
       setLoading(false);
     }
   }, [userId]);
+
+  // Subscribe to realtime updates on workout_posts
+  useEffect(() => {
+    if (!userId) return;
+
+    const channel = supabase
+      .channel(`workout-feed-${userId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'workout_posts',
+        },
+        () => {
+          // Refresh feed when any new workout post is inserted
+          // The fetchFeed function already filters by challenges the user is in
+          fetchFeed();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [userId, fetchFeed]); // fetchFeed is memoized, safe to include
 
   async function toggleReaction(postId: string, reaction: string): Promise<void> {
     if (reactionInFlight.current.has(postId)) return;
