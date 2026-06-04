@@ -34,10 +34,12 @@ const LAST_SYNC_KEY = 'health_connect_last_sync';
 let _lastHCDebug = '';
 export function getLastHCDebug(): string { return _lastHCDebug; }
 
-// Distance and ActiveCaloriesBurned are not yet used — only ExerciseSession and Steps.
 const HC_RECORD_TYPES = [
   'ExerciseSession',
   'Steps',
+  'Distance',
+  'ActiveCaloriesBurned',
+  'HeartRate',
 ] as const;
 
 /**
@@ -215,25 +217,70 @@ export async function pollHealthConnect(userId: string): Promise<number> {
 
       const existingSet = new Set(existing?.map((r: any) => r.external_activity_id) ?? []);
 
-      const toInsert = sessionList
-        .filter((s: any) => s.metadata?.id && !existingSet.has(String(s.metadata.id)))
-        .map((session: any) => {
+      const newSessions = sessionList.filter(
+        (s: any) => s.metadata?.id && !existingSet.has(String(s.metadata.id))
+      );
+
+      // Fetch distance, calories, and heart rate for each new session in parallel
+      const toInsert = await Promise.all(
+        newSessions.map(async (session: any) => {
           // Guard against missing timestamps — HC can omit endTime on in-progress sessions
           const startMs = session.startTime ? new Date(session.startTime).getTime() : NaN;
           const endMs   = session.endTime   ? new Date(session.endTime).getTime()   : NaN;
           const durationMs  = endMs - startMs;
           const durationMin = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : null;
+
+          const sessionFilter = {
+            timeRangeFilter: {
+              operator: 'between' as const,
+              startTime: session.startTime,
+              endTime: session.endTime,
+            },
+          };
+
+          // Fetch distance, calories, and heart rate in parallel for this session
+          const [rawDist, rawCal, rawHr] = await Promise.all([
+            readRecords('Distance', sessionFilter).catch(() => ({ records: [] })),
+            readRecords('ActiveCaloriesBurned', sessionFilter).catch(() => ({ records: [] })),
+            readRecords('HeartRate', sessionFilter).catch(() => ({ records: [] })),
+          ]);
+
+          const distRecs: any[] = Array.isArray(rawDist) ? rawDist : (rawDist?.records ?? []);
+          const calRecs: any[]  = Array.isArray(rawCal)  ? rawCal  : (rawCal?.records  ?? []);
+          const hrRecs: any[]   = Array.isArray(rawHr)   ? rawHr   : (rawHr?.records   ?? []);
+
+          const distanceKm = distRecs.reduce(
+            (sum: number, r: any) => sum + (r.distance?.inMeters ?? 0), 0
+          ) / 1000;
+
+          const calories = Math.round(
+            calRecs.reduce((sum: number, r: any) => sum + (r.energy?.inKilocalories ?? 0), 0)
+          );
+
+          const bpmValues = hrRecs.flatMap(
+            (r: any) => r.samples?.map((s: any) => s.beatsPerMinute) ?? []
+          );
+          const heartRateAvg = bpmValues.length > 0
+            ? Math.round(bpmValues.reduce((a: number, b: number) => a + b, 0) / bpmValues.length)
+            : null;
+          const heartRateMax = bpmValues.length > 0 ? Math.max(...bpmValues) : null;
+
           return {
             user_id: userId,
             challenge_id: challengeId,
             activity_type: mapHCExerciseType(session.exerciseType ?? 0),
             duration_minutes: durationMin !== null && durationMin > 0 ? durationMin : null,
+            distance_km: distanceKm > 0 ? distanceKm : null,
+            calories: calories > 0 ? calories : null,
+            heart_rate_avg: heartRateAvg,
+            heart_rate_max: heartRateMax,
             source: 'health_connect',
             external_activity_id: String(session.metadata.id),
             // Use local date to avoid UTC midnight off-by-one on users outside UTC
             workout_date: session.startTime ? toLocalDate(session.startTime) : toLocalDate(new Date()),
           };
-        });
+        })
+      );
 
       if (toInsert.length > 0) {
         const { error: batchErr } = await supabase.from('workout_posts').insert(toInsert);
