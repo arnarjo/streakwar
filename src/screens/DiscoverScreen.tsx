@@ -11,11 +11,8 @@ import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
 import { differenceInDays, parseISO } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', green: '#22C55E',
-};
 
 export default function DiscoverScreen() {
   const { profile } = useAuth();

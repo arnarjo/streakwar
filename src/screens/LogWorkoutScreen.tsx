@@ -16,21 +16,10 @@ import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
+import { C, S, R, FS } from '../theme';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  borderFocus: '#F97316',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
 
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
@@ -208,6 +197,8 @@ export default function LogWorkoutScreen() {
             style={[s.saveBtn, saving && { opacity: 0.5 }]}
             onPress={handleSave}
             disabled={saving}
+            accessibilityLabel="Save workout"
+            accessibilityRole="button"
           >
             {saving
               ? <ActivityIndicator color="#000" size="small" />
@@ -438,18 +429,6 @@ export default function LogWorkoutScreen() {
             numberOfLines={3}
           />
 
-          {/* Save */}
-          <TouchableOpacity
-            style={[s.saveBigBtn, saving && { opacity: 0.5 }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
-          >
-            {saving
-              ? <ActivityIndicator color="#000" />
-              : <Text style={s.saveBigBtnText}>Save workout 💪</Text>
-            }
-          </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -486,9 +465,11 @@ const s = StyleSheet.create({
     backgroundColor: C.primary,
     borderRadius: 9,
     paddingHorizontal: 16,
-    paddingVertical: 7,
-    minWidth: 60,
+    paddingVertical: 12,
+    minWidth: 64,
+    minHeight: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
 

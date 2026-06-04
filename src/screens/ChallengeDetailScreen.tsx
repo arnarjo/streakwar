@@ -16,17 +16,8 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
@@ -41,18 +32,20 @@ export default function ChallengeDetailScreen() {
   const [tab, setTab] = useState<Tab>('leaderboard');
   const [refreshing, setRefreshing] = useState(false);
   const [sharingCard, setSharingCard] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const shareCardRef = useRef<ViewShot>(null);
 
   const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fitness_challenges')
       .select('*, creator:profiles!fitness_challenges_created_by_fkey(*)')
       .eq('id', challengeId)
       .single();
-    if (data) setChallenge(data);
+    if (data) { setChallenge(data); setLoadError(null); }
+    else if (error) setLoadError('Could not load challenge. Tap to retry.');
   }, [challengeId]);
 
   const loadParticipants = useCallback(async () => {
@@ -117,8 +110,20 @@ export default function ChallengeDetailScreen() {
   }
 
   if (!challenge) return (
-    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      {loadError ? (
+        <>
+          <Text style={{ color: C.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>{loadError}</Text>
+          <TouchableOpacity onPress={loadChallenge} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }} accessibilityLabel="Retry loading challenge">
+            <Text style={{ color: '#000', fontWeight: '700' }}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
+            <Text style={{ color: C.muted, fontSize: 13 }}>Go back</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+      )}
     </View>
   );
 

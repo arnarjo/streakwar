@@ -7,16 +7,8 @@ import {
 import { ACTIVITY_LABELS, REACTIONS } from '../types/database';
 import type { WorkoutPost, WorkoutComment } from '../types/database';
 import { formatDistanceToNow } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-};
 
 type Props = {
   post: WorkoutPost;

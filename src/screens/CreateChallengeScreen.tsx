@@ -16,17 +16,8 @@ import {
 } from '../types/database';
 import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
 import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 

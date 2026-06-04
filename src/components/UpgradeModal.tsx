@@ -5,11 +5,8 @@ import {
 } from 'react-native';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { PremiumOffering } from '../hooks/usePremium';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.08)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', gold: '#FBBF24',
-};
 
 const PRO_FEATURES = [
   { icon: '🛡️', text: 'Streak freeze — protect 1 day per month' },

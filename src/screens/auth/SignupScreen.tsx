@@ -7,11 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
+import { C } from '../../theme';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444', success: '#22C55E',
-};
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type FormErrors = { fullName?: string; username?: string; email?: string; password?: string; confirm?: string };
@@ -63,12 +60,17 @@ export default function SignupScreen({ navigation }: Props) {
     const e: FormErrors = {};
     if (!email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) e.email = 'Invalid email address';
-    if (!password) e.password = 'Password is required';
-    else if (password.length < 8) e.password = 'At least 8 characters required';
-    else if (!/[A-Z]/.test(password)) e.password = 'Must contain at least one uppercase letter';
-    else if (!/[a-z]/.test(password)) e.password = 'Must contain at least one lowercase letter';
-    else if (!/[0-9]/.test(password)) e.password = 'Must contain at least one number';
-    else if (!/[^A-Za-z0-9]/.test(password)) e.password = 'Must contain at least one special character (!@#$...)';
+    if (!password) {
+      e.password = 'Password is required';
+    } else {
+      const pwErrors: string[] = [];
+      if (password.length < 8) pwErrors.push('at least 8 characters');
+      if (!/[A-Z]/.test(password)) pwErrors.push('one uppercase letter');
+      if (!/[a-z]/.test(password)) pwErrors.push('one lowercase letter');
+      if (!/[0-9]/.test(password)) pwErrors.push('one number');
+      if (!/[^A-Za-z0-9]/.test(password)) pwErrors.push('one special character (!@#$...)');
+      if (pwErrors.length > 0) e.password = 'Must include: ' + pwErrors.join(', ');
+    }
     if (!confirm) e.confirm = 'Please confirm your password';
     else if (password !== confirm) e.confirm = 'Passwords do not match';
     setErrors(e);
@@ -86,7 +88,7 @@ export default function SignupScreen({ navigation }: Props) {
       if (error.message.includes('already registered')) setErrors({ email: 'This email is already registered' });
       else Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } else {
-      Alert.alert('Welcome! 🎉', "We've sent a confirmation email. Check your inbox.", [
+      Alert.alert('Check your email', "We've sent a confirmation link to " + email.trim() + ". Tap the link and you'll be signed in automatically.", [
         { text: 'OK', onPress: () => navigation.navigate('Login') },
       ]);
     }

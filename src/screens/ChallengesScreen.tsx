@@ -12,11 +12,8 @@ import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 import UpgradeModal from '../components/UpgradeModal';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316',
-};
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
 const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };

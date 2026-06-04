@@ -23,11 +23,7 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C, S, R, FS } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
@@ -146,7 +142,7 @@ export default function HomeScreen() {
 
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.greeting}>
-            Hæ, {profile?.full_name?.split(' ')[0] ?? 'there'}!
+            Hey, {profile?.full_name?.split(' ')[0] ?? 'there'}!
           </Text>
           <Text style={s.subGreeting}>Ready to move today?</Text>
         </View>
@@ -157,7 +153,7 @@ export default function HomeScreen() {
               <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)} accessibilityLabel="Log a workout" accessibilityRole="button">
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
@@ -196,7 +192,7 @@ export default function HomeScreen() {
                             <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
                           )}
                         </View>
-                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
+                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare} accessibilityLabel="Share your streak" accessibilityRole="button">
                           <Text style={s.streakShareText}>📤  Share</Text>
                         </TouchableOpacity>
                       </View>

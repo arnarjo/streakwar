@@ -11,19 +11,10 @@ import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
+import { C } from '../theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  green: '#22C55E',
-  error: '#EF4444',
-};
 
 const OAUTH_PROVIDERS: ProviderKey[] = ['strava'];
 const COMING_SOON_PROVIDERS: ProviderKey[] = [];

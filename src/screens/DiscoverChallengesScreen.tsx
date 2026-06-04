@@ -8,6 +8,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
 import type { FitnessChallenge, ScoringMode } from '../types/database';
+import { C } from '../theme';
 
 type Props = {
   myChallenges: FitnessChallenge[];
@@ -15,11 +16,6 @@ type Props = {
   onRefreshMyChallenges: () => Promise<void>;
 };
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
-  gold: '#F59E0B', purple: '#8B5CF6',
-};
 
 type Filter = 'all' | ScoringMode;
 const FILTERS: Array<{ key: Filter; label: string }> = [

@@ -19,11 +19,8 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', green: '#22C55E', error: '#EF4444',
-};
 
 function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
 function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }

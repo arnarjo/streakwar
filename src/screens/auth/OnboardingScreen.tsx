@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { C } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
-const C = { bg: '#0C1117', text: '#EEF4F8', muted: '#4A6070', primary: '#F97316' };
 
 const slides = [
   {
@@ -65,7 +65,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       <View style={s.topBar}>
         <View />
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')} accessibilityLabel="Skip onboarding" accessibilityRole="button">
           <Text style={s.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
@@ -76,7 +76,7 @@ export default function OnboardingScreen({ navigation }: Props) {
         keyExtractor={item => item.id}
         horizontal pagingEnabled
         showsHorizontalScrollIndicator={false}
-        scrollEnabled={false}
+        scrollEnabled={true}
         onScroll={Animated.event(
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
@@ -95,15 +95,24 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       <View style={s.dotsRow}>
         {slides.map((_, i) => (
-          <View
+          <TouchableOpacity
             key={i}
-            style={[
-              s.dot,
-              i === currentIndex
-                ? { width: 24, backgroundColor: accent }
-                : { width: 8, backgroundColor: 'rgba(255,255,255,0.2)' },
-            ]}
-          />
+            onPress={() => {
+              flatListRef.current?.scrollToIndex({ index: i });
+              setCurrentIndex(i);
+            }}
+            accessibilityLabel={`Go to slide ${i + 1}`}
+            accessibilityRole="button"
+          >
+            <View
+              style={[
+                s.dot,
+                i === currentIndex
+                  ? { width: 24, backgroundColor: accent }
+                  : { width: 8, backgroundColor: 'rgba(255,255,255,0.2)' },
+              ]}
+            />
+          </TouchableOpacity>
         ))}
       </View>
 

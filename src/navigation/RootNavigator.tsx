@@ -2,43 +2,47 @@ import React, { useEffect, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../lib/supabase';
 import type { Session } from '@supabase/supabase-js';
 import { navigationRef } from './navigationRef';
 
-import OnboardingScreen      from '../screens/auth/OnboardingScreen';
-import LoginScreen           from '../screens/auth/LoginScreen';
-import SignupScreen          from '../screens/auth/SignupScreen';
-import ResetPasswordScreen   from '../screens/auth/ResetPasswordScreen';
+import OnboardingScreen           from '../screens/auth/OnboardingScreen';
+import LoginScreen                from '../screens/auth/LoginScreen';
+import SignupScreen               from '../screens/auth/SignupScreen';
+import ResetPasswordScreen        from '../screens/auth/ResetPasswordScreen';
 
-import HomeScreen            from '../screens/HomeScreen';
-import ChallengesScreen      from '../screens/ChallengesScreen';
-import LeaderboardScreen     from '../screens/LeaderboardScreen';
-import ProfileScreen         from '../screens/ProfileScreen';
-import ChallengeDetailScreen from '../screens/ChallengeDetailScreen';
-import CreateChallengeScreen from '../screens/CreateChallengeScreen';
-import LogWorkoutScreen      from '../screens/LogWorkoutScreen';
-import ConnectDevicesScreen  from '../screens/ConnectDevicesScreen';
-import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
+import HomeScreen                 from '../screens/HomeScreen';
+import ChallengesScreen           from '../screens/ChallengesScreen';
+import LeaderboardScreen          from '../screens/LeaderboardScreen';
+import ProfileScreen              from '../screens/ProfileScreen';
+import ChallengeDetailScreen      from '../screens/ChallengeDetailScreen';
+import CreateChallengeScreen      from '../screens/CreateChallengeScreen';
+import LogWorkoutScreen           from '../screens/LogWorkoutScreen';
+import ConnectDevicesScreen       from '../screens/ConnectDevicesScreen';
+import WeeklyRecapScreen          from '../screens/WeeklyRecapScreen';
+import DiscoverScreen             from '../screens/DiscoverScreen';
+import DiscoverChallengesScreen   from '../screens/DiscoverChallengesScreen';
 
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-const TAB_ICONS: Record<string, string> = {
-  Home:        '🏠',
-  Challenges:  '💪',
-  Leaderboard: '🏆',
-  Profile:     '👤',
+type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICON_FOCUSED: Record<string, IoniconsName> = {
+  Home:        'home',
+  Challenges:  'barbell',
+  Leaderboard: 'trophy',
+  Profile:     'person',
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  return (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>
-      {TAB_ICONS[name] ?? '●'}
-    </Text>
-  );
-}
+const TAB_ICON_UNFOCUSED: Record<string, IoniconsName> = {
+  Home:        'home-outline',
+  Challenges:  'barbell-outline',
+  Leaderboard: 'trophy-outline',
+  Profile:     'person-outline',
+};
 
 function MainTabs() {
   return (

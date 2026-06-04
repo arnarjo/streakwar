@@ -1,5 +1,6 @@
 import React, { forwardRef } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
+import { C } from '../theme';
 
 interface Props {
   challengeName: string;

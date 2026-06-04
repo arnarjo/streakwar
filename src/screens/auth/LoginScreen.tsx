@@ -8,11 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
+import { C } from '../../theme';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444',
-};
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -148,7 +145,12 @@ export default function LoginScreen({ navigation }: Props) {
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity style={s.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
+                <TouchableOpacity
+                  style={s.eyeBtn}
+                  onPress={() => setShowPassword(!showPassword)}
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityRole="button"
+                >
                   <Text style={s.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
                 </TouchableOpacity>
               </View>
@@ -158,6 +160,8 @@ export default function LoginScreen({ navigation }: Props) {
             <TouchableOpacity
               style={s.forgotBtn}
               onPress={handleForgotPassword}
+              accessibilityLabel="Forgot password, reset your password"
+              accessibilityRole="button"
             >
               <Text style={s.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -167,6 +171,8 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={handleLogin}
               disabled={loading}
               activeOpacity={0.85}
+              accessibilityLabel="Sign in to your account"
+              accessibilityRole="button"
             >
               {loading ? <ActivityIndicator color="#000" /> : <Text style={s.loginBtnText}>Sign in</Text>}
             </TouchableOpacity>
@@ -249,7 +255,7 @@ const s = StyleSheet.create({
     borderTopRightRadius: 12, borderBottomRightRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center',
   },
   eyeIcon: { fontSize: 16 },
-  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
+  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4, paddingVertical: 10, paddingHorizontal: 4 },
   forgotText: { color: C.primary, fontSize: 13, fontWeight: '600' },
   loginBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
