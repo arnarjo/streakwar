@@ -34,6 +34,8 @@ export function SkeletonPulse({ width = '100%', height = 16, radius = 6, style }
         animStyle,
         style,
       ]}
+      accessibilityElementsHidden={true}
+      importantForAccessibility="no"
     />
   );
 }
