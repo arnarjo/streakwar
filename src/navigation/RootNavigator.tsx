@@ -2,7 +2,8 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { navigationRef } from './navigationRef';
 
@@ -24,18 +25,44 @@ import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
 const Stack = createNativeStackNavigator();
 const Tab   = createBottomTabNavigator();
 
-const TAB_ICONS: Record<string, string> = {
-  Home:        '🏠',
-  Challenges:  '💪',
-  Leaderboard: '🏆',
-  Profile:     '👤',
+// SVG path data for each tab icon (24×24 viewport, stroke-based)
+const TAB_SVG: Record<string, React.ReactNode> = {
+  Home: (
+    <Path
+      d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H14v-5h-4v5H4a1 1 0 01-1-1V9.5z"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  ),
+  Challenges: (
+    <>
+      <Path
+        d="M13 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V9l-7-7z"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path d="M13 2v7h7" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M9 13h6M9 17h4" strokeLinecap="round" />
+    </>
+  ),
+  Leaderboard: (
+    <>
+      <Path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6L12 2z" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
+  Profile: (
+    <>
+      <Circle cx="12" cy="8" r="4" strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" strokeLinecap="round" strokeLinejoin="round" />
+    </>
+  ),
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
+function TabIcon({ name, color }: { name: string; color: string }) {
   return (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>
-      {TAB_ICONS[name] ?? '●'}
-    </Text>
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8}>
+      {TAB_SVG[name] ?? <Circle cx="12" cy="12" r="5" />}
+    </Svg>
   );
 }
 
@@ -44,7 +71,7 @@ function MainTabs() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ color }) => <TabIcon name={route.name} color={color} />,
         tabBarStyle: {
           backgroundColor: '#0C1117',
           borderTopColor: 'rgba(255,255,255,0.07)',
