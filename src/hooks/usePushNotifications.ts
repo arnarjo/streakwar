@@ -7,6 +7,12 @@ import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import type { NavigationContainerRef } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/RootNavigator';
+
+interface NotificationData {
+  screen?: string;
+  challenge_id?: string;
+}
 
 try {
   Notifications.setNotificationHandler({
@@ -24,7 +30,7 @@ try {
 
 export function usePushNotifications(
   userId: string,
-  navigationRef: NavigationContainerRef<any>
+  navigationRef: NavigationContainerRef<RootStackParamList>
 ) {
   const notificationListener = useRef<Notifications.EventSubscription>(undefined);
   const responseListener = useRef<Notifications.EventSubscription>(undefined);
@@ -100,18 +106,18 @@ export function usePushNotifications(
 
 function handleNotificationResponse(
   response: Notifications.NotificationResponse,
-  navigationRef: NavigationContainerRef<any>,
+  navigationRef: NavigationContainerRef<RootStackParamList>,
 ) {
   if (!navigationRef.isReady()) return;
-  const data = response.notification.request.content.data as any;
+  const data = response.notification.request.content.data as NotificationData;
   if (data?.screen === 'LogWorkout') {
-    navigationRef.navigate('LogWorkout' as never);
+    navigationRef.navigate('LogWorkout');
     return;
   }
   if (data?.screen === 'WeeklyRecap') {
-    navigationRef.navigate('WeeklyRecap' as never);
+    navigationRef.navigate('WeeklyRecap');
   } else if (data?.challenge_id) {
-    (navigationRef as any).navigate('ChallengeDetail', { challengeId: data.challenge_id });
+    navigationRef.navigate('ChallengeDetail', { challengeId: data.challenge_id });
   }
 }
 

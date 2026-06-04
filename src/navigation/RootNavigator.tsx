@@ -7,6 +7,26 @@ import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { navigationRef } from './navigationRef';
 
+export type RootStackParamList = {
+  Main:            undefined;
+  ChallengeDetail: { challengeId: string };
+  CreateChallenge: undefined;
+  LogWorkout:      undefined;
+  ConnectDevices:  undefined;
+  WeeklyRecap:     undefined;
+  ResetPassword:   undefined;
+  Onboarding:      undefined;
+  Login:           undefined;
+  Signup:          undefined;
+};
+
+export type MainTabParamList = {
+  Home:        undefined;
+  Challenges:  undefined;
+  Leaderboard: undefined;
+  Profile:     undefined;
+};
+
 import OnboardingScreen      from '../screens/auth/OnboardingScreen';
 import LoginScreen           from '../screens/auth/LoginScreen';
 import SignupScreen          from '../screens/auth/SignupScreen';
@@ -22,8 +42,28 @@ import LogWorkoutScreen      from '../screens/LogWorkoutScreen';
 import ConnectDevicesScreen  from '../screens/ConnectDevicesScreen';
 import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
 
-const Stack = createNativeStackNavigator();
-const Tab   = createBottomTabNavigator();
+export type RootStackParamList = {
+  Main: undefined;
+  ChallengeDetail: { challengeId: string };
+  CreateChallenge: undefined;
+  LogWorkout: undefined;
+  ConnectDevices: undefined;
+  WeeklyRecap: undefined;
+  ResetPassword: undefined;
+  Onboarding: undefined;
+  Login: undefined;
+  Signup: undefined;
+};
+
+export type MainTabParamList = {
+  Home: undefined;
+  Challenges: undefined;
+  Leaderboard: undefined;
+  Profile: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab   = createBottomTabNavigator<MainTabParamList>();
 
 // SVG path data for each tab icon (24×24 viewport, stroke-based)
 const TAB_SVG: Record<string, React.ReactNode> = {

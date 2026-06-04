@@ -8,6 +8,15 @@ import ReAnimated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList, MainTabParamList } from '../navigation/RootNavigator';
+
+type HomeNavProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Home'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useStreaks } from '../hooks/useStreaks';
@@ -27,7 +36,7 @@ import { C, F } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<HomeNavProp>();
   const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
@@ -177,7 +186,7 @@ export default function HomeScreen() {
       )}
 
       {leagueMembers.length > 0 && myRank !== null && (
-        <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+        <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
           <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
             <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
           </View>
@@ -190,7 +199,7 @@ export default function HomeScreen() {
       )}
 
       {rival && (
-        <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+        <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
           <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
             <Text style={{ fontSize: 22 }}>🎯</Text>
           </View>
@@ -250,7 +259,7 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
               {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
@@ -267,11 +276,11 @@ export default function HomeScreen() {
 
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
-            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
+            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard')}>
               <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
