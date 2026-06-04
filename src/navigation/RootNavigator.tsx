@@ -1,10 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { Text, View } from 'react-native';
-import { supabase } from '../lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import { useAuth } from '../hooks/useAuth';
 import { navigationRef } from './navigationRef';
 
 import OnboardingScreen      from '../screens/auth/OnboardingScreen';
@@ -71,53 +70,7 @@ function MainTabs() {
 type Props = { onRouteChange?: (name: string) => void };
 
 export default function RootNavigator({ onRouteChange }: Props) {
-  const [session, setSession] = useState<Session | null>(null);
-  const [profileExists, setProfileExists] = useState<boolean | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
-
-  async function checkProfile(userId: string) {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', userId)
-      .maybeSingle();
-    setProfileExists(!error && data != null);
-    setLoading(false);
-  }
-
-  useEffect(() => {
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        setSession(session);
-        if (session?.user?.id) {
-          checkProfile(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch(() => setLoading(false));
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
-      if (_e === 'PASSWORD_RECOVERY') {
-        setNeedsPasswordReset(true);
-        setLoading(false);
-        return;
-      }
-      if (_e === 'USER_UPDATED') {
-        setNeedsPasswordReset(false);
-      }
-      setSession(s);
-      if (s?.user?.id) {
-        setLoading(true);
-        checkProfile(s.user.id);
-      } else {
-        setProfileExists(null);
-        setLoading(false);
-      }
-    });
-    return () => subscription.unsubscribe();
-  }, []);
+  const { session, loading, profileExists, needsPasswordReset } = useAuth();
 
   // Show a blank splash while we resolve both session + profile.
   if (loading) return <View style={{ flex: 1, backgroundColor: '#0C1117' }} />;

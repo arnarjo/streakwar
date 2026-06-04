@@ -17,11 +17,20 @@ export function useAuth() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileMissing, setProfileMissing] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
 
   useEffect(() => {
     // onAuthStateChange fires INITIAL_SESSION on mount with the current session,
     // so we don't need a separate getSession() call.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        setNeedsPasswordReset(true);
+        setLoading(false);
+        return;
+      }
+      if (event === 'USER_UPDATED') {
+        setNeedsPasswordReset(false);
+      }
       setSession(session);
       if (session) {
         // Only configure purchases on actual sign-in events, not on every state change
@@ -121,11 +130,16 @@ export function useAuth() {
     teardownHealthKit();
   }
 
+  // profileExists: true only when the user is signed in AND has a profiles row.
+  const profileExists = profile !== null && !profileMissing;
+
   return {
     session,
     profile,
     profileMissing,
+    profileExists,
     loading,
+    needsPasswordReset,
     signUp,
     signIn,
     signInWithGoogle,
