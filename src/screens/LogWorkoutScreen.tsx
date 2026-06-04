@@ -56,8 +56,12 @@ export default function LogWorkoutScreen() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+  }, []);
 
   function toggleTimer() {
     if (timerRunning) {
@@ -88,7 +92,7 @@ export default function LogWorkoutScreen() {
       Animated.spring(successScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
       Animated.timing(successOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start(() => {
-      setTimeout(() => {
+      successTimeoutRef.current = setTimeout(() => {
         Animated.timing(successOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
           navigation.goBack();
         });
@@ -104,7 +108,7 @@ export default function LogWorkoutScreen() {
   async function handleSave() {
     if (!profile?.id) return;
 
-    const durationVal = duration !== '' ? parseFloat(duration) : null;
+    const durationVal = duration !== '' ? Math.round(parseFloat(duration) || 0) || null : null;
     const distanceVal = distance !== '' ? parseFloat(distance) : null;
     const caloriesVal = calories !== '' ? parseInt(calories, 10) : null;
     const stepsVal = steps !== '' ? parseInt(steps, 10) : null;

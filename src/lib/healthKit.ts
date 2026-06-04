@@ -177,7 +177,12 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
 export async function syncTodaySteps(userId: string): Promise<void> {
   if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return;
 
-  // Use local date — new Date().toISOString() returns UTC which can be yesterday
+  // Guard against stale sync running for a logged-out user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) return;
+
+  // Resolve challengeId once — not inside the callback to avoid N+1 per sync
+  const challengeId = await getActiveChallengeId(userId);
   const localDate = toLocalDate(new Date());
 
   return new Promise(resolve => {
@@ -186,32 +191,22 @@ export async function syncTodaySteps(userId: string): Promise<void> {
       async (err: any, result: { value: number }) => {
         if (err || !result?.value) { resolve(); return; }
 
-        // Atomic insert — if the row already exists, update steps in place.
-        // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
-        const { error: insertErr } = await supabase.from('workout_posts').insert({
-          user_id: userId,
-          challenge_id: await getActiveChallengeId(userId),
-          activity_type: 'walk',
-          steps: result.value,
-          source: 'apple_health',
-          external_activity_id: `steps_${localDate}`,
-          workout_date: localDate,
-        });
+        const { error: upsertErr } = await supabase.from('workout_posts').upsert(
+          {
+            user_id: userId,
+            challenge_id: challengeId,
+            activity_type: 'walk',
+            steps: result.value,
+            source: 'apple_health',
+            external_activity_id: `steps_${localDate}`,
+            workout_date: localDate,
+          },
+          { onConflict: 'user_id,external_activity_id' }
+        );
 
-        if (insertErr) {
-          if (insertErr.code === '23505') {
-            // Unique constraint hit — row already exists, just update step count
-            await supabase
-              .from('workout_posts')
-              .update({ steps: result.value })
-              .eq('user_id', userId)
-              .eq('source', 'apple_health')
-              .eq('external_activity_id', `steps_${localDate}`);
-          } else {
-            console.warn('[HealthKit] steps insert failed:', insertErr);
-          }
+        if (upsertErr) {
+          console.warn('[HealthKit] steps upsert failed:', upsertErr.message);
         }
-
         resolve();
       }
     );

@@ -4,13 +4,11 @@ import {
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../theme';
 
 
 export default function ResetPasswordScreen() {
-  const navigation = useNavigation<any>();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -47,7 +45,10 @@ export default function ResetPasswordScreen() {
     Alert.alert(
       'Password updated',
       'Your password has been changed. Please sign in with your new password.',
-      [{ text: 'Sign in', onPress: () => supabase.auth.signOut() }],
+      [{ text: 'Sign in', onPress: async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) Alert.alert('Error', 'Could not sign out. Please restart the app.');
+      }}],
     );
   }
 

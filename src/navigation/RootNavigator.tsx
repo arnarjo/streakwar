@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -91,17 +91,7 @@ export default function RootNavigator({ onRouteChange }: Props) {
   }
 
   useEffect(() => {
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        setSession(session);
-        if (session?.user?.id) {
-          checkProfile(session.user.id);
-        } else {
-          setLoading(false);
-        }
-      })
-      .catch(() => setLoading(false));
-
+    // onAuthStateChange fires INITIAL_SESSION on mount — no need for a separate getSession() call
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => {
       if (_e === 'PASSWORD_RECOVERY') {
         setNeedsPasswordReset(true);

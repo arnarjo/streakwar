@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
   TouchableOpacity, StatusBar, Share, Alert, Modal, ActivityIndicator,
@@ -34,6 +34,8 @@ function initials(entry: LeaderboardEntry) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+const NUDGE_EMOJIS = ['💪', '🔥', '👏', '😤', '⚡'];
+
 export default function LeaderboardScreen() {
   const { profile } = useAuth();
   const userId = profile?.id ?? '';
@@ -54,7 +56,6 @@ export default function LeaderboardScreen() {
   const [nudgeSending, setNudgeSending] = useState(false);
   const [nudgedToday, setNudgedToday] = useState<Set<string>>(new Set());
 
-  const NUDGE_EMOJIS = ['💪', '🔥', '👏', '😤', '⚡'];
 
   async function sendNudge(receiverId: string, emoji?: string) {
     setNudgeSending(true);
@@ -90,7 +91,7 @@ export default function LeaderboardScreen() {
     fetchWeekly();
     fetchGlobal();
     fetchFriends();
-  }, []);
+  }, [fetchWeekly, fetchGlobal, fetchFriends]);
 
   const onRefresh = useCallback(() => {
     fetchWeekly();
@@ -247,7 +248,7 @@ export default function LeaderboardScreen() {
               </Text>
               {(() => {
                 const dayOfWeek = new Date().getDay(); // 0=Sun
-                const daysLeft = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+                const daysLeft = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
                 return (
                   <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
                     Top 5 promote · Bottom 5 relegate · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left

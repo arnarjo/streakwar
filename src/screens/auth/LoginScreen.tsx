@@ -7,14 +7,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
 import { C } from '../../theme';
 
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook, resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -45,9 +44,7 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: 'streakwar://reset-password',
-    });
+    const { error } = await resetPasswordForEmail(trimmedEmail);
 
     if (error) {
       Alert.alert('Error', error.message || 'Failed to send reset email. Please try again.');

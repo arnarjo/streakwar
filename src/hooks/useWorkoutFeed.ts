@@ -98,6 +98,9 @@ export function useWorkoutFeed(userId: string) {
     const currentReaction = post?.my_reaction ?? null;
     const removing = currentReaction === reaction;
 
+    // Snapshot for rollback on failure
+    const previousFeed = feed.slice();
+
     // Optimistic update first for instant UI response
     setFeed(prev =>
       prev.map(p => {
@@ -119,7 +122,8 @@ export function useWorkoutFeed(userId: string) {
         await supabase.from('workout_reactions').insert({ post_id: postId, user_id: userId, reaction });
       }
     } catch (err) {
-      console.warn('[useWorkoutFeed] toggleReaction failed:', err);
+      setFeed(previousFeed); // rollback optimistic update on failure
+      console.warn('[useWorkoutFeed] toggleReaction failed, rolled back:', err);
     } finally {
       reactionInFlight.current.delete(postId);
     }

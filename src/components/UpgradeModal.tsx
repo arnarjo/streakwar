@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, Modal, TouchableOpacity,
   ActivityIndicator, ScrollView, Platform, Alert,
@@ -29,8 +29,12 @@ interface Props {
 export default function UpgradeModal({ visible, onClose, offering, onPurchase, onRestore, reason }: Props) {
   const [loading, setLoading] = useState<'monthly' | 'yearly' | 'restore' | null>(null);
   const [selected, setSelected] = useState<'monthly' | 'yearly'>(
-    offering.yearly ? 'yearly' : 'monthly'
+    offering?.yearly ? 'yearly' : 'monthly'
   );
+
+  useEffect(() => {
+    setSelected(offering?.yearly ? 'yearly' : 'monthly');
+  }, [offering?.yearly]);
 
   async function handlePurchase() {
     const pkg = selected === 'yearly' ? offering.yearly : offering.monthly;

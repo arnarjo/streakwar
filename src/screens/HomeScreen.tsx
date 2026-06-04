@@ -36,7 +36,7 @@ export default function HomeScreen() {
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
   const daysUntilSunday = (() => {
     const d = new Date().getDay();
-    return d === 0 ? 7 : 7 - d;
+    return d === 0 ? 0 : 7 - d;
   })();
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
@@ -135,7 +135,7 @@ export default function HomeScreen() {
         <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
-              {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
+              {profile?.full_name?.split(' ').filter(Boolean).map((w: string) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() ?? '?'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -150,7 +150,7 @@ export default function HomeScreen() {
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
             <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
-              <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
+              <Text style={s.rankPts}>⭐ {(profile?.total_points ?? 0).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)} accessibilityLabel="Log a workout" accessibilityRole="button">
@@ -169,9 +169,10 @@ export default function HomeScreen() {
           ListHeaderComponent={
             <>
               {streak && streak.current_streak > 0 && (() => {
-                const toNext = 10 - (streak.current_streak % 10);
-                const milestone = Math.ceil(streak.current_streak / 10) * 10;
-                const progress = (streak.current_streak % 10) / 10 * 100;
+                const remainder = streak.current_streak % 10;
+                const toNext = remainder === 0 ? 10 : 10 - remainder;
+                const milestone = remainder === 0 ? streak.current_streak + 10 : Math.ceil(streak.current_streak / 10) * 10;
+                const progress = remainder === 0 ? 0 : remainder / 10 * 100;
                 return (
                   <View style={{ position: 'relative', marginBottom: 14 }}>
                     <ReAnimated.View style={[

@@ -54,7 +54,7 @@ export function useAuth() {
         setProfileMissing(false);
       } else {
         setProfile(null);
-        setProfileMissing(error?.code !== 'PGRST116'); // only flag missing if it's truly not found
+        setProfileMissing(error?.code === 'PGRST116'); // only flag missing if it's truly not found
       }
     } catch {
       setProfile(null);
@@ -114,6 +114,12 @@ export function useAuth() {
     return signInWithProvider('facebook');
   }
 
+  async function resetPasswordForEmail(email: string) {
+    return supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: 'streakwar://reset-password',
+    });
+  }
+
   async function signOut() {
     await supabase.auth.signOut();
     clearUserId().catch(() => {});
@@ -131,5 +137,6 @@ export function useAuth() {
     signInWithGoogle,
     signInWithFacebook,
     signOut,
+    resetPasswordForEmail,
   };
 }

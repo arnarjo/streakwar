@@ -89,7 +89,7 @@ export default function SignupScreen({ navigation }: Props) {
       else Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } else {
       Alert.alert('Check your email', "We've sent a confirmation link to " + email.trim() + ". Tap the link and you'll be signed in automatically.", [
-        { text: 'OK', onPress: () => navigation.navigate('Login') },
+        { text: 'OK', onPress: () => navigation.replace('Login') },
       ]);
     }
   }

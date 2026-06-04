@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity,
   StatusBar, TextInput, Alert, Modal, KeyboardAvoidingView, Platform, Share,
@@ -47,7 +47,10 @@ export default function ChallengesScreen() {
     setQuickModalOpen(true);
   }
 
-  const filtered = tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab);
+  const filtered = useMemo(
+    () => tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab),
+    [myChallenges, tab]
+  );
 
   async function handleJoinByCode() {
     if (!code.trim()) return;
