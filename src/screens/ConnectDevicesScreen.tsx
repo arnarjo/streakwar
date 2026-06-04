@@ -11,6 +11,7 @@ import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
+import { logger } from '../lib/logger';
 
 import { C } from '../theme';
 
@@ -76,7 +77,7 @@ export default function ConnectDevicesScreen() {
         return;
       }
       // Show debug info so we can diagnose why requestPermission() failed
-      if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
+      logger.debug('Health Connect permission request failed', getLastHCDebug?.());
 
       // Permissions not granted via dialog — open HC permissions page directly.
       // AppState listener will detect when user returns and check if granted.
