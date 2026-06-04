@@ -8,11 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444',
-};
+import { C } from '../../theme';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -228,16 +224,16 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
   backBtn: { paddingTop: 8, paddingBottom: 16, alignSelf: 'flex-start' },
-  backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
   logoArea: { alignItems: 'center', marginBottom: 32, marginTop: 8 },
   logo: { fontSize: 28, fontWeight: '900', color: C.primary, letterSpacing: 5 },
   logoLine: { width: 40, height: 3, borderRadius: 2, marginTop: 6 },
   title: { fontSize: 28, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
-  subtitle: { fontSize: 15, color: C.muted, marginBottom: 28 },
+  subtitle: { fontSize: 15, color: C.muted2, marginBottom: 28 },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5, marginBottom: 8 },
+  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
   input: {
-    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.borderAlt, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1,
   },
   inputError: { borderColor: C.error },
@@ -245,7 +241,7 @@ const s = StyleSheet.create({
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   eyeBtn: {
-    backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.border,
+    backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.borderAlt,
     borderTopRightRadius: 12, borderBottomRightRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center',
   },
   eyeIcon: { fontSize: 16 },
@@ -257,7 +253,7 @@ const s = StyleSheet.create({
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
   dividerText: { color: C.dimmed, fontSize: 13 },
-  signupBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
+  signupBtn: { borderWidth: 1, borderColor: C.borderAlt, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700' },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

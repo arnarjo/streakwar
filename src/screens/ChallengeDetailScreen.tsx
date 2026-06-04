@@ -16,17 +16,7 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
+import { C } from '../theme';
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
@@ -118,7 +108,7 @@ export default function ChallengeDetailScreen() {
 
   if (!challenge) return (
     <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+      <ActivityIndicator color={C.success ?? '#22C55E'} size="large" />
     </View>
   );
 
@@ -427,12 +417,12 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   tabActive: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
-  tabText: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  tabText: { fontSize: 12, color: C.muted2, fontWeight: '600' },
   tabTextActive: { color: C.primary },
 
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 48 },
-  emptyText: { color: C.muted, fontSize: 14 },
+  emptyText: { color: C.muted2, fontSize: 14 },
 
   myRankCard: {
     backgroundColor: C.primary + '12',
@@ -464,7 +454,7 @@ const s = StyleSheet.create({
     gap: 4,
   },
   podiumSlot: { alignItems: 'center', gap: 4 },
-  podiumScore: { fontSize: 11, color: C.muted, fontWeight: '600' },
+  podiumScore: { fontSize: 11, color: C.muted2, fontWeight: '600' },
   podiumAvatar: {
     width: 44,
     height: 44,
@@ -489,8 +479,8 @@ const s = StyleSheet.create({
     borderBottomRightRadius: 0,
   },
   podiumRankNum: { fontSize: 16, fontWeight: '900', paddingVertical: 4 },
-  podiumName: { fontSize: 11, color: C.muted, fontWeight: '600', textAlign: 'center' },
-  restLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  podiumName: { fontSize: 11, color: C.muted2, fontWeight: '600', textAlign: 'center' },
+  restLabel: { fontSize: 12, fontWeight: '700', color: C.muted2, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
 
   rankRow: {
     flexDirection: 'row',
@@ -504,7 +494,7 @@ const s = StyleSheet.create({
     borderColor: C.border,
   },
   rankRowMe: { borderColor: C.primary + '40', backgroundColor: C.primary + '08' },
-  rankNum: { fontSize: 14, fontWeight: '700', color: C.muted, width: 28 },
+  rankNum: { fontSize: 14, fontWeight: '700', color: C.muted2, width: 28 },
   rankAvatar: {
     width: 36,
     height: 36,
@@ -515,7 +505,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
   },
-  rankAvatarText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  rankAvatarText: { fontSize: 13, fontWeight: '700', color: C.muted2 },
   rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text },
   rankScore: { fontSize: 14, fontWeight: '800', color: C.text },
 
@@ -527,7 +517,7 @@ const s = StyleSheet.create({
     padding: 14,
     gap: 4,
   },
-  infoLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5 },
+  infoLabel: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5 },
   infoValue: { fontSize: 14, color: C.text, lineHeight: 20 },
   shareCardBtn: {
     backgroundColor: C.primary,

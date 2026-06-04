@@ -11,11 +11,7 @@ import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
 import { differenceInDays, parseISO } from 'date-fns';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', green: '#22C55E',
-};
+import { C } from '../theme';
 
 export default function DiscoverScreen() {
   const { profile } = useAuth();
@@ -86,7 +82,7 @@ export default function DiscoverScreen() {
         <TextInput
           style={s.searchInput}
           placeholder="🔍  Search challenges..."
-          placeholderTextColor={C.muted}
+          placeholderTextColor={C.muted2}
           value={search}
           onChangeText={setSearch}
           autoCorrect={false}
@@ -109,8 +105,8 @@ export default function DiscoverScreen() {
                   <Text style={s.cardName} numberOfLines={2}>{item.name}</Text>
                   <Text style={s.cardMeta}>{item.creator?.username} · {scoringLabel}</Text>
                 </View>
-                <View style={[s.statusBadge, isActive ? { backgroundColor: C.green + '15', borderColor: C.green + '40' } : { backgroundColor: C.muted + '20', borderColor: C.muted + '40' }]}>
-                  <Text style={[s.statusText, { color: isActive ? C.green : C.muted }]}>{isActive ? 'Active' : 'Upcoming'}</Text>
+                <View style={[s.statusBadge, isActive ? { backgroundColor: C.success + '15', borderColor: C.success + '40' } : { backgroundColor: C.muted2 + '20', borderColor: C.muted2 + '40' }]}>
+                  <Text style={[s.statusText, { color: isActive ? C.success : C.muted2 }]}>{isActive ? 'Active' : 'Upcoming'}</Text>
                 </View>
               </View>
               {item.description ? <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
@@ -150,25 +146,25 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: C.muted, marginTop: 2 },
+  subtitle: { fontSize: 13, color: C.muted2, marginTop: 2 },
   searchRow: { paddingHorizontal: 16, paddingVertical: 12 },
   searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: C.text, fontSize: 14 },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: { backgroundColor: '#151C24', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 16, marginBottom: 10, gap: 8 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
   cardName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 3 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardMeta: { fontSize: 12, color: C.muted2 },
   statusBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
   statusText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { fontSize: 13, color: C.muted, lineHeight: 19 },
+  cardDesc: { fontSize: 13, color: C.muted2, lineHeight: 19 },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  cardStats: { fontSize: 12, color: C.muted },
+  cardStats: { fontSize: 12, color: C.muted2 },
   joinBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
   joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
   empty: { alignItems: 'center', paddingTop: 64, gap: 12, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted2 },
+  emptyText: { fontSize: 14, color: C.muted2, textAlign: 'center', lineHeight: 20 },
   createBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
   createBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
 });

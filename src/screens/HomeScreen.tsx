@@ -23,11 +23,7 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();

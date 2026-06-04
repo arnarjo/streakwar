@@ -16,21 +16,10 @@ import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
+import { C } from '../theme';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  borderFocus: '#F97316',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
 
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();

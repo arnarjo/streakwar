@@ -6,11 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../../lib/supabase';
-
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444',
-};
+import { C } from '../../theme';
 
 export default function ResetPasswordScreen() {
   const navigation = useNavigation<any>();
@@ -115,17 +111,17 @@ const s = StyleSheet.create({
   inner: { flex: 1, paddingHorizontal: 24, paddingTop: 48 },
   logo: { fontSize: 24, fontWeight: '900', color: C.primary, letterSpacing: 4, marginBottom: 28 },
   title: { fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 6 },
-  subtitle: { fontSize: 14, color: C.muted, marginBottom: 32, lineHeight: 20 },
+  subtitle: { fontSize: 14, color: C.muted2, marginBottom: 32, lineHeight: 20 },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5, marginBottom: 8 },
+  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
   input: {
-    backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12,
+    backgroundColor: C.bg, borderWidth: 1, borderColor: C.borderAlt, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1,
   },
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
   eyeBtn: {
-    backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.border,
+    backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.borderAlt,
     borderTopRightRadius: 12, borderBottomRightRadius: 12,
     paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center',
   },

@@ -12,18 +12,9 @@ import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  green: '#22C55E',
-  error: '#EF4444',
-};
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 const OAUTH_PROVIDERS: ProviderKey[] = ['strava'];
 const COMING_SOON_PROVIDERS: ProviderKey[] = [];
@@ -344,7 +335,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
   title: { fontSize: 17, fontWeight: '800', color: C.text },
   scroll: { padding: 20, paddingBottom: 60, gap: 0 },
 
@@ -360,22 +351,22 @@ const s = StyleSheet.create({
   },
   explainerEmoji: { fontSize: 32 },
   explainerTitle: { fontSize: 17, fontWeight: '800', color: C.text },
-  explainerText: { fontSize: 13, color: C.muted, textAlign: 'center', lineHeight: 19 },
+  explainerText: { fontSize: 13, color: C.muted2, textAlign: 'center', lineHeight: 19 },
 
   statusRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: C.green + '12',
+    backgroundColor: C.success + '12',
     borderWidth: 1,
-    borderColor: C.green + '30',
+    borderColor: C.success + '30',
     borderRadius: 10,
     paddingHorizontal: 14,
     paddingVertical: 10,
     marginBottom: 20,
   },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.green },
-  statusText: { flex: 1, fontSize: 13, color: C.green, fontWeight: '600' },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.success },
+  statusText: { flex: 1, fontSize: 13, color: C.success, fontWeight: '600' },
 
   warningRow: {
     flexDirection: 'row',
@@ -390,7 +381,7 @@ const s = StyleSheet.create({
   },
   warningEmoji: { fontSize: 24 },
   warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
-  warningSub: { fontSize: 12, color: C.muted, marginTop: 2, fontWeight: '600' },
+  warningSub: { fontSize: 12, color: C.muted2, marginTop: 2, fontWeight: '600' },
 
   syncNowBtn: { paddingHorizontal: 10, paddingVertical: 4 },
   syncNowText: { color: C.primary, fontSize: 13, fontWeight: '700' },
@@ -398,13 +389,13 @@ const s = StyleSheet.create({
   sectionLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: C.muted,
+    color: C.muted2,
     letterSpacing: 1.5,
     marginBottom: 10,
     marginTop: 4,
   },
   footnote: { marginTop: 20 },
-  footnoteText: { fontSize: 11, color: C.muted, lineHeight: 17, textAlign: 'center' },
+  footnoteText: { fontSize: 11, color: C.muted2, lineHeight: 17, textAlign: 'center' },
 });
 
 const r = StyleSheet.create({
@@ -417,20 +408,20 @@ const r = StyleSheet.create({
     marginBottom: 10,
     gap: 12,
   },
-  cardConnected: { borderColor: C.green + '30' },
+  cardConnected: { borderColor: C.success + '30' },
   left: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   icon: { fontSize: 24, marginTop: 2 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
   label: { fontSize: 15, fontWeight: '700', color: C.text },
   connectedBadge: {
-    backgroundColor: C.green + '20',
+    backgroundColor: C.success + '20',
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  connectedText: { fontSize: 10, color: C.green, fontWeight: '700' },
-  desc: { fontSize: 12, color: C.muted, lineHeight: 17 },
-  lastSync: { fontSize: 11, color: C.green, marginTop: 3, fontWeight: '600' },
+  connectedText: { fontSize: 10, color: C.success, fontWeight: '700' },
+  desc: { fontSize: 12, color: C.muted2, lineHeight: 17 },
+  lastSync: { fontSize: 11, color: C.success, marginTop: 3, fontWeight: '600' },
   btn: {
     borderRadius: 10,
     paddingVertical: 9,

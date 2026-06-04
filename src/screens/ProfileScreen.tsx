@@ -19,11 +19,7 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', green: '#22C55E', error: '#EF4444',
-};
+import { C } from '../theme';
 
 function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
 function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }
@@ -529,10 +525,10 @@ const s = StyleSheet.create({
   freezeBtnUsed: { backgroundColor: 'transparent', borderColor: C.border },
   freezeBtnText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
 
-  syncCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.green + '10', borderWidth: 1, borderColor: C.green + '30', borderRadius: 12, padding: 14, marginBottom: 8, gap: 10 },
+  syncCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.success + '10', borderWidth: 1, borderColor: C.success + '30', borderRadius: 12, padding: 14, marginBottom: 8, gap: 10 },
   syncLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
-  syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
-  syncTitle: { fontSize: 13, fontWeight: '700', color: C.green },
+  syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.success },
+  syncTitle: { fontSize: 13, fontWeight: '700', color: C.success },
   syncSub: { fontSize: 11, color: C.muted, marginTop: 1 },
   syncNowBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   syncNowText: { color: '#000', fontWeight: '800', fontSize: 12 },

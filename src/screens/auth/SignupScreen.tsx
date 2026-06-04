@@ -7,11 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444', success: '#22C55E',
-};
+import { C } from '../../theme';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type FormErrors = { fullName?: string; username?: string; email?: string; password?: string; confirm?: string };
@@ -292,27 +288,27 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 48 },
   backBtn: { paddingTop: 8, paddingBottom: 12, alignSelf: 'flex-start' },
-  backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
   progressBar: { height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 6, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: C.primary, borderRadius: 2 },
   progressLabel: { fontSize: 11, color: C.dimmed, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
   logo: { fontSize: 24, fontWeight: '900', color: C.primary, letterSpacing: 4, marginBottom: 12 },
   title: { fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
-  subtitle: { fontSize: 14, color: C.muted, marginBottom: 28, lineHeight: 20 },
+  subtitle: { fontSize: 14, color: C.muted2, marginBottom: 28, lineHeight: 20 },
   inputGroup: { marginBottom: 18 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5, marginBottom: 8 },
-  input: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1 },
+  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
+  input: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.borderAlt, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1 },
   inputError: { borderColor: C.error },
   inputSuccess: { borderColor: C.success },
   errorText: { color: C.error, fontSize: 12, marginTop: 5, marginLeft: 4 },
   successText: { color: C.success, fontSize: 12, marginTop: 5, marginLeft: 4 },
   prefixRow: { flexDirection: 'row', alignItems: 'center' },
-  prefixBox: { backgroundColor: C.bg, borderWidth: 1, borderRightWidth: 0, borderColor: C.border, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center' },
-  prefixText: { color: C.muted, fontSize: 16, fontWeight: '600' },
+  prefixBox: { backgroundColor: C.bg, borderWidth: 1, borderRightWidth: 0, borderColor: C.borderAlt, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center' },
+  prefixText: { color: C.muted2, fontSize: 16, fontWeight: '600' },
   prefixInput: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
-  eyeBtn: { backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.border, borderTopRightRadius: 12, borderBottomRightRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center' },
+  eyeBtn: { backgroundColor: C.bg, borderWidth: 1, borderLeftWidth: 0, borderColor: C.borderAlt, borderTopRightRadius: 12, borderBottomRightRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center' },
   strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   strengthTrack: { flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' },
   strengthFill: { height: '100%', borderRadius: 2 },
@@ -321,8 +317,8 @@ const s = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   primaryBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
   loginLink: { alignItems: 'center', marginTop: 24 },
-  loginLinkText: { color: C.muted, fontSize: 14 },
-  legalText: { color: C.muted, fontSize: 11, textAlign: 'center', marginTop: 16, lineHeight: 17, paddingHorizontal: 16 },
+  loginLinkText: { color: C.muted2, fontSize: 14 },
+  legalText: { color: C.muted2, fontSize: 11, textAlign: 'center', marginTop: 16, lineHeight: 17, paddingHorizontal: 16 },
   legalLink: { color: C.primary, fontWeight: '600' },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,

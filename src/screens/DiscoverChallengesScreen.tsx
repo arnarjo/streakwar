@@ -8,17 +8,12 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
 import type { FitnessChallenge, ScoringMode } from '../types/database';
+import { C } from '../theme';
 
 type Props = {
   myChallenges: FitnessChallenge[];
   joinPublic: (challengeId: string) => Promise<{ error: string | null }>;
   onRefreshMyChallenges: () => Promise<void>;
-};
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
-  gold: '#F59E0B', purple: '#8B5CF6',
 };
 
 type Filter = 'all' | ScoringMode;
@@ -230,7 +225,7 @@ const s = StyleSheet.create({
 
   section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2 },
-  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10 },
+  sectionSub: { fontSize: 12, color: C.muted2, marginBottom: 10 },
 
   globalCard: {
     backgroundColor: C.card,
@@ -255,7 +250,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
   },
   filterBtnActive: { backgroundColor: C.primary + '20', borderColor: C.primary + '60' },
-  filterBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
+  filterBtnText: { fontSize: 13, color: C.muted2, fontWeight: '600' },
   filterBtnTextActive: { color: C.primary },
 
   list: { paddingHorizontal: 16 },
@@ -266,15 +261,15 @@ const s = StyleSheet.create({
   },
   cardContent: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardMeta: { fontSize: 12, color: C.muted2 },
 
   joinBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10 },
   joinBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: C.border },
   joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
-  joinBtnTextDisabled: { color: C.muted },
+  joinBtnTextDisabled: { color: C.muted2 },
 
   empty: { paddingTop: 40, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center' },
+  emptySub: { fontSize: 13, color: C.muted2, textAlign: 'center' },
 });

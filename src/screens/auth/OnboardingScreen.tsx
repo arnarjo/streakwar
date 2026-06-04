@@ -5,10 +5,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { C } from '../../theme';
 
 const { width } = Dimensions.get('window');
-
-const C = { bg: '#0C1117', text: '#EEF4F8', muted: '#4A6070', primary: '#F97316' };
 
 const slides = [
   {
@@ -126,18 +125,18 @@ export default function OnboardingScreen({ navigation }: Props) {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   topBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
-  skipText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  skipText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
   slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emojiCircle: { width: 140, height: 140, borderRadius: 70, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
   emoji: { fontSize: 64 },
   accentLine: { width: 40, height: 3, borderRadius: 2, marginBottom: 20 },
   title: { fontSize: 30, fontWeight: '800', color: C.text, textAlign: 'center', marginBottom: 14, letterSpacing: -0.5 },
-  subtitle: { fontSize: 16, color: C.muted, textAlign: 'center', lineHeight: 24 },
+  subtitle: { fontSize: 16, color: C.muted2, textAlign: 'center', lineHeight: 24 },
   dotsRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 6, paddingBottom: 20 },
   dot: { height: 8, borderRadius: 4 },
   bottomArea: { paddingHorizontal: 24, paddingBottom: Platform.OS === 'ios' ? 24 : 32, gap: 12 },
   nextBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   nextBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
   loginLink: { alignItems: 'center', paddingVertical: 4 },
-  loginLinkText: { color: C.muted, fontSize: 14, fontWeight: '500' },
+  loginLinkText: { color: C.muted2, fontSize: 14, fontWeight: '500' },
 });

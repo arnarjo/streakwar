@@ -16,17 +16,7 @@ import {
 } from '../types/database';
 import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
 import { format, addDays, addWeeks, addMonths } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
+import { C } from '../theme';
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 
@@ -586,7 +576,7 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
   title: { fontSize: 17, fontWeight: '800', color: C.text },
 
   progressRow: {
@@ -617,11 +607,11 @@ const s = StyleSheet.create({
     zIndex: 1,
   },
   progressDotActive: { backgroundColor: C.primary, borderColor: C.primary },
-  progressDotText: { fontSize: 12, fontWeight: '800', color: C.muted },
+  progressDotText: { fontSize: 12, fontWeight: '800', color: C.muted2 },
   stepLabel: {
     textAlign: 'center',
     fontSize: 13,
-    color: C.muted,
+    color: C.muted2,
     fontWeight: '600',
     marginBottom: 4,
   },
@@ -633,9 +623,9 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingVertical: 10, alignItems: 'center', gap: 4,
   },
   templateIcon: { fontSize: 20 },
-  templateLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 0.5 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.5, marginBottom: 8 },
-  hint: { fontSize: 12, color: C.muted, marginTop: 5 },
+  templateLabel: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 0.5 },
+  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
+  hint: { fontSize: 12, color: C.muted2, marginTop: 5 },
   input: {
     backgroundColor: C.card,
     borderWidth: 1,
@@ -675,7 +665,7 @@ const s = StyleSheet.create({
     height: 22,
     borderRadius: 6,
     borderWidth: 2,
-    borderColor: C.muted,
+    borderColor: C.muted2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -686,7 +676,7 @@ const s = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     borderWidth: 2,
-    borderColor: C.muted,
+    borderColor: C.muted2,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -711,18 +701,18 @@ const s = StyleSheet.create({
     marginBottom: 8,
   },
   switchLabel: { fontSize: 14, color: C.text, fontWeight: '600' },
-  switchHint: { fontSize: 11, color: C.muted, marginTop: 2 },
+  switchHint: { fontSize: 11, color: C.muted2, marginTop: 2 },
 
   formRow: { marginBottom: 16 },
-  formLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1, marginBottom: 10 },
+  formLabel: { fontSize: 12, fontWeight: '700', color: C.muted2, letterSpacing: 1, marginBottom: 10 },
   maxBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
   maxBtnActive: { borderColor: C.primary, backgroundColor: C.primary + '18' },
-  maxBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  maxBtnText: { fontSize: 13, fontWeight: '700', color: C.muted2 },
   maxBtnTextActive: { color: C.primary },
 
   presetBtn: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)', backgroundColor: 'rgba(255,255,255,0.04)' },
   presetBtnActive: { borderColor: C.primary, backgroundColor: C.primary + '18' },
-  presetBtnText: { fontSize: 13, fontWeight: '700', color: C.muted },
+  presetBtnText: { fontSize: 13, fontWeight: '700', color: C.muted2 },
   presetBtnTextActive: { color: C.primary },
 
   summaryCard: {
@@ -735,7 +725,7 @@ const s = StyleSheet.create({
     gap: 6,
   },
   summaryTitle: { fontSize: 20, fontWeight: '800', color: C.text },
-  summaryDesc: { fontSize: 14, color: C.muted, lineHeight: 20 },
+  summaryDesc: { fontSize: 14, color: C.muted2, lineHeight: 20 },
   summaryRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -745,7 +735,7 @@ const s = StyleSheet.create({
     marginBottom: 6,
     gap: 12,
   },
-  summaryLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  summaryLabel: { fontSize: 12, color: C.muted2, fontWeight: '600' },
   summaryValue: { fontSize: 13, color: C.text, fontWeight: '600', flex: 1, textAlign: 'right' },
 
   nextBtn: {
