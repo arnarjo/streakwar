@@ -392,6 +392,9 @@ export default function CreateChallengeScreen() {
                   trackColor={{ false: C.dimmed, true: C.primary }}
                   thumbColor="#fff"
                   disabled={!isPro}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Require photo proof"
+                  accessibilityState={{ checked: requirePhoto, disabled: !isPro }}
                 />
               </TouchableOpacity>
               <UpgradeModal
@@ -413,6 +416,9 @@ export default function CreateChallengeScreen() {
                   onValueChange={setTeamsMode}
                   trackColor={{ false: C.dimmed, true: C.primary }}
                   thumbColor="#fff"
+                  accessibilityRole="switch"
+                  accessibilityLabel="Teams mode"
+                  accessibilityState={{ checked: teamsMode }}
                 />
               </View>
 
@@ -438,6 +444,9 @@ export default function CreateChallengeScreen() {
                   trackColor={{ false: C.dimmed, true: C.primary }}
                   thumbColor="#fff"
                   disabled={!isPro}
+                  accessibilityRole="switch"
+                  accessibilityLabel="Open to everyone"
+                  accessibilityState={{ checked: isPublic, disabled: !isPro }}
                 />
               </TouchableOpacity>
 

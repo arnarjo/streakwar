@@ -457,6 +457,9 @@ export default function ProfileScreen() {
                 onValueChange={() => toggleNotifPref(key)}
                 trackColor={{ false: C.border, true: C.primary + '99' }}
                 thumbColor={notifPrefs[key] ? C.primary : C.muted}
+                accessibilityRole="switch"
+                accessibilityLabel={label}
+                accessibilityState={{ checked: notifPrefs[key] }}
               />
             </View>
           ))}
