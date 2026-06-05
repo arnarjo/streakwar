@@ -57,7 +57,7 @@ export default function WeeklyRecapScreen() {
     try {
       const { data: workouts, error: workoutsError } = await supabase
         .from('workout_posts')
-        .select('steps, duration_minutes, distance_km')
+        .select('steps, duration_minutes, distance_km, points_awarded')
         .eq('user_id', profile!.id)
         .gte('workout_date', weekStart)
         .lte('workout_date', weekEndStr);
@@ -70,11 +70,7 @@ export default function WeeklyRecapScreen() {
       const steps = (workouts ?? []).reduce((s, w) => s + (w.steps ?? 0), 0);
       setTotalSteps(steps);
 
-      const pts = (workouts ?? []).reduce((s, w) =>
-        s + 1
-        + Math.floor((w.steps ?? 0) / 1000)
-        + Math.floor(w.distance_km ?? 0)
-        + Math.floor((w.duration_minutes ?? 0) / 30), 0);
+      const pts = (workouts ?? []).reduce((s, w) => s + (w.points_awarded ?? 0), 0);
       setTotalPts(pts);
 
       const prevStart = new Date(weekStart);
@@ -86,8 +82,8 @@ export default function WeeklyRecapScreen() {
         .from('workout_posts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile!.id)
-        .gte('workout_date', prevStart.toISOString().slice(0, 10))
-        .lte('workout_date', prevEnd.toISOString().slice(0, 10));
+        .gte('workout_date', toLocalDate(prevStart))
+        .lte('workout_date', toLocalDate(prevEnd));
 
       if (prevError) { setError(true); return; }
 
