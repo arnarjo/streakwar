@@ -39,6 +39,7 @@ export default function HomeScreen() {
     return d === 0 ? 0 : 7 - d;
   }, []);
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
+  const [firstRunDismissed, setFirstRunDismissed] = React.useState(false);
 
   const streakGlowOpacity = useSharedValue(0.06);
   useFocusEffect(useCallback(() => {
@@ -131,6 +132,18 @@ export default function HomeScreen() {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           ListHeaderComponent={useMemo(() => (
             <>
+              {feed.length === 0 && !loading && !myChallenges?.length && !firstRunDismissed && (
+                <View style={s.firstRunBanner}>
+                  <Text style={s.firstRunTitle}>Welcome to StreakWar! 👋</Text>
+                  <TouchableOpacity style={s.firstRunBtn} onPress={() => { setFirstRunDismissed(true); navigation.navigate('Challenges'); }}>
+                    <Text style={s.firstRunBtnText}>Join a challenge →</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.firstRunBtn, s.firstRunBtnSecondary]} onPress={() => { setFirstRunDismissed(true); navigation.navigate('ConnectDevices'); }}>
+                    <Text style={[s.firstRunBtnText, s.firstRunBtnTextSecondary]}>Connect health app →</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {streak && streak.current_streak > 0 && (() => {
                 const remainder = streak.current_streak % 10;
                 const toNext = remainder === 0 ? 10 : 10 - remainder;

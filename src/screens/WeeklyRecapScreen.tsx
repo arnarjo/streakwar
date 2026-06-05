@@ -138,7 +138,7 @@ export default function WeeklyRecapScreen() {
 
   if (error) return (
     <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Text style={{ color: '#9CA3AF', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
+      <Text style={{ color: C.muted, fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
         Could not load your weekly recap. Check your connection and try again.
       </Text>
       <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>

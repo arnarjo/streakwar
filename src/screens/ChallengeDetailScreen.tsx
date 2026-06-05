@@ -18,7 +18,7 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
-import { C, F } from '../theme';
+import { C, F, R } from '../theme';
 
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
@@ -286,9 +286,16 @@ export default function ChallengeDetailScreen() {
           refreshControl={<RefreshControl refreshing={feedLoading} onRefresh={() => fetchFeed(challengeId)} tintColor={C.primary} />}
           renderItem={renderFeedItem}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyText}>No workouts logged yet</Text>
-            </View>
+            !feedLoading ? (
+              <View style={s.feedEmpty}>
+                <Text style={s.feedEmptyEmoji}>🏋️</Text>
+                <Text style={s.feedEmptyTitle}>No workouts yet</Text>
+                <Text style={s.feedEmptyText}>Be the first to log one!</Text>
+                <TouchableOpacity style={s.feedEmptyBtn} onPress={() => navigation.navigate('LogWorkout', { challengeId })}>
+                  <Text style={s.feedEmptyBtnText}>Log Workout</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
           }
         />
       )}
@@ -455,6 +462,12 @@ const s = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 48 },
   emptyText: { color: C.muted, fontSize: 14 },
+  feedEmpty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
+  feedEmptyEmoji: { fontSize: 48 },
+  feedEmptyTitle: { fontSize: 18, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  feedEmptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
+  feedEmptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: 20, paddingVertical: 12, marginTop: 4 },
+  feedEmptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 
   myRankCard: {
     backgroundColor: C.primary + '12',
@@ -518,7 +531,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: R.sm,
     padding: 12,
     marginBottom: 6,
     gap: 10,
@@ -543,7 +556,7 @@ const s = StyleSheet.create({
 
   infoCard: {
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: R.sm,
     borderWidth: 1,
     borderColor: C.border,
     padding: 14,
@@ -570,14 +583,14 @@ const s = StyleSheet.create({
   copyBtnText: { color: C.primary, fontWeight: '700', fontSize: 12 },
 
   trashGrid: { padding: 16, gap: 8 },
-  trashBtn: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  trashBtnText: { fontSize: 14, color: '#EEF4F8', fontWeight: '600' },
+  trashBtn: { backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: R.sm, paddingHorizontal: 16, paddingVertical: 12 },
+  trashBtnText: { fontSize: 14, color: C.text, fontWeight: '600' },
   messageList: { paddingHorizontal: 16, paddingBottom: 40 },
-  messageRow: { backgroundColor: '#1E2A35', borderRadius: 10, padding: 12, marginBottom: 6 },
-  messageSender: { fontSize: 11, color: '#F97316', fontWeight: '700', marginBottom: 2 },
-  messageText: { fontSize: 14, color: '#EEF4F8' },
+  messageRow: { backgroundColor: C.border, borderRadius: 10, padding: 12, marginBottom: 6 },
+  messageSender: { fontSize: 11, color: C.primary, fontWeight: '700', marginBottom: 2 },
+  messageText: { fontSize: 14, color: C.text },
   emptyBanter: { alignItems: 'center', paddingTop: 32 },
-  emptyBanterText: { fontSize: 14, color: '#4A6070', textAlign: 'center' },
+  emptyBanterText: { fontSize: 14, color: C.muted, textAlign: 'center' },
 
   shareRankBtn: {
     marginTop: 8,

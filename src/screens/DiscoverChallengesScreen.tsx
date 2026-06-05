@@ -264,16 +264,16 @@ const s = StyleSheet.create({
     borderRadius: 14, padding: 14, marginBottom: 8, gap: 12,
   },
   cardContent: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4, fontFamily: F.uiBold },
+  cardMeta: { fontSize: 12, color: C.muted, fontFamily: F.ui },
 
   joinBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10 },
   joinBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: C.border },
-  joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
+  joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000', fontFamily: F.uiBold },
   joinBtnTextDisabled: { color: C.muted },
 
   empty: { paddingTop: 40, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 36 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center', fontFamily: F.ui },
 });
