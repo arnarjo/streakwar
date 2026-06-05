@@ -14,15 +14,14 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useLeague } from '../hooks/useLeague';
+import { useMilestones } from '../hooks/useMilestones';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { WorkoutComment, WorkoutPost, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
-import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
-import { supabase } from '../lib/supabase';
 import { C, S, R, FS } from '../theme';
 
 export default function HomeScreen() {
@@ -32,14 +31,14 @@ export default function HomeScreen() {
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
-  const { myTier, myRank, members: leagueMembers } = useLeague(profile?.id ?? '');
+  const { myTier, myRank, members: leagueMembers, refresh: refreshLeague } = useLeague(profile?.id ?? '');
+  const { milestones, fetchMilestones, reactToMilestone, removeReaction } = useMilestones(profile?.id ?? '');
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
-  const daysUntilSunday = (() => {
+  const daysUntilSunday = useMemo(() => {
     const d = new Date().getDay();
     return d === 0 ? 0 : 7 - d;
-  })();
+  }, []);
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
-  const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
 
   const streakGlowOpacity = useSharedValue(0.06);
   useFocusEffect(useCallback(() => {
@@ -57,55 +56,6 @@ export default function HomeScreen() {
     opacity: streakGlowOpacity.value,
   }));
 
-  const fetchMilestones = useCallback(async () => {
-    if (!profile?.id) return;
-    const { data: parts } = await supabase
-      .from('challenge_participants')
-      .select('challenge_id')
-      .eq('user_id', profile.id);
-    if (!parts || parts.length === 0) return;
-
-    const { data: peers } = await supabase
-      .from('challenge_participants')
-      .select('user_id')
-      .in('challenge_id', parts.map(p => p.challenge_id))
-      .neq('user_id', profile.id);
-
-    if (!peers || peers.length === 0) return;
-    const peerIds = [...new Set(peers.map(p => p.user_id))];
-
-    const { data } = await supabase
-      .from('streak_milestones')
-      .select('*, profile:profiles(id, username, full_name)')
-      .in('user_id', peerIds)
-      .gte('achieved_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
-      .order('achieved_at', { ascending: false })
-      .limit(5);
-
-    if (!data) return;
-
-    const milestoneIds = data.map((m: any) => m.id);
-    const { data: allReactions } = await supabase
-      .from('milestone_reactions')
-      .select('milestone_id, reaction, user_id')
-      .in('milestone_id', milestoneIds);
-
-    const reactionsByMilestone = new Map<string, { counts: Record<string, number>; myReaction: string | null }>();
-    for (const r of allReactions ?? []) {
-      if (!reactionsByMilestone.has(r.milestone_id)) {
-        reactionsByMilestone.set(r.milestone_id, { counts: {}, myReaction: null });
-      }
-      const entry = reactionsByMilestone.get(r.milestone_id)!;
-      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
-      if (r.user_id === profile.id) entry.myReaction = r.reaction;
-    }
-
-    setMilestones(data.map((m: any) => {
-      const r = reactionsByMilestone.get(m.id);
-      return { ...m, reaction_counts: r?.counts ?? {}, my_reaction: r?.myReaction ?? null };
-    }));
-  }, [profile?.id]);
-
   const handleShare = useCallback(async () => {
     await Share.share({
       message:
@@ -122,30 +72,9 @@ export default function HomeScreen() {
     RNAnimated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fetchMilestones, fetchFeed, fetchWeekly]);
 
-  const handleMilestoneReact = useCallback(async (milestoneId: string, emoji: string) => {
-    try {
-      await supabase.from('milestone_reactions')
-        .upsert({ milestone_id: milestoneId, user_id: profile?.id, reaction: emoji },
-          { onConflict: 'milestone_id,user_id' });
-    } catch (err) {
-      console.warn('[HomeScreen] react failed:', err);
-    }
-  }, [profile?.id]);
-
-  const handleMilestoneRemoveReact = useCallback(async (milestoneId: string, _emoji: string) => {
-    try {
-      await supabase.from('milestone_reactions')
-        .delete()
-        .eq('milestone_id', milestoneId)
-        .eq('user_id', profile?.id);
-    } catch (err) {
-      console.warn('[HomeScreen] remove react failed:', err);
-    }
-  }, [profile?.id]);
-
   const onRefresh = useCallback(async () => {
-    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones()]);
-  }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones]);
+    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones(), refreshLeague()]);
+  }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones, refreshLeague]);
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
 
@@ -306,8 +235,8 @@ export default function HomeScreen() {
                       key={m.id}
                       item={m}
                       currentUserId={profile?.id ?? ''}
-                      onReact={handleMilestoneReact}
-                      onRemoveReact={handleMilestoneRemoveReact}
+                      onReact={reactToMilestone}
+                      onRemoveReact={removeReaction}
                     />
                   ))}
                 </View>
@@ -320,7 +249,7 @@ export default function HomeScreen() {
               )}
             </>
           // eslint-disable-next-line react-hooks/exhaustive-deps
-          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, profile?.id, navigation, handleShare, handleMilestoneReact, handleMilestoneRemoveReact])}
+          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, profile?.id, navigation, handleShare, reactToMilestone, removeReaction])}
           renderItem={renderFeedItem}
           ListEmptyComponent={
             loading ? (
