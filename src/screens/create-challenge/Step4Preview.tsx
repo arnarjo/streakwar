@@ -22,17 +22,22 @@ export interface Step4Props {
   renewalType: RenewalType;
   saving: boolean;
   handleCreate: () => void;
+  onEditStep: (step: number) => void;
 }
 
 export default function Step4Preview({
   name, description, startDate, endDate,
   scoringModes, tieBreak, backlogDays,
   requirePhoto, teamsMode, isPublic, maxParticipants,
-  renewalType, saving, handleCreate,
+  renewalType, saving, handleCreate, onEditStep,
 }: Step4Props) {
-  const summaryRows = [
+  const basicsRows = [
     { label: 'Duration', value: `${format(startDate, 'MMM d')} – ${format(endDate, 'MMM d, yyyy')}` },
+  ];
+  const scoringRows = [
     { label: 'Scoring', value: scoringModes.map(m => SCORING_MODE_LABELS[m]).join('\n') },
+  ];
+  const rulesRows = [
     { label: 'Tiebreaker', value: TIE_BREAK_LABELS[tieBreak] },
     { label: 'Backlog', value: `${backlogDays} days` },
     { label: 'Photo proof', value: requirePhoto ? 'Required' : 'Optional' },
@@ -49,7 +54,39 @@ export default function Step4Preview({
         {description ? <Text style={s.summaryDesc}>{description}</Text> : null}
       </View>
 
-      {summaryRows.map(({ label, value }) => (
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionHeaderText}>Basics</Text>
+        <TouchableOpacity onPress={() => onEditStep(1)}>
+          <Text style={s.editLink}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      {basicsRows.map(({ label, value }) => (
+        <View key={label} style={s.summaryRow}>
+          <Text style={s.summaryLabel}>{label}</Text>
+          <Text style={s.summaryValue}>{value}</Text>
+        </View>
+      ))}
+
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionHeaderText}>Scoring</Text>
+        <TouchableOpacity onPress={() => onEditStep(2)}>
+          <Text style={s.editLink}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      {scoringRows.map(({ label, value }) => (
+        <View key={label} style={s.summaryRow}>
+          <Text style={s.summaryLabel}>{label}</Text>
+          <Text style={s.summaryValue}>{value}</Text>
+        </View>
+      ))}
+
+      <View style={s.sectionHeader}>
+        <Text style={s.sectionHeaderText}>Rules</Text>
+        <TouchableOpacity onPress={() => onEditStep(3)}>
+          <Text style={s.editLink}>Edit</Text>
+        </TouchableOpacity>
+      </View>
+      {rulesRows.map(({ label, value }) => (
         <View key={label} style={s.summaryRow}>
           <Text style={s.summaryLabel}>{label}</Text>
           <Text style={s.summaryValue}>{value}</Text>
@@ -84,6 +121,15 @@ const s = StyleSheet.create({
   },
   summaryLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
   summaryValue: { fontSize: 13, color: C.text, fontWeight: '600', flex: 1, textAlign: 'right' },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 14,
+    marginBottom: 4,
+  },
+  sectionHeaderText: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1 },
+  editLink: { fontSize: 13, fontWeight: '700', color: C.primary },
   createBtn: {
     backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16,
     alignItems: 'center', marginTop: 20,

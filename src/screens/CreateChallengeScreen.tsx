@@ -232,6 +232,7 @@ export default function CreateChallengeScreen() {
               teamsMode={teamsMode} isPublic={isPublic}
               maxParticipants={maxParticipants} renewalType={renewalType}
               saving={saving} handleCreate={handleCreate}
+              onEditStep={(n) => setStep(n as Step)}
             />
           )}
 

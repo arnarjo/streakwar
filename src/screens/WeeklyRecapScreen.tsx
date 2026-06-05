@@ -141,7 +141,7 @@ export default function WeeklyRecapScreen() {
       <Text style={{ color: '#9CA3AF', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
         Could not load your weekly recap. Check your connection and try again.
       </Text>
-      <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: '#22C55E', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+      <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
         <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
       </TouchableOpacity>
     </View>

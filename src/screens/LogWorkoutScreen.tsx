@@ -472,7 +472,9 @@ export default function LogWorkoutScreen() {
             <View style={s.successIconCircle}>
               <Text style={s.successIconText}>✓</Text>
             </View>
-            <Text style={s.successTitle}>Workout logged! 💪</Text>
+            <Text style={s.successTitle}>
+              {pointsAwarded != null ? `Workout logged! +${pointsAwarded} pts 🔥` : 'Workout logged! 💪'}
+            </Text>
             <Text style={s.successSub}>Keep that streak going!</Text>
           </Animated.View>
         </Animated.View>
