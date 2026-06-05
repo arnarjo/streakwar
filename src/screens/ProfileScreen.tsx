@@ -6,6 +6,8 @@ import {
 import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
@@ -120,7 +122,7 @@ const heat = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, showBatteryWarning, lastSynced } = useHealthSync(profile?.id ?? '');

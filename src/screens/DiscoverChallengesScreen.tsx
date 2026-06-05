@@ -4,6 +4,8 @@ import {
   RefreshControl, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
@@ -32,7 +34,7 @@ const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: stri
 };
 
 export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [globalChallenges, setGlobalChallenges] = useState<FitnessChallenge[]>([]);
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);

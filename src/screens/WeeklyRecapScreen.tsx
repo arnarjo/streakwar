@@ -5,6 +5,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { toLocalDate } from '../lib/dateUtils';
 import { useAuth } from '../hooks/useAuth';
@@ -31,8 +34,8 @@ function getCurrentMonday(): string {
 
 export default function WeeklyRecapScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'WeeklyRecap'>>();
   const isCurrentWeek = route.params?.week === 'current';
 
   const weekStart = isCurrentWeek ? getCurrentMonday() : getLastMonday();

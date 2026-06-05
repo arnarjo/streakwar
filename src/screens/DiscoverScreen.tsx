@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
@@ -16,7 +18,7 @@ import { C } from '../theme';
 
 export default function DiscoverScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { joinPublic } = useFitnessChallenges(profile?.id ?? '');
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);

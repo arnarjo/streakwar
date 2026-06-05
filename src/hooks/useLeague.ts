@@ -31,7 +31,7 @@ export function useLeague(userId: string) {
     if (tierRow) {
       setMyTier(tierRow.tier as LeagueTier);
     } else {
-      await supabase.from('user_league_tier').insert({ user_id: userId, tier: 'bronze' });
+      // No league tier yet — use default; row creation happens server-side on signup
       setMyTier('bronze');
     }
 

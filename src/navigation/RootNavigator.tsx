@@ -25,7 +25,21 @@ import WeeklyRecapScreen          from '../screens/WeeklyRecapScreen';
 import DiscoverScreen             from '../screens/DiscoverScreen';
 import DiscoverChallengesScreen   from '../screens/DiscoverChallengesScreen';
 
-const Stack = createNativeStackNavigator();
+export type RootStackParamList = {
+  Main: undefined;
+  ChallengeDetail: { challengeId: string };
+  CreateChallenge: undefined;
+  LogWorkout: undefined;
+  ConnectDevices: undefined;
+  WeeklyRecap: { week?: 'current' } | undefined;
+  ResetPassword: undefined;
+  Onboarding: undefined;
+  Login: undefined;
+  Signup: undefined;
+  Settings: undefined;
+};
+
+const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab   = createBottomTabNavigator();
 
 type IoniconsName = React.ComponentProps<typeof Ionicons>['name'];
