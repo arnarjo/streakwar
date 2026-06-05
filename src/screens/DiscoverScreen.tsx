@@ -13,7 +13,7 @@ import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
 import { differenceInDays, parseISO } from 'date-fns';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 
 export default function DiscoverScreen() {
@@ -160,8 +160,8 @@ export default function DiscoverScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: C.muted, marginTop: 2 },
+  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, fontFamily: F.uiBold },
+  subtitle: { fontSize: 13, color: C.muted, marginTop: 2, fontFamily: F.ui },
   searchRow: { paddingHorizontal: 16, paddingVertical: 12 },
   searchInputWrap: { position: 'relative' },
   searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, paddingRight: 40, color: C.text, fontSize: 14 },
@@ -170,19 +170,19 @@ const s = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: { backgroundColor: '#151C24', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 16, marginBottom: 10, gap: 8 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 3 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 3, fontFamily: F.uiBold },
+  cardMeta: { fontSize: 12, color: C.muted, fontFamily: F.ui },
   statusBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { fontSize: 13, color: C.muted, lineHeight: 19 },
+  statusText: { fontSize: 11, fontWeight: '700', fontFamily: F.uiBold },
+  cardDesc: { fontSize: 13, color: C.muted, lineHeight: 19, fontFamily: F.ui },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardStats: { fontSize: 12, color: C.muted },
   joinBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13, fontFamily: F.uiBold },
   empty: { alignItems: 'center', paddingTop: 64, gap: 12, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted, fontFamily: F.uiBold },
+  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
   createBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  createBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  createBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 });

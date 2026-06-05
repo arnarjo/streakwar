@@ -10,7 +10,7 @@ import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
 import type { FitnessChallenge, ScoringMode } from '../types/database';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 type Props = {
   myChallenges: FitnessChallenge[];
@@ -228,8 +228,8 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
   section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2 },
-  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2, fontFamily: F.uiBold },
+  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10, fontFamily: F.ui },
 
   globalCard: {
     backgroundColor: C.card,
@@ -245,7 +245,7 @@ const s = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, fontFamily: F.uiBold },
 
   filterBar: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterBtn: {

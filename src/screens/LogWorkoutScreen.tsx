@@ -17,6 +17,7 @@ import { ACTIVITY_LABELS, ACTIVITY_OPTIONS } from '../types/database';
 import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
+import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
 import { C, S, R, FS, F } from '../theme';
 
@@ -51,6 +52,7 @@ export default function LogWorkoutScreen() {
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
 
@@ -192,6 +194,23 @@ export default function LogWorkoutScreen() {
         workoutDateStr === todayStr ? todayStr : (streak?.last_active_date ?? null),
         firstName
       ).catch(() => {});
+
+      // Fetch points awarded for selected challenge
+      if (selectedChallengeId && profile?.id) {
+        supabase
+          .from('challenge_participants')
+          .select('total_points')
+          .eq('challenge_id', selectedChallengeId)
+          .eq('user_id', profile.id)
+          .single()
+          .then(({ data }) => {
+            setPointsAwarded(data?.total_points ?? null);
+          })
+          .catch(() => {});
+      } else {
+        setPointsAwarded(null);
+      }
+
       showSuccessAndGoBack();
     }
   }

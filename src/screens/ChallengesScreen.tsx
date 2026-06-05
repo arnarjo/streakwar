@@ -64,7 +64,12 @@ export default function ChallengesScreen() {
     } else {
       setJoinModalOpen(false);
       setCode('');
-      Alert.alert('Joined! 💪', `You're now in "${challenge?.name}"`);
+      const joinedId = challenge?.id;
+      if (joinedId) {
+        navigation.navigate('ChallengeDetail', { challengeId: joinedId });
+      } else {
+        Alert.alert('Joined! 💪', `You're now in "${challenge?.name}"`);
+      }
     }
   }
 
