@@ -271,7 +271,7 @@ export default function HomeScreen() {
               )}
             </>
           // eslint-disable-next-line react-hooks/exhaustive-deps
-          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, profile?.id, navigation, handleShare, reactToMilestone, removeReaction])}
+          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, myChallenges, firstRunDismissed, profile?.id, navigation, handleShare, reactToMilestone, removeReaction])}
           renderItem={renderFeedItem}
           ListEmptyComponent={
             loading ? (
@@ -356,7 +356,7 @@ const s = StyleSheet.create({
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', fontFamily: F.uiBold },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', fontFamily: F.uiBold },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
   emptyEmoji: { fontSize: 48 },
@@ -366,4 +366,10 @@ const s = StyleSheet.create({
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
   weeklyRecapBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 15, marginBottom: S[2] + 2, borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
   weeklyRecapText: { fontSize: 14, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
+  firstRunBanner: { backgroundColor: C.card, borderWidth: 1, borderColor: C.primary + '30', borderRadius: R.lg, padding: S[4], marginBottom: S[3], gap: 10, alignItems: 'stretch' },
+  firstRunTitle: { fontSize: 16, fontWeight: '800', color: C.text, fontFamily: F.uiBold, marginBottom: 2 },
+  firstRunBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingVertical: 12, alignItems: 'center' },
+  firstRunBtnSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.primary + '50' },
+  firstRunBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
+  firstRunBtnTextSecondary: { color: C.primary },
 });
