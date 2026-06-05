@@ -491,7 +491,7 @@ const s = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.07)',
   },
   pinnedLabel: {
-    fontSize: 9, fontWeight: '700', color: '#637C8F',
+    fontSize: 11, fontWeight: '700', color: C.muted,
     letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4,
   },
 });

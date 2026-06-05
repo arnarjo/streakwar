@@ -529,7 +529,7 @@ const s = StyleSheet.create({
   editProfileBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 8, marginTop: 4 },
   editProfileBtnText: { fontSize: 13, fontWeight: '600', color: C.text },
 
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 11 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 11 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
   editLink: { color: C.primary, fontSize: 13, fontWeight: '700' },
 
