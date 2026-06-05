@@ -138,6 +138,38 @@ export default function ChallengeDetailScreen() {
     return addComment(postId, content);
   }
 
+  const renderLeaderboardItem = useCallback(({ item, index }: { item: ChallengeParticipant; index: number }) => {
+    const rank = index + 4;
+    const initials = (item.profile?.full_name ?? item.profile?.username ?? '?')
+      .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+    const isMe = item.user_id === profile?.id;
+    return (
+      <View style={[s.rankRow, isMe && s.rankRowMe]}>
+        <Text style={s.rankNum}>#{rank}</Text>
+        <View style={[s.rankAvatar, isMe && { borderColor: C.primary }]}>
+          <Text style={[s.rankAvatarText, isMe && { color: C.primary }]}>{initials}</Text>
+        </View>
+        <Text style={[s.rankName, isMe && { color: C.primary }]} numberOfLines={1}>
+          {item.profile?.username}
+          {isMe ? ' (you)' : ''}
+        </Text>
+        <Text style={s.rankScore}>{item.score} pts</Text>
+      </View>
+    );
+  }, [profile?.id]);
+
+  const renderFeedItem = useCallback(({ item }: { item: import('../types/database').WorkoutPost }) => (
+    <WorkoutPostCard
+      post={item}
+      currentUserId={profile?.id}
+      onReact={toggleReaction}
+      onFetchComments={handleFetchComments}
+      onAddComment={handleAddComment}
+      onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+      onDelete={(postId) => deleteWorkout(postId)}
+    />
+  ), [profile?.id, toggleReaction, navigation, deleteWorkout]);
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
@@ -236,25 +268,7 @@ export default function ChallengeDetailScreen() {
               )}
             </>
           }
-          renderItem={({ item, index }) => {
-            const rank = index + 4;
-            const initials = (item.profile?.full_name ?? item.profile?.username ?? '?')
-              .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-            const isMe = item.user_id === profile?.id;
-            return (
-              <View style={[s.rankRow, isMe && s.rankRowMe]}>
-                <Text style={s.rankNum}>#{rank}</Text>
-                <View style={[s.rankAvatar, isMe && { borderColor: C.primary }]}>
-                  <Text style={[s.rankAvatarText, isMe && { color: C.primary }]}>{initials}</Text>
-                </View>
-                <Text style={[s.rankName, isMe && { color: C.primary }]} numberOfLines={1}>
-                  {item.profile?.username}
-                  {isMe ? ' (you)' : ''}
-                </Text>
-                <Text style={s.rankScore}>{item.score} pts</Text>
-              </View>
-            );
-          }}
+          renderItem={renderLeaderboardItem}
         />
       )}
 
@@ -266,17 +280,7 @@ export default function ChallengeDetailScreen() {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={feedLoading} onRefresh={() => fetchFeed(challengeId)} tintColor={C.primary} />}
-          renderItem={({ item }) => (
-            <WorkoutPostCard
-              post={item}
-              currentUserId={profile?.id}
-              onReact={toggleReaction}
-              onFetchComments={handleFetchComments}
-              onAddComment={handleAddComment}
-              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
-              onDelete={(postId) => deleteWorkout(postId)}
-            />
-          )}
+          renderItem={renderFeedItem}
           ListEmptyComponent={
             <View style={s.empty}>
               <Text style={s.emptyText}>No workouts logged yet</Text>

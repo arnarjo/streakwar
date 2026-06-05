@@ -1,7 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
-import { supabase } from '../lib/supabase';
 import { C } from '../theme';
 
 
@@ -29,9 +28,11 @@ export interface MilestoneItem {
 interface Props {
   item: MilestoneItem;
   currentUserId: string;
+  onReact?: (milestoneId: string, emoji: string) => void;
+  onRemoveReact?: (milestoneId: string, emoji: string) => void;
 }
 
-export default function StreakMilestoneCard({ item, currentUserId }: Props) {
+export default function StreakMilestoneCard({ item, currentUserId, onReact, onRemoveReact }: Props) {
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(item.reaction_counts ?? {});
   const [myReaction, setMyReaction] = useState<string | null>(item.my_reaction ?? null);
   const [reacting, setReacting] = useState(false);
@@ -67,17 +68,12 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
       if (prev === emoji) {
         setMyReaction(null);
         setReactionCounts(counts);
-        await supabase.from('milestone_reactions')
-          .delete()
-          .eq('milestone_id', item.id)
-          .eq('user_id', currentUserId);
+        onRemoveReact?.(item.id, emoji);
       } else {
         counts[emoji] = (counts[emoji] ?? 0) + 1;
         setMyReaction(emoji);
         setReactionCounts(counts);
-        await supabase.from('milestone_reactions')
-          .upsert({ milestone_id: item.id, user_id: currentUserId, reaction: emoji },
-            { onConflict: 'milestone_id,user_id' });
+        onReact?.(item.id, emoji);
       }
     } catch (err) {
       console.warn('[StreakMilestoneCard] react failed:', err);

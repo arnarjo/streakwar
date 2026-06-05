@@ -15,7 +15,7 @@ import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
-import type { WorkoutComment, LeagueTier } from '../types/database';
+import type { WorkoutComment, WorkoutPost, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
@@ -126,6 +126,18 @@ export default function HomeScreen() {
   }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones]);
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
+
+  const renderFeedItem = useCallback(({ item }: { item: WorkoutPost }) => (
+    <WorkoutPostCard
+      post={item}
+      currentUserId={profile?.id}
+      onReact={toggleReaction}
+      onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
+      onAddComment={(id: string, text: string) => addComment(id, text)}
+      onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+      onDelete={(postId) => deleteWorkout(postId)}
+    />
+  ), [profile?.id, toggleReaction, fetchComments, addComment, navigation, deleteWorkout]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -268,7 +280,30 @@ export default function HomeScreen() {
                 <View style={s.section}>
                   <Text style={s.sectionLabel}>Streak milestones</Text>
                   {milestones.map(m => (
-                    <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+                    <StreakMilestoneCard
+                      key={m.id}
+                      item={m}
+                      currentUserId={profile?.id ?? ''}
+                      onReact={async (milestoneId, emoji) => {
+                        try {
+                          await supabase.from('milestone_reactions')
+                            .upsert({ milestone_id: milestoneId, user_id: profile?.id, reaction: emoji },
+                              { onConflict: 'milestone_id,user_id' });
+                        } catch (err) {
+                          console.warn('[HomeScreen] react failed:', err);
+                        }
+                      }}
+                      onRemoveReact={async (milestoneId, emoji) => {
+                        try {
+                          await supabase.from('milestone_reactions')
+                            .delete()
+                            .eq('milestone_id', milestoneId)
+                            .eq('user_id', profile?.id);
+                        } catch (err) {
+                          console.warn('[HomeScreen] remove react failed:', err);
+                        }
+                      }}
+                    />
                   ))}
                 </View>
               )}
@@ -280,17 +315,7 @@ export default function HomeScreen() {
               )}
             </>
           }
-          renderItem={({ item }) => (
-            <WorkoutPostCard
-              post={item}
-              currentUserId={profile?.id}
-              onReact={toggleReaction}
-              onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
-              onAddComment={(id: string, text: string) => addComment(id, text)}
-              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
-              onDelete={(postId) => deleteWorkout(postId)}
-            />
-          )}
+          renderItem={renderFeedItem}
           ListEmptyComponent={
             loading ? (
               <View style={{ paddingHorizontal: 16 }}>

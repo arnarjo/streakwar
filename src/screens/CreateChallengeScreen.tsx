@@ -130,6 +130,34 @@ export default function CreateChallengeScreen() {
   }
 
   async function handleCreate() {
+    if (!name.trim()) {
+      Alert.alert('Missing name', 'Please enter a challenge name.');
+      setStep(1);
+      return;
+    }
+
+    const pwVal = parseInt(pointsPerWorkout);
+    const psVal = parseInt(pointsPer1000Steps);
+    const pkVal = parseFloat(pointsPerKm);
+    const pdVal = parseInt(pointsPer30min);
+
+    if (scoringModes.includes('workouts') && (isNaN(pwVal) || pwVal <= 0)) {
+      Alert.alert('Invalid points', 'Points per workout must be a positive number.');
+      return;
+    }
+    if (scoringModes.includes('steps') && (isNaN(psVal) || psVal <= 0)) {
+      Alert.alert('Invalid points', 'Points per 1,000 steps must be a positive number.');
+      return;
+    }
+    if (scoringModes.includes('distance_km') && (isNaN(pkVal) || pkVal <= 0)) {
+      Alert.alert('Invalid points', 'Points per km must be a positive number.');
+      return;
+    }
+    if (scoringModes.includes('duration_min') && (isNaN(pdVal) || pdVal <= 0)) {
+      Alert.alert('Invalid points', 'Points per 30 minutes must be a positive number.');
+      return;
+    }
+
     setSaving(true);
     const { error, challenge } = await createChallenge({
       name: name.trim(),
@@ -137,10 +165,10 @@ export default function CreateChallengeScreen() {
       start_date: format(startDate, 'yyyy-MM-dd'),
       end_date: format(endDate, 'yyyy-MM-dd'),
       scoring_modes: scoringModes,
-      points_per_workout: parseInt(pointsPerWorkout) || 1,
-      points_per_1000_steps: parseInt(pointsPer1000Steps) || 1,
-      points_per_km: parseFloat(pointsPerKm) || 1,
-      points_per_30min: parseInt(pointsPer30min) || 1,
+      points_per_workout: isNaN(pwVal) ? 1 : pwVal,
+      points_per_1000_steps: isNaN(psVal) ? 1 : psVal,
+      points_per_km: isNaN(pkVal) ? 1 : pkVal,
+      points_per_30min: isNaN(pdVal) ? 1 : pdVal,
       custom_scoring: null,
       backlog_days_allowed: parseInt(backlogDays) || 7,
       require_photo_proof: requirePhoto,

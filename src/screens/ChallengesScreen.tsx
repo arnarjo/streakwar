@@ -179,7 +179,7 @@ export default function ChallengesScreen() {
       )}
 
       {/* Quick 1v1 Challenge Modal */}
-      <Modal visible={quickModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
+      <Modal visible={quickModalOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={s.modalSheet}>
@@ -244,7 +244,7 @@ export default function ChallengesScreen() {
         reason={`Free plan allows ${FREE_MAX_CHALLENGES} active challenges. Upgrade to Pro for unlimited.`}
       />
 
-      <Modal visible={joinModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
+      <Modal visible={joinModalOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={s.modalSheet}>
