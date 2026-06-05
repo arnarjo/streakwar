@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator, ScrollView,
+  Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -35,6 +36,7 @@ export default function ChallengeDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [sharingCard, setSharingCard] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const shareCardRef = useRef<ViewShot>(null);
 
   const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
@@ -295,6 +297,26 @@ export default function ChallengeDetailScreen() {
       {/* Banter tab */}
       {tab === 'banter' && (
         <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <FlatList
+              data={banterMessages}
+              keyExtractor={m => m.id}
+              contentContainerStyle={s.messageList}
+              renderItem={({ item }) => (
+                <View style={s.messageRow}>
+                  <Text style={s.messageSender}>
+                    {item.sender?.full_name ?? item.sender?.username ?? 'Unknown'}
+                  </Text>
+                  <Text style={s.messageText}>{TRASH_TALK_MESSAGES[item.message_key]}</Text>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={s.emptyBanter}>
+                  <Text style={s.emptyBanterText}>No trash talk yet — send the first shot 💬</Text>
+                </View>
+              }
+            />
+          </View>
           <View style={s.trashGrid}>
             {Object.entries(TRASH_TALK_MESSAGES).map(([key, text]) => (
               <TouchableOpacity
@@ -307,24 +329,6 @@ export default function ChallengeDetailScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <FlatList
-            data={banterMessages}
-            keyExtractor={m => m.id}
-            contentContainerStyle={s.messageList}
-            renderItem={({ item }) => (
-              <View style={s.messageRow}>
-                <Text style={s.messageSender}>
-                  {item.sender?.full_name ?? item.sender?.username ?? 'Unknown'}
-                </Text>
-                <Text style={s.messageText}>{TRASH_TALK_MESSAGES[item.message_key]}</Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={s.emptyBanter}>
-                <Text style={s.emptyBanterText}>No trash talk yet — send the first shot 💬</Text>
-              </View>
-            }
-          />
         </View>
       )}
 
@@ -371,9 +375,22 @@ export default function ChallengeDetailScreen() {
 
             <View style={s.infoCard}>
               <Text style={s.infoLabel}>INVITE CODE</Text>
-              <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary }]}>
-                {challenge.invite_code}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary, flex: 1 }]}>
+                  {challenge.invite_code}
+                </Text>
+                <TouchableOpacity
+                  style={s.copyBtn}
+                  onPress={() => {
+                    Clipboard.setString(challenge.invite_code);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  accessibilityLabel="Copy invite code"
+                >
+                  <Text style={s.copyBtnText}>{copied ? '✓ Copied' : 'Copy'}</Text>
+                </TouchableOpacity>
+              </View>
             </View>
 
             <TouchableOpacity style={s.shareCardBtn} onPress={shareInvite}>
@@ -542,6 +559,16 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+
+  copyBtn: {
+    backgroundColor: C.primary + '20',
+    borderWidth: 1,
+    borderColor: C.primary + '50',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  copyBtnText: { color: C.primary, fontWeight: '700', fontSize: 12 },
 
   trashGrid: { padding: 16, gap: 8 },
   trashBtn: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },

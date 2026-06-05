@@ -171,7 +171,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.fullName && s.inputError]}
                     placeholder="Jane Smith"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={fullName}
                     onChangeText={t => { setFullName(t); setErrors(e => ({ ...e, fullName: undefined })); }}
                     autoCapitalize="words"
@@ -187,7 +187,7 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.prefixInput, errors.username && s.inputError]}
                       placeholder="jane.smith"
-                      placeholderTextColor={C.dimmed}
+                      placeholderTextColor={C.muted}
                       value={username}
                       onChangeText={t => { setUsername(t.toLowerCase().replace(/\s/g, '')); setErrors(e => ({ ...e, username: undefined })); }}
                       autoCapitalize="none"
@@ -210,7 +210,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.email && s.inputError]}
                     placeholder="you@example.com"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={email}
                     onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
                     keyboardType="email-address"
@@ -227,7 +227,7 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.passwordInput, errors.password && s.inputError]}
                       placeholder="8+ chars, A-Z, 0-9, !@#..."
-                      placeholderTextColor={C.dimmed}
+                      placeholderTextColor={C.muted}
                       value={password}
                       onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
                       secureTextEntry={!showPassword}
@@ -253,7 +253,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.confirm && s.inputError, confirm.length > 0 && password === confirm && s.inputSuccess]}
                     placeholder="Repeat your password"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={confirm}
                     onChangeText={t => { setConfirm(t); setErrors(e => ({ ...e, confirm: undefined })); }}
                     secureTextEntry={!showPassword}
@@ -297,7 +297,7 @@ const s = StyleSheet.create({
   backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
   progressBar: { height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 6, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: C.primary, borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: C.dimmed, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
+  progressLabel: { fontSize: 11, color: C.muted, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
   logo: { fontSize: 24, fontWeight: '900', color: C.primary, letterSpacing: 4, marginBottom: 12 },
   title: { fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
   subtitle: { fontSize: 14, color: C.muted, marginBottom: 28, lineHeight: 20 },
@@ -336,5 +336,5 @@ const s = StyleSheet.create({
   socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
-  dividerText: { color: C.dimmed, fontSize: 12 },
+  dividerText: { color: C.muted, fontSize: 12 },
 });

@@ -9,6 +9,7 @@ export const C = {
   primary: '#F97316',
   amber: '#FBBF24',
   green: '#22C55E',
+  success: '#22C55E',
   blue: '#38BDF8',
   error: '#EF4444',
   text: '#E8EFF5',

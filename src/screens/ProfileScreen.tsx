@@ -75,12 +75,7 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
     return result;
   }, [userId, heatmapData]);
 
-  const opacities = useMemo(() => {
-    const r = seededRandom(hashString(userId));
-    return Array.from({ length: weeks * days }, () => r() > 0.45 ? 1 : 0.15);
-  }, [userId]);
-
-  const useReal = heatmapData.size > 0;
+  const hasData = heatmapData.size > 0;
 
   return (
     <View style={heat.container}>
@@ -94,19 +89,24 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
           {Array.from({ length: weeks }).map((_, wi) => (
             <View key={wi} style={{ flex: 1, gap: 3 }}>
               {Array.from({ length: days }).map((_, di) => (
-                <View key={di} style={[heat.cell, { opacity: useReal ? (cols[wi]?.[di] ? 1 : 0.15) : opacities[wi * days + di] }]} />
+                <View key={di} style={[heat.cell, { opacity: hasData ? (cols[wi]?.[di] ? 1 : 0.15) : 0.1 }]} />
               ))}
             </View>
           ))}
         </View>
       </View>
-      <View style={heat.legend}>
-        <Text style={heat.legendText}>Less</Text>
-        {[0.15, 0.35, 0.55, 0.75, 1].map((o, i) => (
-          <View key={i} style={[heat.legendDot, { opacity: o }]} />
-        ))}
-        <Text style={heat.legendText}>More</Text>
-      </View>
+      {!hasData && (
+        <Text style={heat.emptyText}>Start logging to build your history</Text>
+      )}
+      {hasData && (
+        <View style={heat.legend}>
+          <Text style={heat.legendText}>Less</Text>
+          {[0.15, 0.35, 0.55, 0.75, 1].map((o, i) => (
+            <View key={i} style={[heat.legendDot, { opacity: o }]} />
+          ))}
+          <Text style={heat.legendText}>More</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -115,6 +115,7 @@ const heat = StyleSheet.create({
   container: { backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: C.border },
   dayLabel: { height: 14, fontSize: 9, fontWeight: '600', color: C.muted, textAlignVertical: 'center' },
   cell: { aspectRatio: 1, borderRadius: 3, backgroundColor: C.primary },
+  emptyText: { fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 10, fontFamily: F.ui },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, justifyContent: 'flex-end' },
   legendDot: { width: 10, height: 10, borderRadius: 2, backgroundColor: C.primary },
   legendText: { fontSize: 10, color: C.muted },

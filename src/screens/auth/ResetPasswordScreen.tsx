@@ -4,11 +4,15 @@ import {
   KeyboardAvoidingView, Platform, Alert, ActivityIndicator, StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabase';
 import { C } from '../../theme';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
 
 export default function ResetPasswordScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,11 +47,15 @@ export default function ResetPasswordScreen() {
     }
 
     Alert.alert(
-      'Password updated',
-      'Your password has been changed. Please sign in with your new password.',
+      'Password updated!',
+      'Please sign in with your new password.',
       [{ text: 'Sign in', onPress: async () => {
         const { error } = await supabase.auth.signOut();
-        if (error) Alert.alert('Error', 'Could not sign out. Please restart the app.');
+        if (error) {
+          Alert.alert('Error', 'Could not sign out. Please restart the app.');
+        } else {
+          navigation.replace('Login');
+        }
       }}],
     );
   }
@@ -67,7 +75,7 @@ export default function ResetPasswordScreen() {
               <TextInput
                 style={[s.input, s.passwordInput]}
                 placeholder="8+ characters"
-                placeholderTextColor={C.dimmed}
+                placeholderTextColor={C.muted}
                 value={password}
                 onChangeText={t => { setPassword(t); setError(''); }}
                 secureTextEntry={!showPassword}
@@ -85,7 +93,7 @@ export default function ResetPasswordScreen() {
             <TextInput
               style={s.input}
               placeholder="Repeat your password"
-              placeholderTextColor={C.dimmed}
+              placeholderTextColor={C.muted}
               value={confirm}
               onChangeText={t => { setConfirm(t); setError(''); }}
               secureTextEntry={!showPassword}

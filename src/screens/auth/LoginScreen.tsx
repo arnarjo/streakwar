@@ -121,7 +121,7 @@ export default function LoginScreen({ navigation }: Props) {
               <TextInput
                 style={[s.input, errors.email && s.inputError]}
                 placeholder="you@example.com"
-                placeholderTextColor={C.dimmed}
+                placeholderTextColor={C.muted}
                 value={email}
                 onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
                 keyboardType="email-address"
@@ -138,7 +138,7 @@ export default function LoginScreen({ navigation }: Props) {
                 <TextInput
                   style={[s.input, s.passwordInput, errors.password && s.inputError]}
                   placeholder="••••••••"
-                  placeholderTextColor={C.dimmed}
+                  placeholderTextColor={C.muted}
                   value={password}
                   onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
                   secureTextEntry={!showPassword}
@@ -262,7 +262,7 @@ const s = StyleSheet.create({
   loginBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
-  dividerText: { color: C.dimmed, fontSize: 13 },
+  dividerText: { color: C.muted, fontSize: 13 },
   signupBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700' },
   socialBtn: {
