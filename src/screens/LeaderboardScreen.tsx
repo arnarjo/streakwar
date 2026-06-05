@@ -378,17 +378,23 @@ export default function LeaderboardScreen() {
           })()}
           ListEmptyComponent={
             !loading ? (
-              <View style={s.empty}>
-                <Text style={s.emptyEmoji}>{tab === 'friends' ? '👥' : '🏆'}</Text>
-                <Text style={s.emptyTitle}>
-                  {tab === 'friends' ? 'No friends yet' : tab === 'week' ? 'No workouts this week' : 'No one here yet'}
-                </Text>
-                <Text style={s.emptyText}>
-                  {tab === 'friends'
-                    ? 'Switch to Week or All-time and tap + to follow people'
-                    : 'Log your first workout to appear here'}
-                </Text>
-              </View>
+              tab === 'friends' ? (
+                <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
+                  <Text style={{ fontSize: 32 }}>👥</Text>
+                  <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>No friends yet</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, textAlign: 'center', paddingHorizontal: 32 }}>
+                    Follow other athletes to see them on your leaderboard
+                  </Text>
+                </View>
+              ) : (
+                <View style={s.empty}>
+                  <Text style={s.emptyEmoji}>🏆</Text>
+                  <Text style={s.emptyTitle}>
+                    {tab === 'week' ? 'No workouts this week' : 'No one here yet'}
+                  </Text>
+                  <Text style={s.emptyText}>Log your first workout to appear here</Text>
+                </View>
+              )
             ) : null
           }
         />

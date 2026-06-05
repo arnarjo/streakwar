@@ -271,7 +271,7 @@ export default function CreateChallengeScreen() {
                     value={startDate}
                     mode="date"
                     display={Platform.OS === 'ios' ? 'inline' : 'default'}
-                    onChange={(_, d) => { setShowStartPicker(false); if (d) { setStartDate(d); if (d >= endDate) setEndDate(addDays(d, 30)); } }}
+                    onChange={(_, d) => { setShowStartPicker(false); if (d) { setStartDate(d); setDurationPreset(null); if (d >= endDate) setEndDate(addDays(d, 30)); } }}
                   />
                 )}
               </View>
@@ -287,7 +287,7 @@ export default function CreateChallengeScreen() {
                     mode="date"
                     display={Platform.OS === 'ios' ? 'inline' : 'default'}
                     minimumDate={addDays(startDate, 1)}
-                    onChange={(_, d) => { setShowEndPicker(false); if (d) setEndDate(d); }}
+                    onChange={(_, d) => { setShowEndPicker(false); if (d) { setEndDate(d); setDurationPreset(null); } }}
                   />
                 )}
               </View>

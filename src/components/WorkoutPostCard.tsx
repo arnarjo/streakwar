@@ -49,16 +49,19 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
   }
 
   async function openComments() {
+    setActionError(null); // clear stale error from previous session
     setCommentsOpen(true);
     setCommentsLoading(true);
+    let active = true;
     try {
       const data = await onFetchComments(post.id);
-      setComments(data);
+      if (active) setComments(data);
     } catch {
-      setComments([]);
+      if (active) setComments([]);
     } finally {
-      setCommentsLoading(false);
+      if (active) setCommentsLoading(false);
     }
+    return () => { active = false; };
   }
 
   async function submitComment() {
