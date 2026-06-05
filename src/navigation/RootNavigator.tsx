@@ -6,6 +6,7 @@ import { View } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { navigationRef } from './navigationRef';
+import { C } from '../theme';
 
 export type RootStackParamList = {
   Main:            undefined;
@@ -93,8 +94,8 @@ function MainTabs() {
         headerShown: false,
         tabBarIcon: ({ color }) => <TabIcon name={route.name} color={color} />,
         tabBarStyle: {
-          backgroundColor: '#0C1117',
-          borderTopColor: 'rgba(255,255,255,0.07)',
+          backgroundColor: C.bg,
+          borderTopColor: C.border,
           borderTopWidth: 1,
           height: 82,
           paddingTop: 8,
@@ -102,8 +103,8 @@ function MainTabs() {
         },
         tabBarLabelStyle:  { marginBottom: 4, fontSize: 10 },
         tabBarItemStyle:   { paddingVertical: 4 },
-        tabBarActiveTintColor:   '#F97316',
-        tabBarInactiveTintColor: '#4A6070',
+        tabBarActiveTintColor:   C.primary,
+        tabBarInactiveTintColor: C.muted2,
       })}
     >
       <Tab.Screen name="Home"        component={HomeScreen} />
@@ -120,7 +121,7 @@ export default function RootNavigator({ onRouteChange }: Props) {
   const { session, loading, profileExists, needsPasswordReset } = useAuth();
 
   // Show a blank splash while we resolve both session + profile.
-  if (loading) return <View style={{ flex: 1, backgroundColor: '#0C1117' }} />;
+  if (loading) return <View style={{ flex: 1, backgroundColor: C.bg }} />;
 
   // Signed-in but no profile row yet (OAuth user on first sign-in).
   // Send them through the auth stack so they can pick a username.
