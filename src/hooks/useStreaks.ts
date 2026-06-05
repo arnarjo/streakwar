@@ -11,7 +11,7 @@ import type { UserStreak } from '../types/database';
  * If so, consumes the freeze instead of resetting the streak.
  * Otherwise, resets current_streak to 0 and persists the change.
  */
-async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
+export async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
   if (!data.last_active_date || data.current_streak === 0) return data;
 
   const today = toLocalDate(new Date());
