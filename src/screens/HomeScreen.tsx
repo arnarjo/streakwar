@@ -242,6 +242,15 @@ export default function HomeScreen() {
                 </View>
               )}
 
+              <TouchableOpacity
+                style={s.weeklyRecapBanner}
+                onPress={() => navigation.navigate('WeeklyRecap', { week: 'current' })}
+                activeOpacity={0.85}
+              >
+                <Text style={s.weeklyRecapText}>📊 View Weekly Recap</Text>
+                <Text style={s.bannerChev}>›</Text>
+              </TouchableOpacity>
+
               {!loading && feed.length > 0 && (
                 <View style={s.sectionHeader}>
                   <Text style={s.sectionLabel}>Friends feed</Text>
@@ -342,4 +351,6 @@ const s = StyleSheet.create({
   emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
   emptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[5], paddingVertical: S[3], marginTop: S[2] },
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
+  weeklyRecapBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 15, marginBottom: S[2] + 2, borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  weeklyRecapText: { fontSize: 14, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
 });

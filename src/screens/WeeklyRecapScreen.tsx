@@ -95,6 +95,8 @@ export default function WeeklyRecapScreen() {
       setPrevWorkouts(prevCount ?? 0);
     } catch {
       setError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -127,6 +129,12 @@ export default function WeeklyRecapScreen() {
     if (diff >= 0) return "Solid week — keep it up! 💪";
     return "Tough week — you'll come back stronger! 💪";
   }
+
+  if (loading) return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator color={C.primary} size="large" />
+    </View>
+  );
 
   if (error) return (
     <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
