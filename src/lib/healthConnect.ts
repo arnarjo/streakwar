@@ -12,7 +12,7 @@
 
 import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
 import { toLocalDate } from './dateUtils';
@@ -190,7 +190,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
     return 0;
   }
 
-  const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
+  const lastSyncRaw = await SecureStore.getItemAsync(LAST_SYNC_KEY);
   const startTime = lastSyncRaw ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const endTime = new Date().toISOString();
 
@@ -290,7 +290,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       }
     }
     if (!insertFailed) {
-      await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
+      await SecureStore.setItemAsync(LAST_SYNC_KEY, endTime);
     }
   } catch (e) {
     console.warn('[HealthConnect] poll failed:', e);

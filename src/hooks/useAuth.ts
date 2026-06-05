@@ -45,7 +45,9 @@ export function useAuth() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select('id, username, full_name, avatar_url, total_points, streak_freeze_credits, bio, is_admin, created_at')
+        // is_admin is intentionally excluded from the client-readable select.
+        // Admin status must be verified server-side via JWT claims, not a client-readable profile field.
+        .select('id, username, full_name, avatar_url, total_points, streak_freeze_credits, bio, created_at')
         .eq('id', userId)
         .single();
 

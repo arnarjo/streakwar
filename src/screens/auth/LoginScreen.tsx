@@ -83,7 +83,10 @@ export default function LoginScreen({ navigation }: Props) {
     if (error) {
       shake();
       const msg = error.message ?? '';
-      if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('not confirmed')) {
+      const status = (error as any).status ?? 0;
+      if (status === 429 || msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
+        Alert.alert('Too many attempts', 'Too many attempts. Please wait a few minutes before trying again.');
+      } else if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('not confirmed')) {
         Alert.alert(
           'Email not confirmed',
           'Please check your inbox and click the confirmation link before signing in.',

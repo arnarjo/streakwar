@@ -9,9 +9,6 @@ type PurchasesPackage = import('react-native-purchases').PurchasesPackage;
 
 const ENTITLEMENT_PRO = 'pro';
 
-// Set to false before production launch to re-enable Pro gates
-const TESTING_MODE = false;
-
 const RC_API_KEY = Platform.select({
   ios:     process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS     ?? '',
   android: process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID ?? '',
@@ -55,7 +52,6 @@ export function usePremium(userId: string) {
       .select('is_pro, pro_expires_at')
       .eq('id', userId)
       .single();
-    if (TESTING_MODE) { setIsPro(true); setLoading(false); return; }
     if (data) {
       const active = data.is_pro && (
         !data.pro_expires_at || new Date(data.pro_expires_at) > new Date()
@@ -85,11 +81,10 @@ export function usePremium(userId: string) {
       const entitlement = customerInfo.entitlements.active[ENTITLEMENT_PRO];
       const pro = !!entitlement;
       if (pro) {
-        await supabase
-          .from('profiles')
-          .update({ is_pro: true, pro_expires_at: entitlement?.expirationDate ?? null })
-          .eq('id', userId);
-        setIsPro(true);
+        // Do NOT write is_pro or pro_expires_at from the client.
+        // The actual DB update must happen via a server-side RevenueCat webhook.
+        // Re-fetch entitlements so local state reflects the current subscription.
+        await refresh();
       }
       return pro;
     } catch (e: any) {
@@ -106,13 +101,10 @@ export function usePremium(userId: string) {
       const info = await Purchases.restorePurchases();
       const entitlement = info.entitlements.active[ENTITLEMENT_PRO];
       const pro = !!entitlement;
-      if (pro) {
-        await supabase
-          .from('profiles')
-          .update({ is_pro: true, pro_expires_at: entitlement?.expirationDate ?? null })
-          .eq('id', userId);
-      }
-      setIsPro(pro);
+      // Do NOT write is_pro or pro_expires_at from the client.
+      // The actual DB update must happen via a server-side RevenueCat webhook.
+      // Re-fetch entitlements so local state reflects the current subscription.
+      await refresh();
       Alert.alert(pro ? 'Restored!' : 'Nothing to restore', pro ? 'Pro is active.' : 'No active subscription found.');
       return pro;
     } catch {
