@@ -306,25 +306,8 @@ export default function HomeScreen() {
                       key={m.id}
                       item={m}
                       currentUserId={profile?.id ?? ''}
-                      onReact={async (milestoneId, emoji) => {
-                        try {
-                          await supabase.from('milestone_reactions')
-                            .upsert({ milestone_id: milestoneId, user_id: profile?.id, reaction: emoji },
-                              { onConflict: 'milestone_id,user_id' });
-                        } catch (err) {
-                          console.warn('[HomeScreen] react failed:', err);
-                        }
-                      }}
-                      onRemoveReact={async (milestoneId, emoji) => {
-                        try {
-                          await supabase.from('milestone_reactions')
-                            .delete()
-                            .eq('milestone_id', milestoneId)
-                            .eq('user_id', profile?.id);
-                        } catch (err) {
-                          console.warn('[HomeScreen] remove react failed:', err);
-                        }
-                      }}
+                      onReact={handleMilestoneReact}
+                      onRemoveReact={handleMilestoneRemoveReact}
                     />
                   ))}
                 </View>
@@ -336,7 +319,8 @@ export default function HomeScreen() {
                 </View>
               )}
             </>
-          }
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, profile?.id, navigation, handleShare, handleMilestoneReact, handleMilestoneRemoveReact])}
           renderItem={renderFeedItem}
           ListEmptyComponent={
             loading ? (

@@ -154,6 +154,7 @@ export default function LeaderboardScreen() {
             style={[s.followBtn, isFollowing && s.followingBtn]}
             onPress={() => isFollowing ? unfollow(item.id) : follow(item.id)}
             activeOpacity={0.7}
+            accessibilityLabel={isFollowing ? 'Unfollow' : 'Follow'}
           >
             <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
               {isFollowing ? '✓' : '+'}
@@ -165,6 +166,7 @@ export default function LeaderboardScreen() {
             style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
             onPress={() => setNudgeTarget({ id: item.id, name: item.full_name ?? item.username })}
             activeOpacity={0.7}
+            accessibilityLabel="Send nudge"
           >
             <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
           </TouchableOpacity>
@@ -378,7 +380,11 @@ export default function LeaderboardScreen() {
             );
           })()}
           ListEmptyComponent={
-            !loading ? (
+            loading && data.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <ActivityIndicator color={C.primary} size="small" />
+              </View>
+            ) : !loading ? (
               tab === 'friends' ? (
                 <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
                   <Text style={{ fontSize: 32 }}>👥</Text>
@@ -406,7 +412,7 @@ export default function LeaderboardScreen() {
 
 const s = StyleSheet.create({
   container:    { flex: 1, backgroundColor: C.bg },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[2] + 2 },
   title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   subtitle:     { fontSize: 13, color: C.muted, marginTop: 2 },
   headerRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
@@ -428,7 +434,7 @@ const s = StyleSheet.create({
   tabTextActive:{ color: '#000' },
 
   list:         { paddingHorizontal: 16, paddingBottom: 100 },
-  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
+  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S[3], marginBottom: S[2], gap: S[2] + 2 },
   rowMe:        { borderColor: C.primary + '50', backgroundColor: C.primary + '08' },
   rowGold:      { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   rowSilver:    { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
@@ -452,7 +458,7 @@ const s = StyleSheet.create({
   emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.muted },
   emptyText:    { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
 
-  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
+  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: S[3], marginBottom: 6, gap: S[2] + 2 },
   leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
   leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
   leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },

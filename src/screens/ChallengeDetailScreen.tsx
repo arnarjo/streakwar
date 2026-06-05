@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator,
+  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
@@ -23,7 +25,7 @@ type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const challengeId = route.params?.challengeId as string;
 
@@ -64,7 +66,7 @@ export default function ChallengeDetailScreen() {
     fetchBanter();
 
     const channel = supabase
-      .channel(`challenge_${challengeId}_${Date.now()}`)
+      .channel(`challenge_${challengeId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenge_participants', filter: `challenge_id=eq.${challengeId}` }, loadParticipants)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workout_posts', filter: `challenge_id=eq.${challengeId}` }, () => fetchFeed(challengeId))
       .subscribe();
@@ -109,6 +111,14 @@ export default function ChallengeDetailScreen() {
     }
   }
 
+  const handleFetchComments = useCallback((postId: string): Promise<WorkoutComment[]> => {
+    return fetchComments(postId);
+  }, [fetchComments]);
+
+  const handleAddComment = useCallback((postId: string, content: string): Promise<{ error: string | null }> => {
+    return addComment(postId, content);
+  }, [addComment]);
+
   if (!challenge) return (
     <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
       {loadError ? (
@@ -130,13 +140,6 @@ export default function ChallengeDetailScreen() {
   const myParticipant = participants.find(p => p.user_id === profile?.id);
   const podium = participants.slice(0, 3);
   const rest = participants.slice(3);
-
-  function handleFetchComments(postId: string): Promise<WorkoutComment[]> {
-    return fetchComments(postId);
-  }
-  function handleAddComment(postId: string, content: string): Promise<{ error: string | null }> {
-    return addComment(postId, content);
-  }
 
   const renderLeaderboardItem = useCallback(({ item, index }: { item: ChallengeParticipant; index: number }) => {
     const rank = index + 4;
@@ -168,7 +171,7 @@ export default function ChallengeDetailScreen() {
       onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
       onDelete={(postId) => deleteWorkout(postId)}
     />
-  ), [profile?.id, toggleReaction, navigation, deleteWorkout]);
+  ), [profile?.id, toggleReaction, navigation, deleteWorkout, handleFetchComments, handleAddComment]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -327,63 +330,57 @@ export default function ChallengeDetailScreen() {
 
       {/* Info tab */}
       {tab === 'info' && (
-        <FlatList
-          data={[]}
-          keyExtractor={() => ''}
-          renderItem={null}
-          contentContainerStyle={s.list}
-          ListHeaderComponent={
-            <View style={{ gap: 12 }}>
-              {challenge.description ? (
-                <View style={s.infoCard}>
-                  <Text style={s.infoLabel}>DESCRIPTION</Text>
-                  <Text style={s.infoValue}>{challenge.description}</Text>
-                </View>
-              ) : null}
-
+        <ScrollView contentContainerStyle={s.list}>
+          <View style={{ gap: 12 }}>
+            {challenge.description ? (
               <View style={s.infoCard}>
-                <Text style={s.infoLabel}>DURATION</Text>
-                <Text style={s.infoValue}>
-                  {format(parseISO(challenge.start_date), 'MMM d')} –{' '}
-                  {format(parseISO(challenge.end_date), 'MMM d, yyyy')}
-                </Text>
+                <Text style={s.infoLabel}>DESCRIPTION</Text>
+                <Text style={s.infoValue}>{challenge.description}</Text>
               </View>
+            ) : null}
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>SCORING</Text>
-                {challenge.scoring_modes.map(m => (
-                  <Text key={m} style={s.infoValue}>{SCORING_MODE_LABELS[m]}</Text>
-                ))}
-              </View>
-
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>TIEBREAKER</Text>
-                <Text style={s.infoValue}>{TIE_BREAK_LABELS[challenge.tie_break_rule]}</Text>
-              </View>
-
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>BACKLOG</Text>
-                <Text style={s.infoValue}>Up to {challenge.backlog_days_allowed} days back</Text>
-              </View>
-
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>PHOTO PROOF</Text>
-                <Text style={s.infoValue}>{challenge.require_photo_proof ? 'Required' : 'Optional'}</Text>
-              </View>
-
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>INVITE CODE</Text>
-                <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary }]}>
-                  {challenge.invite_code}
-                </Text>
-              </View>
-
-              <TouchableOpacity style={s.shareCardBtn} onPress={shareInvite}>
-                <Text style={s.shareCardBtnText}>📤 Share invite code</Text>
-              </TouchableOpacity>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>DURATION</Text>
+              <Text style={s.infoValue}>
+                {format(parseISO(challenge.start_date), 'MMM d')} –{' '}
+                {format(parseISO(challenge.end_date), 'MMM d, yyyy')}
+              </Text>
             </View>
-          }
-        />
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>SCORING</Text>
+              {challenge.scoring_modes.map(m => (
+                <Text key={m} style={s.infoValue}>{SCORING_MODE_LABELS[m]}</Text>
+              ))}
+            </View>
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>TIEBREAKER</Text>
+              <Text style={s.infoValue}>{TIE_BREAK_LABELS[challenge.tie_break_rule]}</Text>
+            </View>
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>BACKLOG</Text>
+              <Text style={s.infoValue}>Up to {challenge.backlog_days_allowed} days back</Text>
+            </View>
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>PHOTO PROOF</Text>
+              <Text style={s.infoValue}>{challenge.require_photo_proof ? 'Required' : 'Optional'}</Text>
+            </View>
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>INVITE CODE</Text>
+              <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary }]}>
+                {challenge.invite_code}
+              </Text>
+            </View>
+
+            <TouchableOpacity style={s.shareCardBtn} onPress={shareInvite}>
+              <Text style={s.shareCardBtnText}>📤 Share invite code</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       )}
 
       {/* Off-screen ShareCard captured by ViewShot — not visible to user */}
