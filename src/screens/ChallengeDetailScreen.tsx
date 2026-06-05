@@ -19,7 +19,7 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
@@ -432,7 +432,7 @@ const s = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 22, color: C.text },
-  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text },
+  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   shareBtn: { padding: 4 },
   shareText: { color: C.primary, fontWeight: '700', fontSize: 14 },
 
@@ -476,7 +476,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12 },
+  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12, fontFamily: F.uiBold },
 
   podium: {
     flexDirection: 'row',
@@ -558,7 +558,7 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15, fontFamily: F.uiBold },
 
   copyBtn: {
     backgroundColor: C.primary + '20',

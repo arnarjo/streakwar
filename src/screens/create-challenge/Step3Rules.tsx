@@ -57,12 +57,24 @@ export default function Step3Rules({
         <TextInput
           style={s.input}
           value={backlogDays}
-          onChangeText={setBacklogDays}
+          onChangeText={v => {
+            const num = parseInt(v, 10);
+            if (!isNaN(num) && num > 30) {
+              setBacklogDays('30');
+            } else {
+              setBacklogDays(v);
+            }
+          }}
           keyboardType="number-pad"
-          placeholder="7"
+          placeholder="7 (Max 30 days)"
           placeholderTextColor={C.dimmed}
         />
-        <Text style={s.hint}>How many days back can workouts be logged?</Text>
+        {parseInt(backlogDays, 10) >= 30 && (
+          <Text style={[s.hint, { color: C.error }]}>Maximum backlog is 30 days</Text>
+        )}
+        {parseInt(backlogDays, 10) < 30 && (
+          <Text style={s.hint}>How many days back can workouts be logged?</Text>
+        )}
       </View>
 
       <TouchableOpacity

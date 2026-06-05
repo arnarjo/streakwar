@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Share, StatusBar,
+  Share, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -54,9 +54,11 @@ export default function WeeklyRecapScreen() {
   const [totalPts, setTotalPts] = useState(0);
   const [prevWorkouts, setPrevWorkouts] = useState(0);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     if (!profile?.id) return;
+    setLoading(true);
     try {
       const { data: workouts, error: workoutsError } = await supabase
         .from('workout_posts')

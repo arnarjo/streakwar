@@ -85,7 +85,11 @@ export default function LogWorkoutScreen() {
 
   const timerDisplay = `${String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:${String(timerSeconds % 60).padStart(2, '0')}`;
 
-  const activeChallenges = myChallenges.filter(c => c.status === 'active');
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const activeChallenges = myChallenges.filter(c =>
+    c.status === 'active' ||
+    (c.status === 'upcoming' && c.start_date <= todayStr)
+  );
 
   function showSuccessAndGoBack() {
     HapticsModule?.notificationAsync?.(HapticsModule?.NotificationFeedbackType?.Success)?.catch?.(() => {});
@@ -110,12 +114,16 @@ export default function LogWorkoutScreen() {
   async function handleSave() {
     if (!profile?.id) return;
 
-    const durationVal = duration !== '' ? Math.round(parseFloat(duration) || 0) || null : null;
+    if (duration !== '' && parseFloat(duration) <= 0) {
+      Alert.alert('Invalid Input', 'Duration must be greater than 0.');
+      return;
+    }
+    const durationVal = duration !== '' ? Math.round(parseFloat(duration)) : null;
     const distanceVal = distance !== '' ? parseFloat(distance) : null;
     const caloriesVal = calories !== '' ? parseInt(calories, 10) : null;
     const stepsVal = steps !== '' ? parseInt(steps, 10) : null;
 
-    if (durationVal !== null && (isNaN(durationVal) || durationVal <= 0)) {
+    if (durationVal !== null && isNaN(durationVal)) {
       Alert.alert('Invalid Input', 'Duration must be a positive number.');
       return;
     }
@@ -466,7 +474,7 @@ const s = StyleSheet.create({
     borderBottomColor: C.border,
   },
   cancelText: { color: C.muted, fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800', color: C.text },
+  title: { fontSize: 17, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
   saveBtn: {
     backgroundColor: C.primary,
     borderRadius: 9,
@@ -477,7 +485,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 
   scroll: { padding: 20, gap: 0, paddingBottom: 60 },
   sectionLabel: {

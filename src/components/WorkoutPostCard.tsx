@@ -4,6 +4,7 @@ import {
   Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ACTIVITY_LABELS, REACTIONS } from '../types/database';
 import type { WorkoutPost, WorkoutComment } from '../types/database';
 import { formatDistanceToNow } from 'date-fns';
@@ -21,6 +22,8 @@ type Props = {
 };
 
 export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchComments, onAddComment, onEdit, onDelete }: Props) {
+  const insets = useSafeAreaInsets();
+  const [captionExpanded, setCaptionExpanded] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<WorkoutComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
@@ -156,7 +159,16 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
         </View>
       )}
 
-      {post.caption ? <Text numberOfLines={4} style={s.caption}>{post.caption}</Text> : null}
+      {post.caption ? (
+        <>
+          <Text numberOfLines={captionExpanded ? undefined : 4} style={s.caption}>{post.caption}</Text>
+          {!captionExpanded && post.caption.length > 120 && (
+            <TouchableOpacity onPress={() => setCaptionExpanded(true)} accessibilityRole="button">
+              <Text style={s.captionMore}>more</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      ) : null}
 
       {metrics.length > 0 && (
         <View style={s.metricStrip}>
@@ -243,7 +255,7 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
               />
           }
 
-          <View style={s.commentInput}>
+          <View style={[s.commentInput, { paddingBottom: insets.bottom + 12 }]}>
             <TextInput
               style={s.commentTextInput}
               placeholder="Write a comment..."
@@ -405,4 +417,5 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   commentSendText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  captionMore: { fontSize: 13, color: C.muted, marginTop: 2 },
 });

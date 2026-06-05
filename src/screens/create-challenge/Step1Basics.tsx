@@ -58,6 +58,21 @@ export default function Step1Basics({
   return (
     <>
       <View style={s.inputGroup}>
+        <Text style={s.label}>CHALLENGE NAME *</Text>
+        <TextInput
+          style={s.input}
+          placeholder="e.g. January Fitness Month"
+          placeholderTextColor={C.dimmed}
+          value={name}
+          onChangeText={setName}
+          maxLength={60}
+        />
+        <Text style={[s.charCounter, name.length > 50 && s.charCounterWarn]}>
+          {name.length}/60
+        </Text>
+      </View>
+
+      <View style={s.inputGroup}>
         <Text style={s.label}>QUICK SETUP</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {CHALLENGE_TEMPLATES.map(t => (
@@ -85,18 +100,6 @@ export default function Step1Basics({
             );
           })}
         </View>
-      </View>
-
-      <View style={s.inputGroup}>
-        <Text style={s.label}>CHALLENGE NAME *</Text>
-        <TextInput
-          style={s.input}
-          placeholder="e.g. January Fitness Month"
-          placeholderTextColor={C.dimmed}
-          value={name}
-          onChangeText={setName}
-          maxLength={60}
-        />
       </View>
 
       <View style={s.inputGroup}>
@@ -181,4 +184,6 @@ const s = StyleSheet.create({
     borderRadius: 12, paddingHorizontal: 16, paddingVertical: 13,
   },
   dateBtnText: { color: C.text, fontSize: 14, fontWeight: '600' },
+  charCounter: { fontSize: 11, color: C.muted, marginTop: 4, textAlign: 'right' },
+  charCounterWarn: { color: C.error },
 });

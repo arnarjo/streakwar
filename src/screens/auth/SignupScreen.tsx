@@ -27,6 +27,28 @@ export default function SignupScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState<1 | 2>(1);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  function animateStepIn() {
+    slideAnim.setValue(30);
+    fadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }
+
+  function goToStep2() {
+    if (!validateStep1()) return;
+    setStep(2);
+    animateStepIn();
+  }
+
+  function goToStep1() {
+    setStep(1);
+    animateStepIn();
+  }
 
   async function handleSocialSignIn(provider: 'google' | 'facebook') {
     setSocialLoading(provider);
@@ -116,7 +138,7 @@ export default function SignupScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          <TouchableOpacity style={s.backBtn} onPress={() => step === 2 ? setStep(1) : navigation.goBack()}>
+          <TouchableOpacity style={s.backBtn} onPress={() => step === 2 ? goToStep1() : navigation.goBack()}>
             <Text style={s.backText}>← Back</Text>
           </TouchableOpacity>
 
@@ -163,7 +185,7 @@ export default function SignupScreen({ navigation }: Props) {
             </>
           )}
 
-          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+          <Animated.View style={{ transform: [{ translateX: shakeAnim }, { translateX: slideAnim }], opacity: fadeAnim }}>
             {step === 1 ? (
               <>
                 <View style={s.inputGroup}>
@@ -193,13 +215,13 @@ export default function SignupScreen({ navigation }: Props) {
                       autoCapitalize="none"
                       autoCorrect={false}
                       returnKeyType="done"
-                      onSubmitEditing={() => validateStep1() && setStep(2)}
+                      onSubmitEditing={goToStep2}
                     />
                   </View>
                   {errors.username && <Text style={s.errorText}>{errors.username}</Text>}
                 </View>
 
-                <TouchableOpacity style={s.primaryBtn} onPress={() => validateStep1() && setStep(2)} activeOpacity={0.85}>
+                <TouchableOpacity style={s.primaryBtn} onPress={goToStep2} activeOpacity={0.85}>
                   <Text style={s.primaryBtnText}>Next →</Text>
                 </TouchableOpacity>
               </>

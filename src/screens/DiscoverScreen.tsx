@@ -82,14 +82,25 @@ export default function DiscoverScreen() {
         <Text style={s.subtitle}>Public challenges anyone can join</Text>
       </View>
       <View style={s.searchRow}>
-        <TextInput
-          style={s.searchInput}
-          placeholder="🔍  Search challenges..."
-          placeholderTextColor={C.muted}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-        />
+        <View style={s.searchInputWrap}>
+          <TextInput
+            style={s.searchInput}
+            placeholder="🔍  Search challenges..."
+            placeholderTextColor={C.muted}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+          />
+          {search.length > 0 && (
+            <TouchableOpacity
+              style={s.searchClearBtn}
+              onPress={() => setSearch('')}
+              accessibilityLabel="Clear search"
+            >
+              <Text style={s.searchClearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <FlatList
         data={filtered}
@@ -98,7 +109,7 @@ export default function DiscoverScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPublic} tintColor={C.primary} />}
         renderItem={({ item }) => {
-          const daysLeft = differenceInDays(parseISO(item.end_date), new Date());
+          const daysLeft = Math.max(0, differenceInDays(parseISO(item.end_date), new Date()));
           const isActive = item.status === 'active';
           const scoringLabel = (item.scoring_modes ?? []).slice(0, 2).map((m: string) => (SCORING_MODE_LABELS[m as keyof typeof SCORING_MODE_LABELS] ?? m)?.split(' ')[0] ?? '').filter(Boolean).join(' · ');
           return (
@@ -114,7 +125,7 @@ export default function DiscoverScreen() {
               </View>
               {item.description ? <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
               <View style={s.cardFooter}>
-                <Text style={s.cardStats}>👥 {item.participant_count ?? 0}  ·  ⏱ {daysLeft} days left</Text>
+                <Text style={s.cardStats}>👥 {item.participant_count ?? 0}  ·  ⏱ {daysLeft === 0 ? 'Ending today' : `${daysLeft} days left`}</Text>
                 <TouchableOpacity
                   style={[s.joinBtn, joining === item.id && { opacity: 0.5 }]}
                   onPress={() => handleJoin(item.id, item.name)}
@@ -151,7 +162,10 @@ const s = StyleSheet.create({
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   subtitle: { fontSize: 13, color: C.muted, marginTop: 2 },
   searchRow: { paddingHorizontal: 16, paddingVertical: 12 },
-  searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: C.text, fontSize: 14 },
+  searchInputWrap: { position: 'relative' },
+  searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, paddingRight: 40, color: C.text, fontSize: 14 },
+  searchClearBtn: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 4 },
+  searchClearText: { color: C.muted, fontSize: 14, fontWeight: '700' },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: { backgroundColor: '#151C24', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 16, marginBottom: 10, gap: 8 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },

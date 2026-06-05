@@ -148,8 +148,11 @@ export default function CreateChallengeScreen() {
     if (error) {
       Alert.alert('Error', error);
     } else {
-      navigation.goBack();
-      if (challenge) navigation.navigate('ChallengeDetail', { challengeId: challenge.id });
+      if (challenge) {
+        navigation.navigate('ChallengeDetail', { challengeId: challenge.id });
+      } else {
+        navigation.goBack();
+      }
     }
   }
 

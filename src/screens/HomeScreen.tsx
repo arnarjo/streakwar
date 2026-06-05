@@ -22,7 +22,7 @@ import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
-import { C, S, R, FS } from '../theme';
+import { C, S, R, FS, F } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
@@ -280,13 +280,13 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[4] },
   headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
-  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
-  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1 },
+  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3, fontFamily: F.uiBold },
+  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1, fontFamily: F.ui },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   rankPts: { fontSize: 13, fontWeight: '900', color: C.primary },
   logBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[4], paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
-  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
   list: { paddingHorizontal: S[4], paddingBottom: 100 },
   streakHero: {
     backgroundColor: C.card,
@@ -305,7 +305,7 @@ const s = StyleSheet.create({
   streakHeroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
   streakHeroLeft: { gap: 2 },
   streakHeroNumber: { fontSize: 64, fontWeight: '800', color: C.primary, letterSpacing: -2, lineHeight: 60 },
-  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text },
+  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.muted },
   streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
@@ -334,12 +334,12 @@ const s = StyleSheet.create({
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', fontFamily: F.uiBold },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
   emptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[5], paddingVertical: S[3], marginTop: S[2] },
-  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 });

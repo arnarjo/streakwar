@@ -48,11 +48,9 @@ export default function ConnectDevicesScreen() {
   // When user returns from Health Connect settings, re-check if permissions were granted
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
-      console.log('[ConnectDevices] AppState changed to:', state, 'Awaiting HC:', awaitingHCReturn.current);
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
         const confirmed = await confirmHealthConnectConnection();
-        console.log('[ConnectDevices] Connection confirmed:', confirmed);
         if (!mounted.current) return;
         setConnecting(null);
         if (confirmed) {

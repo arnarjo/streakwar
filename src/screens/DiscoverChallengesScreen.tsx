@@ -130,23 +130,6 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
     return `${d}d left`;
   }
 
-  function JoinButton({ item }: { item: FitnessChallenge }) {
-    const joined = isJoined(item.id);
-    const full = isFull(item);
-    const busy = joining === item.id;
-    return (
-      <TouchableOpacity
-        style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
-        onPress={() => !joined && !full && handleJoin(item)}
-        disabled={joined || full || busy}
-      >
-        <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
-          {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
-        </Text>
-      </TouchableOpacity>
-    );
-  }
-
   return (
     <ScrollView
       style={s.container}
@@ -178,7 +161,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
                     👥 {item.participant_count ?? 0} participants · {daysLeftLabel(item.end_date)}
                   </Text>
                 </View>
-                <JoinButton item={item} />
+                <JoinButton item={item} joining={joining} myChallenges={myChallenges} onJoin={handleJoin} />
               </View>
             );
           })}
@@ -229,7 +212,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
                     {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeftLabel(item.end_date)}
                   </Text>
                 </View>
-                <JoinButton item={item} />
+                <JoinButton item={item} joining={joining} myChallenges={myChallenges} onJoin={handleJoin} />
               </View>
             );
           })}

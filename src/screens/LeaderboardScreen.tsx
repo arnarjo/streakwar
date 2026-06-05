@@ -11,7 +11,7 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeaderboardEntry, LeagueTier } from '../types/database';
-import { C, S, R, FS } from '../theme';
+import { C, S, R, FS, F } from '../theme';
 
 type Tab = 'league' | 'week' | 'world' | 'friends';
 
@@ -291,8 +291,8 @@ export default function LeaderboardScreen() {
                   <Text style={s.leagueMemberName} numberOfLines={1}>
                     {name}{isMe ? ' (you)' : ''}
                   </Text>
-                  {isPromotion && <Text style={{ fontSize: 10, color: '#22C55E', fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
-                  {isRelegation && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
+                  {isPromotion && <Text style={{ fontSize: 10, color: C.green, fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
+                  {isRelegation && <Text style={{ fontSize: 10, color: C.error, fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
                 </View>
                 <Text style={s.leaguePts}>{item.weekly_points} pts</Text>
                 {!isMe && (
@@ -413,8 +413,8 @@ export default function LeaderboardScreen() {
 const s = StyleSheet.create({
   container:    { flex: 1, backgroundColor: C.bg },
   header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[2] + 2 },
-  title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle:     { fontSize: 13, color: C.muted, marginTop: 2 },
+  title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, fontFamily: F.uiBold },
+  subtitle:     { fontSize: 13, color: C.muted, marginTop: 2, fontFamily: F.ui },
   headerRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   shareBtn:     { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
   shareBtnText: { fontSize: 12, fontWeight: '700', color: C.text },
@@ -425,7 +425,7 @@ const s = StyleSheet.create({
   scoringRow:   { flexDirection: 'row', paddingHorizontal: 16, gap: 5, marginBottom: 10 },
   chip:         { flex: 1, backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingVertical: 6, alignItems: 'center', gap: 2 },
   chipIcon:     { fontSize: 12 },
-  chipLabel:    { fontSize: 8, color: C.muted, fontWeight: '600', textAlign: 'center' },
+  chipLabel:    { fontSize: 10, color: C.muted, fontWeight: '600', textAlign: 'center' },
 
   tabs:         { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, backgroundColor: C.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.border },
   tab:          { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
@@ -444,10 +444,10 @@ const s = StyleSheet.create({
   avatarMe:     { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
   avatarText:   { fontSize: 13, fontWeight: '800', color: C.muted },
   info:         { flex: 1 },
-  name:         { fontSize: 14, fontWeight: '700', color: C.text },
+  name:         { fontSize: 14, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   username:     { fontSize: 11, color: C.muted, marginTop: 1 },
   ptsBadge:     { alignItems: 'flex-end' },
-  pts:          { fontSize: 16, fontWeight: '900', color: C.text },
+  pts:          { fontSize: 16, fontWeight: '900', color: C.text, fontFamily: F.uiBold },
   ptsLabel:     { fontSize: 9, color: C.muted, fontWeight: '600' },
   followBtn:    { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   followingBtn: { backgroundColor: C.primary },
@@ -460,8 +460,8 @@ const s = StyleSheet.create({
 
   leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: S[3], marginBottom: 6, gap: S[2] + 2 },
   leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
-  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: C.green },
+  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: C.error },
   leagueRowGold:       { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   leagueRowSilver:     { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
   leagueRowBronze:     { borderLeftWidth: 3, borderLeftColor: '#B45309' },
@@ -482,7 +482,7 @@ const s = StyleSheet.create({
   nudgeEmojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   nudgeEmoji: { fontSize: 26 },
   nudgeTextBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
-  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15, fontFamily: F.uiBold },
 
   pinnedFooter: {
     paddingTop: 10,

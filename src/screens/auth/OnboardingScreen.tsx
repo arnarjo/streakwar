@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { C } from '../../theme';
+import { C, F } from '../../theme';
 
 const { width } = Dimensions.get('window');
 
@@ -64,8 +64,8 @@ export default function OnboardingScreen({ navigation }: Props) {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.topBar}>
-        <View />
-        <TouchableOpacity onPress={() => navigation.navigate('Signup')} accessibilityLabel="Skip onboarding" accessibilityRole="button">
+        <Text style={s.logoText}>STREAKWAR</Text>
+        <TouchableOpacity onPress={() => navigation.navigate('Login')} accessibilityLabel="Skip onboarding" accessibilityRole="button">
           <Text style={s.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>
@@ -138,7 +138,8 @@ export default function OnboardingScreen({ navigation }: Props) {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  topBar: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, paddingTop: 8, paddingBottom: 4 },
+  logoText: { fontSize: 16, fontFamily: F.dispHeavy, color: C.primary, letterSpacing: 2 },
   skipText: { color: C.muted, fontSize: 14, fontWeight: '600' },
   slide: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 40 },
   emojiCircle: { width: 140, height: 140, borderRadius: 70, borderWidth: 2, alignItems: 'center', justifyContent: 'center', marginBottom: 28 },
