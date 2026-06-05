@@ -6,6 +6,10 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList, MainTabParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { getInitials } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
@@ -107,9 +111,14 @@ const heat = StyleSheet.create({
   legendText: { fontSize: 10, color: C.muted },
 });
 
+type ProfileNavProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Profile'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
+
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<ProfileNavProp>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, showBatteryWarning, lastSynced } = useHealthSync(profile?.id ?? '');

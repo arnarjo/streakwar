@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
@@ -22,7 +24,7 @@ type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ChallengeDetail'>>();
   const route = useRoute<any>();
   const challengeId = route.params?.challengeId as string;
 

@@ -92,10 +92,12 @@ export default function HomeScreen() {
     if (!data) return;
 
     const milestoneIds = data.map((m: any) => m.id);
-    const { data: allReactions } = await supabase
-      .from('milestone_reactions')
-      .select('milestone_id, reaction, user_id')
-      .in('milestone_id', milestoneIds);
+    const [{ data: allReactions }] = await Promise.all([
+      supabase
+        .from('milestone_reactions')
+        .select('milestone_id, reaction, user_id')
+        .in('milestone_id', milestoneIds),
+    ]);
 
     const reactionsByMilestone = new Map<string, { counts: Record<string, number>; myReaction: string | null }>();
     for (const r of allReactions ?? []) {
@@ -113,14 +115,14 @@ export default function HomeScreen() {
     }));
   }, [profile?.id]);
 
-  async function handleShare() {
+  const handleShare = useCallback(async () => {
     await Share.share({
       message:
         `🔥 ${streak?.current_streak ?? 0}-day streak on StreakWar!\n` +
         `⭐ ${(profile?.total_points ?? 0).toLocaleString()} total points\n` +
         `\nCan you beat me? Download StreakWar 💪`,
     });
-  }
+  }, [streak, profile]);
 
   useEffect(() => {
     fetchFeed();

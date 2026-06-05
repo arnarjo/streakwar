@@ -5,6 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { CompositeNavigationProp } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList, MainTabParamList } from '../navigation/RootNavigator';
 import { format, addDays } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
@@ -17,9 +21,14 @@ import { C } from '../theme';
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
 const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
 
+type ChallengesNavProp = CompositeNavigationProp<
+  BottomTabNavigationProp<MainTabParamList, 'Challenges'>,
+  NativeStackNavigationProp<RootStackParamList>
+>;
+
 export default function ChallengesScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<ChallengesNavProp>();
   const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore, FREE_MAX_CHALLENGES } = usePremium(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');
