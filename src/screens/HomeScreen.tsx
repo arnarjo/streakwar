@@ -37,7 +37,7 @@ import { C, F } from '../theme';
 export default function HomeScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<HomeNavProp>();
-  const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
+  const { feed, loading, feedError, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
@@ -306,20 +306,28 @@ export default function HomeScreen() {
             />
           )}
           ListEmptyComponent={
-            loading ? (
+            !loading ? (
+              feedError ? (
+                <View style={s.empty}>
+                  <Text style={s.emptyEmoji}>⚠️</Text>
+                  <Text style={s.emptyTitle}>Feed unavailable</Text>
+                  <Text style={s.emptyText}>{feedError}</Text>
+                </View>
+              ) : (
+                <View style={s.empty}>
+                  <Text style={s.emptyEmoji}>🏃</Text>
+                  <Text style={s.emptyTitle}>Feed is empty</Text>
+                  <Text style={s.emptyText}>
+                    Join a challenge and start logging workouts to see what your friends are up to.
+                  </Text>
+                  <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Challenges')}>
+                    <Text style={s.emptyBtnText}>Discover challenges</Text>
+                  </TouchableOpacity>
+                </View>
+              )
+            ) : (
               <View style={{ paddingHorizontal: 16 }}>
                 {[1, 2, 3].map(k => <WorkoutPostSkeleton key={k} />)}
-              </View>
-            ) : (
-              <View style={s.empty}>
-                <Text style={s.emptyEmoji}>🏃</Text>
-                <Text style={s.emptyTitle}>Feed is empty</Text>
-                <Text style={s.emptyText}>
-                  Join a challenge and start logging workouts to see what your friends are up to.
-                </Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Challenges')}>
-                  <Text style={s.emptyBtnText}>Discover challenges</Text>
-                </TouchableOpacity>
               </View>
             )
           }

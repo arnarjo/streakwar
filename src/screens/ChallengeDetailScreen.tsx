@@ -27,6 +27,7 @@ export default function ChallengeDetailScreen() {
   const challengeId = route.params?.challengeId as string;
 
   const [challenge, setChallenge] = useState<FitnessChallenge | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
   const [tab, setTab] = useState<Tab>('leaderboard');
   const [refreshing, setRefreshing] = useState(false);
@@ -37,12 +38,16 @@ export default function ChallengeDetailScreen() {
   const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fitness_challenges')
       .select('*, creator:profiles!fitness_challenges_created_by_fkey(*)')
       .eq('id', challengeId)
       .single();
-    if (data) setChallenge(data);
+    if (error || !data) {
+      setLoadError(true);
+      return;
+    }
+    setChallenge(data);
   }, [challengeId]);
 
   const loadParticipants = useCallback(async () => {
@@ -104,6 +109,20 @@ export default function ChallengeDetailScreen() {
     } finally {
       setSharingCard(false);
     }
+  }
+
+  if (loadError) {
+    return (
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16, padding: 24 }}>
+        <Text style={{ color: C.muted, fontSize: 16, textAlign: 'center' }}>Could not load challenge.</Text>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+        >
+          <Text style={{ color: '#000', fontWeight: '700', fontSize: 15 }}>Go back</Text>
+        </TouchableOpacity>
+      </SafeAreaView>
+    );
   }
 
   if (!challenge) return (

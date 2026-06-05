@@ -6,6 +6,7 @@ import * as ImagePicker from 'expo-image-picker';
 export function useWorkoutFeed(userId: string) {
   const [feed, setFeed] = useState<WorkoutPost[]>([]);
   const [loading, setLoading] = useState(false);
+  const [feedError, setFeedError] = useState<string | null>(null);
   const reactionInFlight = useRef<Set<string>>(new Set());
 
   const fetchFeed = useCallback(async (challengeId?: string) => {
@@ -73,6 +74,7 @@ export function useWorkoutFeed(userId: string) {
           commentCountByPost.set(c.post_id, (commentCountByPost.get(c.post_id) ?? 0) + 1);
         }
 
+        setFeedError(null);
         setFeed((data as Array<WorkoutPost & Record<string, unknown>>).map((post) => {
           const r = reactionsByPost.get(post.id);
           return {
@@ -84,7 +86,7 @@ export function useWorkoutFeed(userId: string) {
         }));
       }
     } catch (err) {
-      console.warn('[useWorkoutFeed] fetchFeed failed:', err);
+      setFeedError('Could not load feed. Pull to refresh.');
     } finally {
       setLoading(false);
     }
@@ -124,6 +126,8 @@ export function useWorkoutFeed(userId: string) {
     const currentReaction = post?.my_reaction ?? null;
     const removing = currentReaction === reaction;
 
+    const prevFeed = feed;
+
     // Optimistic update first for instant UI response
     setFeed(prev =>
       prev.map(p => {
@@ -137,15 +141,18 @@ export function useWorkoutFeed(userId: string) {
 
     try {
       if (removing) {
-        await supabase.from('workout_reactions').delete()
+        const { error } = await supabase.from('workout_reactions').delete()
           .eq('post_id', postId).eq('user_id', userId).eq('reaction', reaction);
+        if (error) setFeed(prevFeed);
       } else {
-        await supabase.from('workout_reactions').delete()
+        const { error: delError } = await supabase.from('workout_reactions').delete()
           .eq('post_id', postId).eq('user_id', userId);
-        await supabase.from('workout_reactions').insert({ post_id: postId, user_id: userId, reaction });
+        if (delError) { setFeed(prevFeed); return; }
+        const { error: insError } = await supabase.from('workout_reactions').insert({ post_id: postId, user_id: userId, reaction });
+        if (insError) setFeed(prevFeed);
       }
     } catch (err) {
-      console.warn('[useWorkoutFeed] toggleReaction failed:', err);
+      setFeed(prevFeed);
     } finally {
       reactionInFlight.current.delete(postId);
     }
@@ -279,5 +286,5 @@ export function useWorkoutFeed(userId: string) {
     return result.assets[0]?.uri ?? null;
   }
 
-  return { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, logWorkout, updateWorkout, deleteWorkout, pickMedia };
+  return { feed, loading, feedError, fetchFeed, toggleReaction, fetchComments, addComment, logWorkout, updateWorkout, deleteWorkout, pickMedia };
 }
