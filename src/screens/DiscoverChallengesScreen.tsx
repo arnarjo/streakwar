@@ -49,6 +49,8 @@ function JoinButton({ item, joining, myChallenges, onJoin }: JoinButtonProps) {
       style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
       onPress={() => !joined && !full && onJoin(item)}
       disabled={joined || full || busy}
+      accessibilityRole="button"
+      accessibilityLabel={joined ? 'Already joined' : full ? 'Challenge full' : 'Join challenge'}
     >
       <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
         {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}

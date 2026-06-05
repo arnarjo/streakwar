@@ -2,7 +2,6 @@ import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
   StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator, ScrollView,
-  Clipboard,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -382,7 +381,7 @@ export default function ChallengeDetailScreen() {
                 <TouchableOpacity
                   style={s.copyBtn}
                   onPress={() => {
-                    Clipboard.setString(challenge.invite_code);
+                    Share.share({ message: challenge.invite_code });
                     setCopied(true);
                     setTimeout(() => setCopied(false), 2000);
                   }}

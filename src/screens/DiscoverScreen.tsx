@@ -90,6 +90,7 @@ export default function DiscoverScreen() {
             value={search}
             onChangeText={setSearch}
             autoCorrect={false}
+            accessibilityLabel="Search challenges"
           />
           {search.length > 0 && (
             <TouchableOpacity

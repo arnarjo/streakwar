@@ -117,8 +117,8 @@ export default function ChallengesScreen() {
       <View style={s.header}>
         <Text style={s.title}>Challenges</Text>
         <View style={s.headerBtns}>
-          <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)}>
-            <Text style={s.joinBtnText}>Code</Text>
+          <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)} accessibilityRole="button" accessibilityLabel="Join with Code">
+            <Text style={s.joinBtnText}>Join with Code</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.createBtn} onPress={handleNewChallenge}>
             <Text style={s.createBtnText}>+ New</Text>
@@ -137,7 +137,14 @@ export default function ChallengesScreen() {
 
       <View style={s.tabs}>
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
+          <TouchableOpacity
+            key={t}
+            style={[s.tab, tab === t && s.tabActive]}
+            onPress={() => setTab(t)}
+            accessibilityRole="tab"
+            accessibilityLabel={TAB_LABELS[t]}
+            accessibilityState={{ selected: tab === t }}
+          >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>{TAB_LABELS[t]}</Text>
           </TouchableOpacity>
         ))}
@@ -286,7 +293,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   headerBtns: { flexDirection: 'row', gap: 8 },
-  joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
   joinBtnText: { color: C.text, fontWeight: '700', fontSize: 13 },
   createBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   createBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
@@ -309,7 +316,7 @@ const s = StyleSheet.create({
   codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 6, textAlign: 'center' },
   joinConfirmBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   joinConfirmBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 4 },
+  cancelBtn: { alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center' },
   cancelBtnText: { color: C.muted, fontSize: 14, fontWeight: '600' },
   quickBanner: {
     flexDirection: 'row',
