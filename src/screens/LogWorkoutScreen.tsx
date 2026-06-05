@@ -18,7 +18,7 @@ import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
-import { C, S, R, FS } from '../theme';
+import { C, S, R, FS, F } from '../theme';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
