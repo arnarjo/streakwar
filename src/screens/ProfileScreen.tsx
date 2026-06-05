@@ -414,9 +414,9 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
-        {myChallenges.length > 0 && (
+        <Text style={s.sectionLabel}>Recent challenges</Text>
+        {myChallenges.length > 0 ? (
           <>
-            <Text style={s.sectionLabel}>Recent challenges</Text>
             {myChallenges.slice(0, 5).map(c => (
               <View key={c.id} style={s.challengeRow}>
                 <View style={{ flex: 1 }}>
@@ -431,25 +431,29 @@ export default function ProfileScreen() {
             ))}
             <View style={{ marginBottom: 24 }} />
           </>
+        ) : (
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Challenges')}>
+            <Text style={s.emptyStateText}>Join a challenge to get started</Text>
+          </TouchableOpacity>
         )}
 
-        {achievements.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Achievements</Text>
-            <View style={s.achievementsGrid}>
-              {achievements.map(a => {
-                const meta = ACHIEVEMENT_META[a.achievement];
-                if (!meta) return null;
-                return (
-                  <View key={a.id} style={s.achievementCard}>
-                    <Text style={s.achievementIcon}>{meta.icon}</Text>
-                    <Text style={s.achievementTitle}>{meta.title}</Text>
-                    <Text style={s.achievementDesc}>{meta.desc}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </>
+        <Text style={s.sectionLabel}>Achievements</Text>
+        {achievements.length > 0 ? (
+          <View style={s.achievementsGrid}>
+            {achievements.map(a => {
+              const meta = ACHIEVEMENT_META[a.achievement];
+              if (!meta) return null;
+              return (
+                <View key={a.id} style={s.achievementCard}>
+                  <Text style={s.achievementIcon}>{meta.icon}</Text>
+                  <Text style={s.achievementTitle}>{meta.title}</Text>
+                  <Text style={s.achievementDesc}>{meta.desc}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={s.emptyStateText}>Complete challenges to earn achievements</Text>
         )}
 
         <Text style={s.sectionLabel}>Notifications</Text>
@@ -503,13 +507,13 @@ export default function ProfileScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[4] },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   settingsBtn: { padding: 4 },
   settingsIcon: { fontSize: 22 },
   scroll: { paddingHorizontal: 20, paddingBottom: 100 },
 
-  identitySection: { alignItems: 'center', paddingVertical: 24, gap: 6 },
+  identitySection: { alignItems: 'center', paddingVertical: S[6], gap: 6 },
   avatarWrap: { position: 'relative', marginBottom: 4 },
   avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: C.primary + '20', borderWidth: 2, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 32, fontWeight: '900', color: C.primary },
@@ -531,12 +535,12 @@ const s = StyleSheet.create({
   editLink: { color: C.primary, fontSize: 13, fontWeight: '700' },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14 },
+  statCard: { flex: 1, backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S[3] + 2 },
   statIcon: { fontSize: 18, marginBottom: 6 },
   statValue: { fontSize: 24, fontWeight: '900', color: C.text, letterSpacing: -0.5 },
   statLabel: { fontSize: 11, color: C.muted, fontWeight: '600', marginTop: 2 },
 
-  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24, gap: 12 },
+  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.lg, padding: S[4], marginBottom: S[6], gap: S[3] },
   streakRow: { flexDirection: 'row' },
   streakItem: { flex: 1, alignItems: 'center', gap: 4 },
   streakNum: { fontSize: 32, fontWeight: '900', color: C.primary },
@@ -569,21 +573,22 @@ const s = StyleSheet.create({
   challengeScore: { fontSize: 16, fontWeight: '800', color: C.primary },
 
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  achievementCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
+  achievementCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: S[3] + 2, alignItems: 'center', gap: 4 },
   achievementIcon: { fontSize: 28 },
   achievementTitle: { fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'center' },
   achievementDesc: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 15 },
 
-  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
-  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.lg, marginBottom: S[4], overflow: 'hidden' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S[4], paddingVertical: S[3] + 2, gap: S[3] },
   notifRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
   notifIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   notifLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
   notifDesc: { fontSize: 12, color: C.muted },
 
-  signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: R.md, paddingVertical: S[3] + 2, alignItems: 'center', marginTop: S[5] },
   signOutBtnText: { color: C.error, fontSize: 15, fontWeight: '700' },
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
   legalLink: { color: C.muted, fontSize: 11, fontWeight: '600' },
   legalDot: { color: C.muted, fontSize: 11 },
+  emptyStateText: { fontSize: 13, color: C.muted, marginBottom: S[6], fontFamily: F.ui },
 });

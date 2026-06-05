@@ -348,7 +348,7 @@ export default function HomeScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[4] },
   headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
   greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
@@ -356,7 +356,7 @@ const s = StyleSheet.create({
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   rankPts: { fontSize: 13, fontWeight: '900', color: C.primary },
-  logBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
+  logBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[4], paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
   logBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   streakHero: {

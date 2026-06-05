@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { PremiumOffering } from '../hooks/usePremium';
-import { C } from '../theme';
+import { C, S, R } from '../theme';
 
 
 const PRO_FEATURES = [
@@ -151,7 +151,7 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
           )}
         </ScrollView>
 
-        <TouchableOpacity style={s.closeBtn} onPress={onClose}>
+        <TouchableOpacity style={s.closeBtn} onPress={onClose} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }} accessibilityLabel="Close">
           <Text style={s.closeBtnText}>✕</Text>
         </TouchableOpacity>
       </View>
@@ -162,25 +162,25 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: 12 },
-  scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
+  scroll: { paddingHorizontal: S[6], paddingTop: S[4], paddingBottom: 60 },
   badge: { alignSelf: 'center', backgroundColor: C.gold + '20', borderWidth: 1, borderColor: C.gold + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 1.5, marginBottom: 16 },
   headline: { fontSize: 32, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 38, marginBottom: 8 },
   reason: { fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
   socialProof: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E30', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'center', marginBottom: 20 },
   socialProofText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
-  featureList: { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12, marginBottom: 24 },
+  featureList: { backgroundColor: C.card, borderRadius: R.lg, borderWidth: 1, borderColor: C.border, padding: S[4], gap: S[3], marginBottom: S[6] },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   featureIcon: { fontSize: 22, width: 32, textAlign: 'center' },
   featureText: { fontSize: 15, color: C.text, fontWeight: '600', flex: 1 },
   plans: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  plan: { flex: 1, backgroundColor: C.card, borderWidth: 1.5, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
+  plan: { flex: 1, backgroundColor: C.card, borderWidth: 1.5, borderColor: C.border, borderRadius: R.md, padding: S[3] + 2, alignItems: 'center', gap: 4 },
   planSelected: { borderColor: C.primary, backgroundColor: C.primary + '10' },
   saveBadge: { backgroundColor: C.primary, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, marginBottom: 4 },
   saveBadgeText: { fontSize: 9, fontWeight: '800', color: '#000', letterSpacing: 0.5 },
   planTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   planPrice: { fontSize: 22, fontWeight: '900', color: C.text },
   planSub: { fontSize: 11, color: C.muted },
-  ctaBtn: { backgroundColor: C.primary, borderRadius: 16, paddingVertical: 20, alignItems: 'center', marginBottom: 12 },
+  ctaBtn: { backgroundColor: C.primary, borderRadius: R.lg, paddingVertical: S[5], alignItems: 'center', marginBottom: S[3] },
   ctaBtnText: { fontSize: 18, fontWeight: '800', color: '#000' },
   legal: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 16, marginBottom: 16 },
   restoreBtn: { alignItems: 'center', paddingVertical: 8 },
