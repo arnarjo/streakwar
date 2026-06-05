@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import type { LeagueMember, LeagueTier } from '../types/database';
 import { LEAGUE_TIER_META } from '../types/database';
+import { getInitials } from '../lib/utils';
 import { C } from '../theme';
 
 function medalOrRank(rank: number) {
@@ -62,7 +63,7 @@ export function LeagueTab({ leagueMembers, myTier, loading, onRefresh, userId, n
         const isPromotion = rank <= 5 && leagueMembers.length >= 10;
         const isRelegation = rank > leagueMembers.length - 5 && leagueMembers.length >= 10;
         const name = item.full_name ?? item.username;
-        const avatarInitials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+        const avatarInitials = getInitials(name);
         return (
           <View style={[
             s.row,

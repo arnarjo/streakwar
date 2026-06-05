@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
+import { getInitials } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useStreaks } from '../hooks/useStreaks';
@@ -93,10 +94,7 @@ export default function LeaderboardScreen() {
   const footerMyPts = tab === 'week'
     ? (weeklyBoard.find(p => p.id === userId)?.weekly_points ?? 0)
     : (profile?.total_points ?? 0);
-  const footerMyInitials = profile
-    ? (profile.full_name ?? profile.username ?? '?')
-        .trim().split(/\s+/).map((w: string) => w[0] ?? '').filter(Boolean).join('').slice(0, 2).toUpperCase()
-    : '?';
+  const footerMyInitials = getInitials(profile?.full_name ?? profile?.username);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>

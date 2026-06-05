@@ -32,6 +32,7 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { getInitials } from '../lib/utils';
 import { C, F } from '../theme';
 
 export default function HomeScreen() {
@@ -262,7 +263,7 @@ export default function HomeScreen() {
         <TouchableOpacity onPress={() => navigation.navigate('Profile')} accessibilityLabel="Go to Profile" accessibilityRole="button">
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
-              {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
+              {getInitials(profile?.full_name ?? profile?.username)}
             </Text>
           </View>
         </TouchableOpacity>

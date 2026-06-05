@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { supabase } from '../lib/supabase';
+import { getInitials } from '../lib/utils';
 import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
@@ -21,8 +22,6 @@ import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNoti
 import { format, subDays, startOfWeek } from 'date-fns';
 import { C } from '../theme';
 
-function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
-function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
@@ -68,11 +67,6 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
     return result;
   }, [userId, heatmapData]);
 
-  const opacities = useMemo(() => {
-    const r = seededRandom(hashString(userId));
-    return Array.from({ length: weeks * days }, () => r() > 0.45 ? 1 : 0.15);
-  }, [userId]);
-
   const useReal = heatmapData.size > 0;
 
   return (
@@ -87,7 +81,7 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
           {Array.from({ length: weeks }).map((_, wi) => (
             <View key={wi} style={{ flex: 1, gap: 3 }}>
               {Array.from({ length: days }).map((_, di) => (
-                <View key={di} style={[heat.cell, { opacity: useReal ? (cols[wi]?.[di] ? 1 : 0.15) : opacities[wi * days + di] }]} />
+                <View key={di} style={[heat.cell, { opacity: useReal ? (cols[wi]?.[di] ? 1 : 0.15) : 0.15 }]} />
               ))}
             </View>
           ))}
@@ -219,8 +213,7 @@ export default function ProfileScreen() {
   }
 
   const connectedSources = connections.filter(c => c.is_active);
-  const initials = (profile?.full_name ?? profile?.username ?? '?')
-    .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+  const initials = getInitials(profile?.full_name ?? profile?.username);
 
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
   const leagueTierLabel = tierMeta?.label ?? (isPro ? 'Gold' : 'Bronze');
@@ -246,9 +239,6 @@ export default function ProfileScreen() {
             <View style={s.avatar}>
               <Text style={s.avatarText}>{initials}</Text>
             </View>
-            <TouchableOpacity style={s.editAvatarBtn} onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}>
-              <Text style={{ fontSize: 14 }}>📷</Text>
-            </TouchableOpacity>
           </View>
           <Text style={s.fullName}>{profile?.full_name ?? profile?.username}</Text>
           <Text style={s.username}>@{profile?.username}</Text>
@@ -267,9 +257,6 @@ export default function ProfileScreen() {
               <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.editProfileBtn} onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}>
-            <Text style={s.editProfileBtnText}>Edit profile</Text>
-          </TouchableOpacity>
         </View>
 
         <UpgradeModal

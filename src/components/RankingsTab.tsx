@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import type { LeaderboardEntry } from '../types/database';
+import { getInitials } from '../lib/utils';
 import { C } from '../theme';
 
 function medalOrRank(rank: number) {
@@ -17,10 +18,6 @@ function rankColor(rank: number) {
   return C.muted;
 }
 
-function initials(entry: LeaderboardEntry) {
-  const name = entry.full_name ?? entry.username;
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
 
 interface Profile {
   full_name: string | null;
@@ -65,7 +62,7 @@ export function RankingsTab({
       ]}>
         <Text style={[s.rank, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
         <View style={[s.avatar, isMe && s.avatarMe]}>
-          <Text style={[s.avatarText, isMe && { color: C.primary }]}>{initials(item)}</Text>
+          <Text style={[s.avatarText, isMe && { color: C.primary }]}>{getInitials(item.full_name ?? item.username)}</Text>
         </View>
         <View style={s.info}>
           <Text style={s.name} numberOfLines={1}>
