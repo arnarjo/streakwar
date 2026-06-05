@@ -15,6 +15,7 @@ import { Platform, Linking, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 import { useFonts, Saira_400Regular, Saira_700Bold, Saira_800ExtraBold } from '@expo-google-fonts/saira';
 import { SairaCondensed_700Bold, SairaCondensed_800ExtraBold } from '@expo-google-fonts/saira-condensed';
+import { AuthProvider } from './src/context/AuthContext';
 
 function AppInner() {
   const [session, setSession] = useState<Session | null>(null);
@@ -106,11 +107,13 @@ export default function App() {
 
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
-          <AppInner />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
+            <AppInner />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

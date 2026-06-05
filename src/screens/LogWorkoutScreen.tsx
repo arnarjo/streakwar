@@ -7,6 +7,8 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
@@ -23,7 +25,7 @@ try { HapticsModule = require('expo-haptics'); } catch {}
 
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const preselectedChallengeId = route.params?.challengeId as string | undefined;
   const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
