@@ -102,9 +102,7 @@ export function useHealthSync(userId: string) {
    */
   const confirmHealthConnectConnection = useCallback(async (): Promise<boolean> => {
     if (!userId) return false;
-    console.log('[useHealthSync] Confirming Health Connect connection...');
     const granted = await checkHealthConnectGranted(true);
-    console.log('[useHealthSync] Granted:', granted);
     if (!granted) return false;
 
     await supabase.from('device_connections').upsert({

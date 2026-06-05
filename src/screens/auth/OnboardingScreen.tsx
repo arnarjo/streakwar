@@ -64,7 +64,7 @@ export default function OnboardingScreen({ navigation }: Props) {
 
       <View style={s.topBar}>
         <View />
-        <TouchableOpacity onPress={() => navigation.navigate('Login')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Signup')}>
           <Text style={s.skipText}>Skip</Text>
         </TouchableOpacity>
       </View>

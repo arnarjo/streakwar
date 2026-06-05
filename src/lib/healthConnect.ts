@@ -144,17 +144,14 @@ export async function checkHealthConnectGranted(stabilize = false): Promise<bool
   if (Platform.OS !== 'android' || !HealthConnect) return false;
   try {
     const { initialize, getGrantedPermissions } = HealthConnect;
-    console.log('[HealthConnect] Checking permissions, initializing...');
     const available = await initialize();
     if (!available) {
-      console.log('[HealthConnect] Not available during check');
       return false;
     }
     if (stabilize) {
       await new Promise(r => setTimeout(r, 600));
     }
     const granted: any[] = await getGrantedPermissions();
-    console.log('[HealthConnect] Currently granted:', granted);
     return granted.some((g: any) => g.recordType === 'ExerciseSession');
   } catch (e) {
     console.warn('[HealthConnect] checkHealthConnectGranted failed:', e);

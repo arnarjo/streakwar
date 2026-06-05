@@ -42,26 +42,6 @@ import LogWorkoutScreen      from '../screens/LogWorkoutScreen';
 import ConnectDevicesScreen  from '../screens/ConnectDevicesScreen';
 import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
 
-export type RootStackParamList = {
-  Main: undefined;
-  ChallengeDetail: { challengeId: string };
-  CreateChallenge: undefined;
-  LogWorkout: undefined;
-  ConnectDevices: undefined;
-  WeeklyRecap: undefined;
-  ResetPassword: undefined;
-  Onboarding: undefined;
-  Login: undefined;
-  Signup: undefined;
-};
-
-export type MainTabParamList = {
-  Home: undefined;
-  Challenges: undefined;
-  Leaderboard: undefined;
-  Profile: undefined;
-};
-
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab   = createBottomTabNavigator<MainTabParamList>();
 

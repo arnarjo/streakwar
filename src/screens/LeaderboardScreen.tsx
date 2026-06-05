@@ -38,7 +38,7 @@ export default function LeaderboardScreen() {
   const [nudgeSending, setNudgeSending] = useState(false);
   const [nudgedToday, setNudgedToday] = useState<Set<string>>(new Set());
 
-  useEffect(() => { fetchWeekly(); fetchGlobal(); fetchFriends(); }, []);
+  useEffect(() => { fetchWeekly(); fetchGlobal(); fetchFriends(); }, [fetchWeekly, fetchGlobal, fetchFriends]);
 
   const onRefresh = useCallback(() => {
     fetchWeekly(); fetchGlobal(); fetchFriends();
