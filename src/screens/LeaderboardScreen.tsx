@@ -112,7 +112,7 @@ export default function LeaderboardScreen() {
           </Text>
         </View>
         <View style={s.headerRight}>
-          <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.7}>
+          <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.7} accessibilityLabel="Share your ranking" accessibilityRole="button">
             <Text style={s.shareBtnText}>Share 📤</Text>
           </TouchableOpacity>
           <View style={s.myPtsBadge}>
@@ -143,7 +143,7 @@ export default function LeaderboardScreen() {
           { key: 'world' as Tab, label: '🌍 All-time' },
           { key: 'friends' as Tab, label: '👥 Friends' },
         ]).map(({ key, label }) => (
-          <TouchableOpacity key={key} style={[s.tab, tab === key && s.tabActive]} onPress={() => setTab(key)}>
+          <TouchableOpacity key={key} style={[s.tab, tab === key && s.tabActive]} onPress={() => setTab(key)} accessibilityLabel={`Select ${label} tab`} accessibilityRole="tab">
             <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
@@ -218,7 +218,7 @@ const s = StyleSheet.create({
   title:           { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   subtitle:        { fontSize: 13, color: C.muted, marginTop: 2 },
   headerRight:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  shareBtn:        { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
+  shareBtn:        { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border, minHeight: 44, justifyContent: 'center' },
   shareBtnText:    { fontSize: 12, fontWeight: '700', color: C.text },
   myPtsBadge:      { backgroundColor: C.primary + '18', borderWidth: 1, borderColor: C.primary + '35', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, alignItems: 'center' },
   myPtsNum:        { fontSize: 15, fontWeight: '900', color: C.primary },

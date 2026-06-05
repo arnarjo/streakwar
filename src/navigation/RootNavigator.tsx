@@ -107,10 +107,10 @@ function MainTabs() {
         tabBarInactiveTintColor: C.muted2,
       })}
     >
-      <Tab.Screen name="Home"        component={HomeScreen} />
-      <Tab.Screen name="Challenges"  component={ChallengesScreen} />
-      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} />
-      <Tab.Screen name="Profile"     component={ProfileScreen} />
+      <Tab.Screen name="Home"        component={HomeScreen}        options={{ tabBarAccessibilityLabel: 'Home tab' }} />
+      <Tab.Screen name="Challenges"  component={ChallengesScreen}  options={{ tabBarAccessibilityLabel: 'Challenges tab' }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ tabBarAccessibilityLabel: 'Leaderboard tab' }} />
+      <Tab.Screen name="Profile"     component={ProfileScreen}     options={{ tabBarAccessibilityLabel: 'Profile tab' }} />
     </Tab.Navigator>
   );
 }

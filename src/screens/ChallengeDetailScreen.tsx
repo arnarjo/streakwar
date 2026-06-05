@@ -416,7 +416,7 @@ const s = StyleSheet.create({
     paddingVertical: 12,
     gap: 8,
   },
-  backBtn: { padding: 4 },
+  backBtn: { padding: 12, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 22, color: C.text },
   navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text },
   shareBtn: { padding: 4 },

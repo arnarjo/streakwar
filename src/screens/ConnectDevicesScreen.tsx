@@ -384,7 +384,7 @@ const s = StyleSheet.create({
   warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
   warningSub: { fontSize: 12, color: C.muted2, marginTop: 2, fontWeight: '600' },
 
-  syncNowBtn: { paddingHorizontal: 10, paddingVertical: 4 },
+  syncNowBtn: { paddingHorizontal: 10, paddingVertical: 4, minHeight: 44, justifyContent: 'center' },
   syncNowText: { color: C.primary, fontSize: 13, fontWeight: '700' },
 
   sectionLabel: {

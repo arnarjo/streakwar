@@ -49,7 +49,7 @@ export default function ChallengeCard({ challenge, onPress, compact }: Props) {
 
   if (compact) {
     return (
-      <TouchableOpacity style={s.compactRow} onPress={onPress} activeOpacity={0.8}>
+      <TouchableOpacity style={s.compactRow} onPress={onPress} activeOpacity={0.8} accessibilityLabel={`Challenge: ${challenge.name}`} accessibilityRole="button">
         <View style={s.compactIcon}>
           <Text style={{ fontSize: 18 }}>{iconEmoji}</Text>
         </View>
@@ -72,7 +72,7 @@ export default function ChallengeCard({ challenge, onPress, compact }: Props) {
   }
 
   return (
-    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.8}>
+    <TouchableOpacity style={s.card} onPress={onPress} activeOpacity={0.8} accessibilityLabel={`Challenge: ${challenge.name}`} accessibilityRole="button">
       {/* Top row */}
       <View style={s.topRow}>
         <View style={{ flex: 1 }}>

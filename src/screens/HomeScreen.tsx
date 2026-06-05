@@ -160,7 +160,7 @@ export default function HomeScreen() {
                   <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
                 )}
               </View>
-              <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
+              <TouchableOpacity style={s.streakShareBtn} onPress={handleShare} accessibilityLabel="Share your streak" accessibilityRole="button">
                 <Text style={s.streakShareText}>📤  Share</Text>
               </TouchableOpacity>
             </View>
@@ -259,7 +259,7 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Profile')} accessibilityLabel="Go to Profile" accessibilityRole="button">
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
               {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
@@ -280,7 +280,7 @@ export default function HomeScreen() {
               <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')} accessibilityLabel="Log workout" accessibilityRole="button">
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
@@ -369,7 +369,7 @@ const s = StyleSheet.create({
   streakHeroNumber: { fontSize: 64, fontFamily: F.disp, color: C.primary, letterSpacing: -2, lineHeight: 60 },
   streakHeroUnit: { fontSize: 17, fontFamily: F.bold, color: C.text },
   streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.text2 },
-  streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
+  streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, minHeight: 44, justifyContent: 'center' },
   streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
   streakProgress: { height: 7, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
   streakProgressFill: { height: '100%' as any, backgroundColor: C.primary, borderRadius: 4 },
