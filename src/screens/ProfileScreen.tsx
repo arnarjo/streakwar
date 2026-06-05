@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert, Linking, Switch,
+  StatusBar, RefreshControl, Alert, Linking, Switch, Animated,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
@@ -19,34 +21,33 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
+import { C, S, R, F } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', green: '#22C55E', error: '#EF4444',
-};
 
-function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
-function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
-  const animRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+  const animatedValue = React.useRef(new Animated.Value(0)).current;
+  const listenerRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
-    if (target === 0) { setDisplay(0); return; }
-    if (animRef.current) clearInterval(animRef.current);
-    const startTime = Date.now();
-    animRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setDisplay(Math.round(target * eased));
-      if (progress >= 1) {
-        clearInterval(animRef.current!);
-        animRef.current = null;
+    if (target === 0) { animatedValue.setValue(0); setDisplay(0); return; }
+    if (listenerRef.current) animatedValue.removeListener(listenerRef.current);
+    animatedValue.setValue(0);
+    listenerRef.current = animatedValue.addListener(({ value }) => {
+      setDisplay(Math.round(value));
+    });
+    Animated.timing(animatedValue, {
+      toValue: target,
+      duration,
+      useNativeDriver: false,
+    }).start();
+    return () => {
+      if (listenerRef.current) {
+        animatedValue.removeListener(listenerRef.current);
+        listenerRef.current = null;
       }
-    }, 16);
-    return () => { if (animRef.current) clearInterval(animRef.current); };
+    };
   }, [target, duration]);
 
   return display;
@@ -70,14 +71,9 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
       result.push(col);
     }
     return result;
-  }, [userId, heatmapData]);
+  }, [heatmapData]);
 
-  const opacities = useMemo(() => {
-    const r = seededRandom(hashString(userId));
-    return Array.from({ length: weeks * days }, () => r() > 0.45 ? 1 : 0.15);
-  }, [userId]);
-
-  const useReal = heatmapData.size > 0;
+  const hasData = heatmapData.size > 0;
 
   return (
     <View style={heat.container}>
@@ -91,19 +87,24 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
           {Array.from({ length: weeks }).map((_, wi) => (
             <View key={wi} style={{ flex: 1, gap: 3 }}>
               {Array.from({ length: days }).map((_, di) => (
-                <View key={di} style={[heat.cell, { opacity: useReal ? (cols[wi]?.[di] ? 1 : 0.15) : opacities[wi * days + di] }]} />
+                <View key={di} style={[heat.cell, { opacity: hasData ? (cols[wi]?.[di] ? 1 : 0.15) : 0.1 }]} />
               ))}
             </View>
           ))}
         </View>
       </View>
-      <View style={heat.legend}>
-        <Text style={heat.legendText}>Less</Text>
-        {[0.15, 0.35, 0.55, 0.75, 1].map((o, i) => (
-          <View key={i} style={[heat.legendDot, { opacity: o }]} />
-        ))}
-        <Text style={heat.legendText}>More</Text>
-      </View>
+      {!hasData && (
+        <Text style={heat.emptyText}>Start logging to build your history</Text>
+      )}
+      {hasData && (
+        <View style={heat.legend}>
+          <Text style={heat.legendText}>Less</Text>
+          {[0.15, 0.35, 0.55, 0.75, 1].map((o, i) => (
+            <View key={i} style={[heat.legendDot, { opacity: o }]} />
+          ))}
+          <Text style={heat.legendText}>More</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -112,6 +113,7 @@ const heat = StyleSheet.create({
   container: { backgroundColor: C.card, borderRadius: 18, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: C.border },
   dayLabel: { height: 14, fontSize: 9, fontWeight: '600', color: C.muted, textAlignVertical: 'center' },
   cell: { aspectRatio: 1, borderRadius: 3, backgroundColor: C.primary },
+  emptyText: { fontSize: 11, color: C.muted, textAlign: 'center', marginTop: 10, fontFamily: F.ui },
   legend: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 10, justifyContent: 'flex-end' },
   legendDot: { width: 10, height: 10, borderRadius: 2, backgroundColor: C.primary },
   legendText: { fontSize: 10, color: C.muted },
@@ -119,7 +121,7 @@ const heat = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, showBatteryWarning, lastSynced } = useHealthSync(profile?.id ?? '');
@@ -170,7 +172,7 @@ export default function ProfileScreen() {
 
   async function loadNotifPrefs() {
     if (!profile?.id) return;
-    const stored = await AsyncStorage.getItem(`notif_prefs_${profile.id}`);
+    const stored = await SecureStore.getItemAsync(`notif_prefs_${profile.id}`);
     if (stored) {
       try { setNotifPrefs(p => ({ ...p, ...JSON.parse(stored) })); } catch {}
     }
@@ -179,7 +181,7 @@ export default function ProfileScreen() {
   async function toggleNotifPref(key: keyof typeof notifPrefs) {
     const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(updated);
-    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
+    await SecureStore.setItemAsync(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
     if (key === 'streakReminder') {
       if (!updated.streakReminder) {
         await cancelStreakReminders();
@@ -235,7 +237,12 @@ export default function ProfileScreen() {
 
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={s.settingsBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Settings')}
+          style={s.settingsBtn}
+          accessibilityLabel="Settings"
+          accessibilityRole="button"
+        >
           <Text style={s.settingsIcon}>⚙️</Text>
         </TouchableOpacity>
       </View>
@@ -250,9 +257,6 @@ export default function ProfileScreen() {
             <View style={s.avatar}>
               <Text style={s.avatarText}>{initials}</Text>
             </View>
-            <TouchableOpacity style={s.editAvatarBtn} onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}>
-              <Text style={{ fontSize: 14 }}>📷</Text>
-            </TouchableOpacity>
           </View>
           <Text style={s.fullName}>{profile?.full_name ?? profile?.username}</Text>
           <Text style={s.username}>@{profile?.username}</Text>
@@ -271,9 +275,6 @@ export default function ProfileScreen() {
               <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.editProfileBtn} onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}>
-            <Text style={s.editProfileBtnText}>Edit profile</Text>
-          </TouchableOpacity>
         </View>
 
         <UpgradeModal
@@ -292,7 +293,12 @@ export default function ProfileScreen() {
             { label: 'Challenges joined', value: animChallenge,                 icon: '🏆', color: C.text },
             { label: 'Streak days',       value: animStreak,                    icon: '🔥', color: C.text },
           ].map(({ label, value, icon, color }) => (
-            <View key={label} style={s.statCard}>
+            <View
+              key={label}
+              style={s.statCard}
+              accessible
+              accessibilityLabel={`${value} ${label}`}
+            >
               <Text style={s.statIcon}>{icon}</Text>
               <Text style={[s.statValue, { color }]}>{value}</Text>
               <Text style={s.statLabel}>{label}</Text>
@@ -392,7 +398,12 @@ export default function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={[s.connectBanner, { marginBottom: 24 }]} onPress={() => navigation.navigate('ConnectDevices')}>
+          <TouchableOpacity
+            style={[s.connectBanner, { marginBottom: 24 }]}
+            onPress={() => navigation.navigate('ConnectDevices')}
+            accessibilityLabel="Connect health devices"
+            accessibilityRole="button"
+          >
             <Text style={s.connectBannerEmoji}>⚡</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.connectBannerTitle}>Connect your health apps</Text>
@@ -402,9 +413,9 @@ export default function ProfileScreen() {
           </TouchableOpacity>
         )}
 
-        {myChallenges.length > 0 && (
+        <Text style={s.sectionLabel}>Recent challenges</Text>
+        {myChallenges.length > 0 ? (
           <>
-            <Text style={s.sectionLabel}>Recent challenges</Text>
             {myChallenges.slice(0, 5).map(c => (
               <View key={c.id} style={s.challengeRow}>
                 <View style={{ flex: 1 }}>
@@ -419,25 +430,29 @@ export default function ProfileScreen() {
             ))}
             <View style={{ marginBottom: 24 }} />
           </>
+        ) : (
+          <TouchableOpacity onPress={() => (navigation as any).navigate('Challenges')}>
+            <Text style={s.emptyStateText}>Join a challenge to get started</Text>
+          </TouchableOpacity>
         )}
 
-        {achievements.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Achievements</Text>
-            <View style={s.achievementsGrid}>
-              {achievements.map(a => {
-                const meta = ACHIEVEMENT_META[a.achievement];
-                if (!meta) return null;
-                return (
-                  <View key={a.id} style={s.achievementCard}>
-                    <Text style={s.achievementIcon}>{meta.icon}</Text>
-                    <Text style={s.achievementTitle}>{meta.title}</Text>
-                    <Text style={s.achievementDesc}>{meta.desc}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </>
+        <Text style={s.sectionLabel}>Achievements</Text>
+        {achievements.length > 0 ? (
+          <View style={s.achievementsGrid}>
+            {achievements.map(a => {
+              const meta = ACHIEVEMENT_META[a.achievement];
+              if (!meta) return null;
+              return (
+                <View key={a.id} style={s.achievementCard}>
+                  <Text style={s.achievementIcon}>{meta.icon}</Text>
+                  <Text style={s.achievementTitle}>{meta.title}</Text>
+                  <Text style={s.achievementDesc}>{meta.desc}</Text>
+                </View>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={s.emptyStateText}>Complete challenges to earn achievements</Text>
         )}
 
         <Text style={s.sectionLabel}>Notifications</Text>
@@ -466,7 +481,12 @@ export default function ProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+        <TouchableOpacity
+          style={s.signOutBtn}
+          onPress={handleSignOut}
+          accessibilityLabel="Sign out"
+          accessibilityRole="button"
+        >
           <Text style={s.signOutBtnText}>Sign out</Text>
         </TouchableOpacity>
 
@@ -486,13 +506,13 @@ export default function ProfileScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[4] },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   settingsBtn: { padding: 4 },
   settingsIcon: { fontSize: 22 },
   scroll: { paddingHorizontal: 20, paddingBottom: 100 },
 
-  identitySection: { alignItems: 'center', paddingVertical: 24, gap: 6 },
+  identitySection: { alignItems: 'center', paddingVertical: S[6], gap: 6 },
   avatarWrap: { position: 'relative', marginBottom: 4 },
   avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: C.primary + '20', borderWidth: 2, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   avatarText: { fontSize: 32, fontWeight: '900', color: C.primary },
@@ -509,17 +529,17 @@ const s = StyleSheet.create({
   editProfileBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 8, marginTop: 4 },
   editProfileBtnText: { fontSize: 13, fontWeight: '600', color: C.text },
 
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 11 },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 11 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
   editLink: { color: C.primary, fontSize: 13, fontWeight: '700' },
 
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14 },
+  statCard: { flex: 1, backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S[3] + 2 },
   statIcon: { fontSize: 18, marginBottom: 6 },
   statValue: { fontSize: 24, fontWeight: '900', color: C.text, letterSpacing: -0.5 },
   statLabel: { fontSize: 11, color: C.muted, fontWeight: '600', marginTop: 2 },
 
-  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24, gap: 12 },
+  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.lg, padding: S[4], marginBottom: S[6], gap: S[3] },
   streakRow: { flexDirection: 'row' },
   streakItem: { flex: 1, alignItems: 'center', gap: 4 },
   streakNum: { fontSize: 32, fontWeight: '900', color: C.primary },
@@ -552,21 +572,22 @@ const s = StyleSheet.create({
   challengeScore: { fontSize: 16, fontWeight: '800', color: C.primary },
 
   achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  achievementCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
+  achievementCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: S[3] + 2, alignItems: 'center', gap: 4 },
   achievementIcon: { fontSize: 28 },
   achievementTitle: { fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'center' },
   achievementDesc: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 15 },
 
-  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
-  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
+  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.lg, marginBottom: S[4], overflow: 'hidden' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S[4], paddingVertical: S[3] + 2, gap: S[3] },
   notifRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
   notifIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   notifLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
   notifDesc: { fontSize: 12, color: C.muted },
 
-  signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: R.md, paddingVertical: S[3] + 2, alignItems: 'center', marginTop: S[5] },
   signOutBtnText: { color: C.error, fontSize: 15, fontWeight: '700' },
   legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
   legalLink: { color: C.muted, fontSize: 11, fontWeight: '600' },
   legalDot: { color: C.muted, fontSize: 11 },
+  emptyStateText: { fontSize: 13, color: C.muted, marginBottom: S[6], fontFamily: F.ui },
 });

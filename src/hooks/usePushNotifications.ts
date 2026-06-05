@@ -78,12 +78,14 @@ export function usePushNotifications(
     // Handle cold start: app was closed and user tapped a notification to open it.
     // addNotificationResponseReceivedListener fires too early in this case —
     // getLastNotificationResponseAsync catches it once navigation is ready.
+    let cancelled = false;
     Notifications.getLastNotificationResponseAsync().then(response => {
       if (!response) return;
       const waitForNav = (attempts = 0) => {
+        if (cancelled || attempts >= 20) return;
         if (navigationRef.isReady()) {
           handleNotificationResponse(response, navigationRef);
-        } else if (attempts < 20) {
+        } else {
           setTimeout(() => waitForNav(attempts + 1), 100);
         }
       };
@@ -91,6 +93,7 @@ export function usePushNotifications(
     });
 
     return () => {
+      cancelled = true;
       appStateSub.remove();
       notificationListener.current?.remove();
       responseListener.current?.remove();

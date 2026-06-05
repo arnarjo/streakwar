@@ -7,17 +7,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-import { supabase } from '../../lib/supabase';
+import { C } from '../../theme';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444',
-};
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
 export default function LoginScreen({ navigation }: Props) {
-  const { signIn, signInWithGoogle, signInWithFacebook } = useAuth();
+  const { signIn, signInWithGoogle, signInWithFacebook, resetPasswordForEmail } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -48,9 +44,7 @@ export default function LoginScreen({ navigation }: Props) {
       return;
     }
 
-    const { error } = await supabase.auth.resetPasswordForEmail(trimmedEmail, {
-      redirectTo: 'streakwar://reset-password',
-    });
+    const { error } = await resetPasswordForEmail(trimmedEmail);
 
     if (error) {
       Alert.alert('Error', error.message || 'Failed to send reset email. Please try again.');
@@ -89,7 +83,10 @@ export default function LoginScreen({ navigation }: Props) {
     if (error) {
       shake();
       const msg = error.message ?? '';
-      if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('not confirmed')) {
+      const status = (error as any).status ?? 0;
+      if (status === 429 || msg.includes('429') || msg.toLowerCase().includes('rate limit')) {
+        Alert.alert('Too many attempts', 'Too many attempts. Please wait a few minutes before trying again.');
+      } else if (msg.toLowerCase().includes('confirm') || msg.toLowerCase().includes('not confirmed')) {
         Alert.alert(
           'Email not confirmed',
           'Please check your inbox and click the confirmation link before signing in.',
@@ -124,7 +121,7 @@ export default function LoginScreen({ navigation }: Props) {
               <TextInput
                 style={[s.input, errors.email && s.inputError]}
                 placeholder="you@example.com"
-                placeholderTextColor={C.dimmed}
+                placeholderTextColor={C.muted}
                 value={email}
                 onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
                 keyboardType="email-address"
@@ -141,14 +138,19 @@ export default function LoginScreen({ navigation }: Props) {
                 <TextInput
                   style={[s.input, s.passwordInput, errors.password && s.inputError]}
                   placeholder="••••••••"
-                  placeholderTextColor={C.dimmed}
+                  placeholderTextColor={C.muted}
                   value={password}
                   onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
                   secureTextEntry={!showPassword}
                   returnKeyType="done"
                   onSubmitEditing={handleLogin}
                 />
-                <TouchableOpacity style={s.eyeBtn} onPress={() => setShowPassword(!showPassword)}>
+                <TouchableOpacity
+                  style={s.eyeBtn}
+                  onPress={() => setShowPassword(!showPassword)}
+                  accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+                  accessibilityRole="button"
+                >
                   <Text style={s.eyeIcon}>{showPassword ? '🙈' : '👁'}</Text>
                 </TouchableOpacity>
               </View>
@@ -158,6 +160,8 @@ export default function LoginScreen({ navigation }: Props) {
             <TouchableOpacity
               style={s.forgotBtn}
               onPress={handleForgotPassword}
+              accessibilityLabel="Forgot password, reset your password"
+              accessibilityRole="button"
             >
               <Text style={s.forgotText}>Forgot password?</Text>
             </TouchableOpacity>
@@ -167,6 +171,8 @@ export default function LoginScreen({ navigation }: Props) {
               onPress={handleLogin}
               disabled={loading}
               activeOpacity={0.85}
+              accessibilityLabel="Sign in to your account"
+              accessibilityRole="button"
             >
               {loading ? <ActivityIndicator color="#000" /> : <Text style={s.loginBtnText}>Sign in</Text>}
             </TouchableOpacity>
@@ -249,14 +255,14 @@ const s = StyleSheet.create({
     borderTopRightRadius: 12, borderBottomRightRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center',
   },
   eyeIcon: { fontSize: 16 },
-  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
+  forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4, paddingVertical: 10, paddingHorizontal: 4 },
   forgotText: { color: C.primary, fontSize: 13, fontWeight: '600' },
   loginBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
   loginBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
-  dividerText: { color: C.dimmed, fontSize: 13 },
+  dividerText: { color: C.muted, fontSize: 13 },
   signupBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
   signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700' },
   socialBtn: {

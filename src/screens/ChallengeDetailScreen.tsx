@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator,
+  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import ViewShot from 'react-native-view-shot';
 import * as Sharing from 'expo-sharing';
 import { supabase } from '../lib/supabase';
@@ -16,23 +18,14 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
+import { C, F, R } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const challengeId = route.params?.challengeId as string;
 
@@ -41,18 +34,21 @@ export default function ChallengeDetailScreen() {
   const [tab, setTab] = useState<Tab>('leaderboard');
   const [refreshing, setRefreshing] = useState(false);
   const [sharingCard, setSharingCard] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const shareCardRef = useRef<ViewShot>(null);
 
   const { feed, loading: feedLoading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fitness_challenges')
       .select('*, creator:profiles!fitness_challenges_created_by_fkey(*)')
       .eq('id', challengeId)
       .single();
-    if (data) setChallenge(data);
+    if (data) { setChallenge(data); setLoadError(null); }
+    else if (error) setLoadError('Could not load challenge. Tap to retry.');
   }, [challengeId]);
 
   const loadParticipants = useCallback(async () => {
@@ -71,7 +67,7 @@ export default function ChallengeDetailScreen() {
     fetchBanter();
 
     const channel = supabase
-      .channel(`challenge_${challengeId}_${Date.now()}`)
+      .channel(`challenge_${challengeId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'challenge_participants', filter: `challenge_id=eq.${challengeId}` }, loadParticipants)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'workout_posts', filter: `challenge_id=eq.${challengeId}` }, () => fetchFeed(challengeId))
       .subscribe();
@@ -116,9 +112,29 @@ export default function ChallengeDetailScreen() {
     }
   }
 
+  const handleFetchComments = useCallback((postId: string): Promise<WorkoutComment[]> => {
+    return fetchComments(postId);
+  }, [fetchComments]);
+
+  const handleAddComment = useCallback((postId: string, content: string): Promise<{ error: string | null }> => {
+    return addComment(postId, content);
+  }, [addComment]);
+
   if (!challenge) return (
-    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16 }}>
+      {loadError ? (
+        <>
+          <Text style={{ color: C.muted, fontSize: 14, textAlign: 'center', paddingHorizontal: 32 }}>{loadError}</Text>
+          <TouchableOpacity onPress={loadChallenge} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 10 }} accessibilityLabel="Retry loading challenge">
+            <Text style={{ color: '#000', fontWeight: '700' }}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Go back">
+            <Text style={{ color: C.muted, fontSize: 13 }}>Go back</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+      )}
     </View>
   );
 
@@ -126,12 +142,37 @@ export default function ChallengeDetailScreen() {
   const podium = participants.slice(0, 3);
   const rest = participants.slice(3);
 
-  function handleFetchComments(postId: string): Promise<WorkoutComment[]> {
-    return fetchComments(postId);
-  }
-  function handleAddComment(postId: string, content: string): Promise<{ error: string | null }> {
-    return addComment(postId, content);
-  }
+  const renderLeaderboardItem = useCallback(({ item, index }: { item: ChallengeParticipant; index: number }) => {
+    const rank = index + 4;
+    const initials = (item.profile?.full_name ?? item.profile?.username ?? '?')
+      .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
+    const isMe = item.user_id === profile?.id;
+    return (
+      <View style={[s.rankRow, isMe && s.rankRowMe]}>
+        <Text style={s.rankNum}>#{rank}</Text>
+        <View style={[s.rankAvatar, isMe && { borderColor: C.primary }]}>
+          <Text style={[s.rankAvatarText, isMe && { color: C.primary }]}>{initials}</Text>
+        </View>
+        <Text style={[s.rankName, isMe && { color: C.primary }]} numberOfLines={1}>
+          {item.profile?.username}
+          {isMe ? ' (you)' : ''}
+        </Text>
+        <Text style={s.rankScore}>{item.score} pts</Text>
+      </View>
+    );
+  }, [profile?.id]);
+
+  const renderFeedItem = useCallback(({ item }: { item: import('../types/database').WorkoutPost }) => (
+    <WorkoutPostCard
+      post={item}
+      currentUserId={profile?.id}
+      onReact={toggleReaction}
+      onFetchComments={handleFetchComments}
+      onAddComment={handleAddComment}
+      onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+      onDelete={(postId) => deleteWorkout(postId)}
+    />
+  ), [profile?.id, toggleReaction, navigation, deleteWorkout, handleFetchComments, handleAddComment]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -231,25 +272,7 @@ export default function ChallengeDetailScreen() {
               )}
             </>
           }
-          renderItem={({ item, index }) => {
-            const rank = index + 4;
-            const initials = (item.profile?.full_name ?? item.profile?.username ?? '?')
-              .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-            const isMe = item.user_id === profile?.id;
-            return (
-              <View style={[s.rankRow, isMe && s.rankRowMe]}>
-                <Text style={s.rankNum}>#{rank}</Text>
-                <View style={[s.rankAvatar, isMe && { borderColor: C.primary }]}>
-                  <Text style={[s.rankAvatarText, isMe && { color: C.primary }]}>{initials}</Text>
-                </View>
-                <Text style={[s.rankName, isMe && { color: C.primary }]} numberOfLines={1}>
-                  {item.profile?.username}
-                  {isMe ? ' (you)' : ''}
-                </Text>
-                <Text style={s.rankScore}>{item.score} pts</Text>
-              </View>
-            );
-          }}
+          renderItem={renderLeaderboardItem}
         />
       )}
 
@@ -261,21 +284,18 @@ export default function ChallengeDetailScreen() {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={feedLoading} onRefresh={() => fetchFeed(challengeId)} tintColor={C.primary} />}
-          renderItem={({ item }) => (
-            <WorkoutPostCard
-              post={item}
-              currentUserId={profile?.id}
-              onReact={toggleReaction}
-              onFetchComments={handleFetchComments}
-              onAddComment={handleAddComment}
-              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
-              onDelete={(postId) => deleteWorkout(postId)}
-            />
-          )}
+          renderItem={renderFeedItem}
           ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={s.emptyText}>No workouts logged yet</Text>
-            </View>
+            !feedLoading ? (
+              <View style={s.feedEmpty}>
+                <Text style={s.feedEmptyEmoji}>🏋️</Text>
+                <Text style={s.feedEmptyTitle}>No workouts yet</Text>
+                <Text style={s.feedEmptyText}>Be the first to log one!</Text>
+                <TouchableOpacity style={s.feedEmptyBtn} onPress={() => navigation.navigate('LogWorkout', { challengeId })}>
+                  <Text style={s.feedEmptyBtnText}>Log Workout</Text>
+                </TouchableOpacity>
+              </View>
+            ) : null
           }
         />
       )}
@@ -283,6 +303,26 @@ export default function ChallengeDetailScreen() {
       {/* Banter tab */}
       {tab === 'banter' && (
         <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }}>
+            <FlatList
+              data={banterMessages}
+              keyExtractor={m => m.id}
+              contentContainerStyle={s.messageList}
+              renderItem={({ item }) => (
+                <View style={s.messageRow}>
+                  <Text style={s.messageSender}>
+                    {item.sender?.full_name ?? item.sender?.username ?? 'Unknown'}
+                  </Text>
+                  <Text style={s.messageText}>{TRASH_TALK_MESSAGES[item.message_key]}</Text>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View style={s.emptyBanter}>
+                  <Text style={s.emptyBanterText}>No trash talk yet — send the first shot 💬</Text>
+                </View>
+              }
+            />
+          </View>
           <View style={s.trashGrid}>
             {Object.entries(TRASH_TALK_MESSAGES).map(([key, text]) => (
               <TouchableOpacity
@@ -295,86 +335,75 @@ export default function ChallengeDetailScreen() {
               </TouchableOpacity>
             ))}
           </View>
-          <FlatList
-            data={banterMessages}
-            keyExtractor={m => m.id}
-            contentContainerStyle={s.messageList}
-            renderItem={({ item }) => (
-              <View style={s.messageRow}>
-                <Text style={s.messageSender}>
-                  {item.sender?.full_name ?? item.sender?.username ?? 'Unknown'}
-                </Text>
-                <Text style={s.messageText}>{TRASH_TALK_MESSAGES[item.message_key]}</Text>
-              </View>
-            )}
-            ListEmptyComponent={
-              <View style={s.emptyBanter}>
-                <Text style={s.emptyBanterText}>No trash talk yet — send the first shot 💬</Text>
-              </View>
-            }
-          />
         </View>
       )}
 
       {/* Info tab */}
       {tab === 'info' && (
-        <FlatList
-          data={[]}
-          keyExtractor={() => ''}
-          renderItem={null}
-          contentContainerStyle={s.list}
-          ListHeaderComponent={
-            <View style={{ gap: 12 }}>
-              {challenge.description ? (
-                <View style={s.infoCard}>
-                  <Text style={s.infoLabel}>DESCRIPTION</Text>
-                  <Text style={s.infoValue}>{challenge.description}</Text>
-                </View>
-              ) : null}
-
+        <ScrollView contentContainerStyle={s.list}>
+          <View style={{ gap: 12 }}>
+            {challenge.description ? (
               <View style={s.infoCard}>
-                <Text style={s.infoLabel}>DURATION</Text>
-                <Text style={s.infoValue}>
-                  {format(parseISO(challenge.start_date), 'MMM d')} –{' '}
-                  {format(parseISO(challenge.end_date), 'MMM d, yyyy')}
-                </Text>
+                <Text style={s.infoLabel}>DESCRIPTION</Text>
+                <Text style={s.infoValue}>{challenge.description}</Text>
               </View>
+            ) : null}
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>SCORING</Text>
-                {challenge.scoring_modes.map(m => (
-                  <Text key={m} style={s.infoValue}>{SCORING_MODE_LABELS[m]}</Text>
-                ))}
-              </View>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>DURATION</Text>
+              <Text style={s.infoValue}>
+                {format(parseISO(challenge.start_date), 'MMM d')} –{' '}
+                {format(parseISO(challenge.end_date), 'MMM d, yyyy')}
+              </Text>
+            </View>
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>TIEBREAKER</Text>
-                <Text style={s.infoValue}>{TIE_BREAK_LABELS[challenge.tie_break_rule]}</Text>
-              </View>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>SCORING</Text>
+              {challenge.scoring_modes.map(m => (
+                <Text key={m} style={s.infoValue}>{SCORING_MODE_LABELS[m]}</Text>
+              ))}
+            </View>
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>BACKLOG</Text>
-                <Text style={s.infoValue}>Up to {challenge.backlog_days_allowed} days back</Text>
-              </View>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>TIEBREAKER</Text>
+              <Text style={s.infoValue}>{TIE_BREAK_LABELS[challenge.tie_break_rule]}</Text>
+            </View>
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>PHOTO PROOF</Text>
-                <Text style={s.infoValue}>{challenge.require_photo_proof ? 'Required' : 'Optional'}</Text>
-              </View>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>BACKLOG</Text>
+              <Text style={s.infoValue}>Up to {challenge.backlog_days_allowed} days back</Text>
+            </View>
 
-              <View style={s.infoCard}>
-                <Text style={s.infoLabel}>INVITE CODE</Text>
-                <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary }]}>
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>PHOTO PROOF</Text>
+              <Text style={s.infoValue}>{challenge.require_photo_proof ? 'Required' : 'Optional'}</Text>
+            </View>
+
+            <View style={s.infoCard}>
+              <Text style={s.infoLabel}>INVITE CODE</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+                <Text style={[s.infoValue, { fontSize: 20, fontWeight: '800', letterSpacing: 4, color: C.primary, flex: 1 }]}>
                   {challenge.invite_code}
                 </Text>
+                <TouchableOpacity
+                  style={s.copyBtn}
+                  onPress={() => {
+                    Share.share({ message: challenge.invite_code });
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  accessibilityLabel="Copy invite code"
+                >
+                  <Text style={s.copyBtnText}>{copied ? '✓ Copied' : 'Copy'}</Text>
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity style={s.shareCardBtn} onPress={shareInvite}>
-                <Text style={s.shareCardBtnText}>📤 Share invite code</Text>
-              </TouchableOpacity>
             </View>
-          }
-        />
+
+            <TouchableOpacity style={s.shareCardBtn} onPress={shareInvite}>
+              <Text style={s.shareCardBtnText}>📤 Share invite code</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
       )}
 
       {/* Off-screen ShareCard captured by ViewShot — not visible to user */}
@@ -409,7 +438,7 @@ const s = StyleSheet.create({
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 22, color: C.text },
-  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text },
+  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   shareBtn: { padding: 4 },
   shareText: { color: C.primary, fontWeight: '700', fontSize: 14 },
 
@@ -433,6 +462,12 @@ const s = StyleSheet.create({
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 48 },
   emptyText: { color: C.muted, fontSize: 14 },
+  feedEmpty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
+  feedEmptyEmoji: { fontSize: 48 },
+  feedEmptyTitle: { fontSize: 18, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  feedEmptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
+  feedEmptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: 20, paddingVertical: 12, marginTop: 4 },
+  feedEmptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 
   myRankCard: {
     backgroundColor: C.primary + '12',
@@ -453,7 +488,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12 },
+  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12, fontFamily: F.uiBold },
 
   podium: {
     flexDirection: 'row',
@@ -496,7 +531,7 @@ const s = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: R.sm,
     padding: 12,
     marginBottom: 6,
     gap: 10,
@@ -521,7 +556,7 @@ const s = StyleSheet.create({
 
   infoCard: {
     backgroundColor: C.card,
-    borderRadius: 12,
+    borderRadius: R.sm,
     borderWidth: 1,
     borderColor: C.border,
     padding: 14,
@@ -535,17 +570,27 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15, fontFamily: F.uiBold },
+
+  copyBtn: {
+    backgroundColor: C.primary + '20',
+    borderWidth: 1,
+    borderColor: C.primary + '50',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  copyBtnText: { color: C.primary, fontWeight: '700', fontSize: 12 },
 
   trashGrid: { padding: 16, gap: 8 },
-  trashBtn: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  trashBtnText: { fontSize: 14, color: '#EEF4F8', fontWeight: '600' },
+  trashBtn: { backgroundColor: C.card, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: R.sm, paddingHorizontal: 16, paddingVertical: 12 },
+  trashBtnText: { fontSize: 14, color: C.text, fontWeight: '600' },
   messageList: { paddingHorizontal: 16, paddingBottom: 40 },
-  messageRow: { backgroundColor: '#1E2A35', borderRadius: 10, padding: 12, marginBottom: 6 },
-  messageSender: { fontSize: 11, color: '#F97316', fontWeight: '700', marginBottom: 2 },
-  messageText: { fontSize: 14, color: '#EEF4F8' },
+  messageRow: { backgroundColor: C.border, borderRadius: 10, padding: 12, marginBottom: 6 },
+  messageSender: { fontSize: 11, color: C.primary, fontWeight: '700', marginBottom: 2 },
+  messageText: { fontSize: 14, color: C.text },
   emptyBanter: { alignItems: 'center', paddingTop: 32 },
-  emptyBanterText: { fontSize: 14, color: '#4A6070', textAlign: 'center' },
+  emptyBanterText: { fontSize: 14, color: C.muted, textAlign: 'center' },
 
   shareRankBtn: {
     marginTop: 8,

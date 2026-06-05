@@ -5,15 +5,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { supabase } from '../../lib/supabase';
+import { C } from '../../theme';
+import type { RootStackParamList } from '../../navigation/RootNavigator';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444',
-};
 
 export default function ResetPasswordScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -21,8 +20,14 @@ export default function ResetPasswordScreen() {
   const [error, setError] = useState('');
 
   async function handleReset() {
-    if (password.length < 8) {
-      setError('Password must be at least 8 characters');
+    const pwErrors: string[] = [];
+    if (password.length < 8) pwErrors.push('at least 8 characters');
+    if (!/[A-Z]/.test(password)) pwErrors.push('one uppercase letter');
+    if (!/[a-z]/.test(password)) pwErrors.push('one lowercase letter');
+    if (!/[0-9]/.test(password)) pwErrors.push('one number');
+    if (!/[^A-Za-z0-9]/.test(password)) pwErrors.push('one special character (!@#$...)');
+    if (pwErrors.length > 0) {
+      setError('Must include: ' + pwErrors.join(', '));
       return;
     }
     if (password !== confirm) {
@@ -42,9 +47,16 @@ export default function ResetPasswordScreen() {
     }
 
     Alert.alert(
-      'Password updated',
-      'Your password has been changed. Please sign in with your new password.',
-      [{ text: 'Sign in', onPress: () => supabase.auth.signOut() }],
+      'Password updated!',
+      'Please sign in with your new password.',
+      [{ text: 'Sign in', onPress: async () => {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          Alert.alert('Error', 'Could not sign out. Please restart the app.');
+        } else {
+          navigation.replace('Login');
+        }
+      }}],
     );
   }
 
@@ -63,7 +75,7 @@ export default function ResetPasswordScreen() {
               <TextInput
                 style={[s.input, s.passwordInput]}
                 placeholder="8+ characters"
-                placeholderTextColor={C.dimmed}
+                placeholderTextColor={C.muted}
                 value={password}
                 onChangeText={t => { setPassword(t); setError(''); }}
                 secureTextEntry={!showPassword}
@@ -81,7 +93,7 @@ export default function ResetPasswordScreen() {
             <TextInput
               style={s.input}
               placeholder="Repeat your password"
-              placeholderTextColor={C.dimmed}
+              placeholderTextColor={C.muted}
               value={confirm}
               onChangeText={t => { setConfirm(t); setError(''); }}
               secureTextEntry={!showPassword}

@@ -12,7 +12,7 @@
 
 import { Platform, Linking } from 'react-native';
 import Constants from 'expo-constants';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
 import { toLocalDate } from './dateUtils';
@@ -160,17 +160,24 @@ export async function checkHealthConnectGranted(stabilize = false): Promise<bool
   }
 }
 
-let _pollInFlight = false;
+const _pollInFlight = new Map<string, boolean>();
 
 /** Poll Health Connect for activities since the last sync and write new ones to Supabase */
 export async function pollHealthConnect(userId: string): Promise<number> {
   if (Platform.OS !== 'android' || !HealthConnect) return 0;
-  if (_pollInFlight) return 0;
-  _pollInFlight = true;
+  if (_pollInFlight.get(userId)) return 0;
+  _pollInFlight.set(userId, true);
+
+  // Guard against stale polls running for a logged-out user
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user || user.id !== userId) {
+    _pollInFlight.set(userId, false);
+    return 0;
+  }
 
   const { initialize, readRecords } = HealthConnect;
   const available = await initialize().catch(() => false);
-  if (!available) { _pollInFlight = false; return 0; }
+  if (!available) { _pollInFlight.set(userId, false); return 0; }
 
   // Check permissions before advancing the sync cursor — if permissions were
   // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
@@ -179,11 +186,11 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   const granted: any[] = await getGrantedPermissions().catch(() => []);
   if (!granted.some((g: any) => g.recordType === 'ExerciseSession')) {
     console.log('[HealthConnect] poll skipped — permissions not granted');
-    _pollInFlight = false;
+    _pollInFlight.set(userId, false);
     return 0;
   }
 
-  const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
+  const lastSyncRaw = await SecureStore.getItemAsync(LAST_SYNC_KEY);
   const startTime = lastSyncRaw ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const endTime = new Date().toISOString();
 
@@ -264,42 +271,32 @@ export async function pollHealthConnect(userId: string): Promise<number> {
     const totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
 
     if (totalSteps > 0) {
-      // Atomic insert — if the row already exists, update steps in place.
-      // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
-      const { error: insertErr } = await supabase.from('workout_posts').insert({
-        user_id: userId,
-        challenge_id: challengeId,
-        activity_type: 'walk',
-        steps: totalSteps,
-        source: 'health_connect',
-        external_activity_id: `steps_${localDate}`,
-        workout_date: localDate,
-      });
-
-      if (insertErr) {
-        if (insertErr.code === '23505') {
-          // Unique constraint hit — row was already created today, just update step count
-          await supabase
-            .from('workout_posts')
-            .update({ steps: totalSteps })
-            .eq('user_id', userId)
-            .eq('source', 'health_connect')
-            .eq('external_activity_id', `steps_${localDate}`);
-        } else {
-          console.warn('[HealthConnect] steps insert failed:', insertErr);
-        }
+      const { error: upsertErr } = await supabase.from('workout_posts').upsert(
+        {
+          user_id: userId,
+          challenge_id: challengeId,
+          activity_type: 'walk',
+          steps: totalSteps,
+          source: 'health_connect',
+          external_activity_id: `steps_${localDate}`,
+          workout_date: localDate,
+        },
+        { onConflict: 'user_id,external_activity_id' }
+      );
+      if (upsertErr) {
+        console.warn('[HealthConnect] steps upsert failed:', upsertErr.message);
       } else {
         synced++;
       }
     }
     if (!insertFailed) {
-      await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
+      await SecureStore.setItemAsync(LAST_SYNC_KEY, endTime);
     }
   } catch (e) {
     console.warn('[HealthConnect] poll failed:', e);
     // Do not advance LAST_SYNC_KEY on failure — retry from same window next poll.
   } finally {
-    _pollInFlight = false;
+    _pollInFlight.set(userId, false);
   }
 
   return synced;

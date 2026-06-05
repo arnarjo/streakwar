@@ -1,10 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity,
   StatusBar, TextInput, Alert, Modal, KeyboardAvoidingView, Platform, Share,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import { format, addDays } from 'date-fns';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
@@ -12,18 +14,15 @@ import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 import UpgradeModal from '../components/UpgradeModal';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316',
-};
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
 const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
 
 export default function ChallengesScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore, FREE_MAX_CHALLENGES } = usePremium(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');
@@ -50,7 +49,10 @@ export default function ChallengesScreen() {
     setQuickModalOpen(true);
   }
 
-  const filtered = tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab);
+  const filtered = useMemo(
+    () => tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab),
+    [myChallenges, tab]
+  );
 
   async function handleJoinByCode() {
     if (!code.trim()) return;
@@ -62,7 +64,12 @@ export default function ChallengesScreen() {
     } else {
       setJoinModalOpen(false);
       setCode('');
-      Alert.alert('Joined! 💪', `You're now in "${challenge?.name}"`);
+      const joinedId = challenge?.id;
+      if (joinedId) {
+        navigation.navigate('ChallengeDetail', { challengeId: joinedId });
+      } else {
+        Alert.alert('Joined! 💪', `You're now in "${challenge?.name}"`);
+      }
     }
   }
 
@@ -115,8 +122,8 @@ export default function ChallengesScreen() {
       <View style={s.header}>
         <Text style={s.title}>Challenges</Text>
         <View style={s.headerBtns}>
-          <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)}>
-            <Text style={s.joinBtnText}>Code</Text>
+          <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)} accessibilityRole="button" accessibilityLabel="Join with Code">
+            <Text style={s.joinBtnText}>Join with Code</Text>
           </TouchableOpacity>
           <TouchableOpacity style={s.createBtn} onPress={handleNewChallenge}>
             <Text style={s.createBtnText}>+ New</Text>
@@ -135,7 +142,14 @@ export default function ChallengesScreen() {
 
       <View style={s.tabs}>
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
+          <TouchableOpacity
+            key={t}
+            style={[s.tab, tab === t && s.tabActive]}
+            onPress={() => setTab(t)}
+            accessibilityRole="tab"
+            accessibilityLabel={TAB_LABELS[t]}
+            accessibilityState={{ selected: tab === t }}
+          >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>{TAB_LABELS[t]}</Text>
           </TouchableOpacity>
         ))}
@@ -179,7 +193,7 @@ export default function ChallengesScreen() {
       )}
 
       {/* Quick 1v1 Challenge Modal */}
-      <Modal visible={quickModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
+      <Modal visible={quickModalOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={s.modalSheet}>
@@ -244,7 +258,7 @@ export default function ChallengesScreen() {
         reason={`Free plan allows ${FREE_MAX_CHALLENGES} active challenges. Upgrade to Pro for unlimited.`}
       />
 
-      <Modal visible={joinModalOpen} animationType="slide" presentationStyle="pageSheet" transparent>
+      <Modal visible={joinModalOpen} animationType="slide" presentationStyle="pageSheet">
         <View style={s.modalOverlay}>
           <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
             <View style={s.modalSheet}>
@@ -284,7 +298,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   headerBtns: { flexDirection: 'row', gap: 8 },
-  joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, minHeight: 44, justifyContent: 'center' },
   joinBtnText: { color: C.text, fontWeight: '700', fontSize: 13 },
   createBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   createBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
@@ -307,7 +321,7 @@ const s = StyleSheet.create({
   codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 6, textAlign: 'center' },
   joinConfirmBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
   joinConfirmBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 4 },
+  cancelBtn: { alignItems: 'center', paddingVertical: 4, minHeight: 44, justifyContent: 'center' },
   cancelBtnText: { color: C.muted, fontSize: 14, fontWeight: '600' },
   quickBanner: {
     flexDirection: 'row',

@@ -4,19 +4,12 @@ import {
   Modal, TextInput, FlatList, KeyboardAvoidingView, Platform, Alert, ActivityIndicator,
   Animated,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ACTIVITY_LABELS, REACTIONS } from '../types/database';
 import type { WorkoutPost, WorkoutComment } from '../types/database';
 import { formatDistanceToNow } from 'date-fns';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-};
 
 type Props = {
   post: WorkoutPost;
@@ -29,11 +22,14 @@ type Props = {
 };
 
 export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchComments, onAddComment, onEdit, onDelete }: Props) {
+  const insets = useSafeAreaInsets();
+  const [captionExpanded, setCaptionExpanded] = useState(false);
   const [commentsOpen, setCommentsOpen] = useState(false);
   const [comments, setComments] = useState<WorkoutComment[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const postedAt = post.posted_at ? new Date(post.posted_at) : null;
   const timeAgo = postedAt && !isNaN(postedAt.getTime())
@@ -56,29 +52,33 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
   }
 
   async function openComments() {
+    setActionError(null); // clear stale error from previous session
     setCommentsOpen(true);
     setCommentsLoading(true);
+    let active = true;
     try {
       const data = await onFetchComments(post.id);
-      setComments(data);
+      if (active) setComments(data);
     } catch {
-      setComments([]);
+      if (active) setComments([]);
     } finally {
-      setCommentsLoading(false);
+      if (active) setCommentsLoading(false);
     }
+    return () => { active = false; };
   }
 
   async function submitComment() {
     if (!commentText.trim()) return;
     setSubmitting(true);
+    setActionError(null);
     try {
       const { error } = await onAddComment(post.id, commentText.trim());
-      if (error) { Alert.alert('Error', error); return; }
+      if (error) { setActionError(error); return; }
       const updated = await onFetchComments(post.id);
       setComments(updated);
       setCommentText('');
     } catch {
-      Alert.alert('Error', 'Could not post comment.');
+      setActionError('Could not post comment.');
     } finally {
       setSubmitting(false);
     }
@@ -140,7 +140,12 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
           )}
         </View>
         {isOwnPost && (
-          <TouchableOpacity onPress={showPostMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={showPostMenu}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
+          >
             <Text style={s.menuDots}>⋯</Text>
           </TouchableOpacity>
         )}
@@ -154,7 +159,16 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
         </View>
       )}
 
-      {post.caption ? <Text numberOfLines={4} style={s.caption}>{post.caption}</Text> : null}
+      {post.caption ? (
+        <>
+          <Text numberOfLines={captionExpanded ? undefined : 4} style={s.caption}>{post.caption}</Text>
+          {!captionExpanded && post.caption.length > 120 && (
+            <TouchableOpacity onPress={() => setCaptionExpanded(true)} accessibilityRole="button">
+              <Text style={s.captionMore}>more</Text>
+            </TouchableOpacity>
+          )}
+        </>
+      ) : null}
 
       {metrics.length > 0 && (
         <View style={s.metricStrip}>
@@ -183,6 +197,8 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
                   style={[s.reactBtn, active && s.reactBtnActive]}
                   onPress={() => { animateReaction(emoji); onReact(post.id, emoji); }}
                   activeOpacity={0.7}
+                  accessibilityLabel={active ? `Remove ${emoji} reaction` : `React with ${emoji}`}
+                  accessibilityRole="button"
                 >
                   <Text style={s.reactEmoji}>{emoji}</Text>
                   {count > 0 && <Text style={[s.reactCount, active && { color: '#F97316' }]}>{count}</Text>}
@@ -191,12 +207,21 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
             );
           })}
         </View>
-        <TouchableOpacity style={s.commentBtn} onPress={openComments}>
+        <TouchableOpacity
+          style={s.commentBtn}
+          onPress={openComments}
+          accessibilityLabel="Comment on post"
+          accessibilityRole="button"
+        >
           <Text style={s.commentBtnText}>
             💬 {post.comment_count ?? 0}
           </Text>
         </TouchableOpacity>
       </View>
+
+      {actionError && (
+        <Text style={s.actionError}>{actionError}</Text>
+      )}
 
       <Modal visible={commentsOpen} animationType="slide" presentationStyle="pageSheet">
         <KeyboardAvoidingView
@@ -230,7 +255,7 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
               />
           }
 
-          <View style={s.commentInput}>
+          <View style={[s.commentInput, { paddingBottom: insets.bottom + 12 }]}>
             <TextInput
               style={s.commentTextInput}
               placeholder="Write a comment..."
@@ -349,6 +374,7 @@ const s = StyleSheet.create({
   commentBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
 
   muted: { color: C.muted, fontSize: 14 },
+  actionError: { fontSize: 12, color: C.error, marginTop: 6, paddingHorizontal: 2 },
 
   commentsModal: { flex: 1, backgroundColor: C.bg },
   commentsHeader: {
@@ -391,4 +417,5 @@ const s = StyleSheet.create({
     paddingVertical: 10,
   },
   commentSendText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  captionMore: { fontSize: 13, color: C.muted, marginTop: 2 },
 });

@@ -11,13 +11,28 @@
       "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
+    "scheme": "streakwar",
     "ios": {
-      "supportsTablet": false
+      "supportsTablet": false,
+      "bundleIdentifier": "is.streakwar.app",
+      "infoPlist": {
+        "NSHealthShareUsageDescription": "StreakWar reads your workouts to automatically log activity and award points in your challenges.",
+        "NSHealthUpdateUsageDescription": "StreakWar updates your workout data to track challenge progress."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#0A0E14"
-      }
+      },
+      "package": "is.streakwar.app",
+      "permissions": [
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.RECEIVE_BOOT_COMPLETED",
+        "android.permission.FOREGROUND_SERVICE"
+      ]
     },
     "web": {
       "bundler": "metro"

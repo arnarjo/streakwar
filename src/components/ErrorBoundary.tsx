@@ -16,9 +16,12 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
       <View style={s.container}>
         <Text style={s.emoji}>⚡</Text>
         <Text style={s.title}>Something went wrong</Text>
-        <Text style={s.errorMsg} selectable>
-          {this.state.error?.message ?? 'Unknown error'}
-        </Text>
+        {__DEV__ && this.state.error && (
+          <Text style={s.errorMsg} selectable>{this.state.error.message}</Text>
+        )}
+        {!__DEV__ && (
+          <Text style={s.errorMsg}>Please restart the app to continue.</Text>
+        )}
         {__DEV__ && (
           <Text style={s.errorStack} selectable>
             {this.state.error?.stack?.slice(0, 600) ?? ''}

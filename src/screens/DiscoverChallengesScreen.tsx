@@ -4,10 +4,13 @@ import {
   RefreshControl, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
 import type { FitnessChallenge, ScoringMode } from '../types/database';
+import { C, F } from '../theme';
 
 type Props = {
   myChallenges: FitnessChallenge[];
@@ -15,11 +18,6 @@ type Props = {
   onRefreshMyChallenges: () => Promise<void>;
 };
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', primary: '#F97316',
-  gold: '#F59E0B', purple: '#8B5CF6',
-};
 
 type Filter = 'all' | ScoringMode;
 const FILTERS: Array<{ key: Filter; label: string }> = [
@@ -35,8 +33,34 @@ const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: stri
   monthly: { border: C.gold,    badge: '#F59E0B20', emoji: '🏆' },
 };
 
+type JoinButtonProps = {
+  item: FitnessChallenge;
+  joining: string | null;
+  myChallenges: FitnessChallenge[];
+  onJoin: (item: FitnessChallenge) => void;
+};
+
+function JoinButton({ item, joining, myChallenges, onJoin }: JoinButtonProps) {
+  const joined = myChallenges.some(c => c.id === item.id);
+  const full = !!(item.max_participants && (item.participant_count ?? 0) >= item.max_participants);
+  const busy = joining === item.id;
+  return (
+    <TouchableOpacity
+      style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
+      onPress={() => !joined && !full && onJoin(item)}
+      disabled={joined || full || busy}
+      accessibilityRole="button"
+      accessibilityLabel={joined ? 'Already joined' : full ? 'Challenge full' : 'Join challenge'}
+    >
+      <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
+        {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
 export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
 
   const [globalChallenges, setGlobalChallenges] = useState<FitnessChallenge[]>([]);
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
@@ -53,7 +77,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       // Global (StreakWar-managed) challenges — always at top
       supabase
         .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
+        .select('id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, renewal_type, scoring_modes, max_participants, name, status, is_global, challenge_participants(count)')
         .eq('is_global', true)
         .in('status', ['active', 'upcoming'])
         .order('renewal_type', { ascending: true }), // weekly before monthly
@@ -61,7 +85,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       // User-created public challenges
       supabase
         .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
+        .select('id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, renewal_type, scoring_modes, max_participants, name, status, is_global, challenge_participants(count)')
         .eq('is_public', true)
         .eq('is_global', false)
         .in('status', ['active', 'upcoming'])
@@ -101,36 +125,11 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
     }
   }
 
-  function isJoined(challengeId: string) {
-    return myChallenges.some(c => c.id === challengeId);
-  }
-
-  function isFull(challenge: FitnessChallenge) {
-    return !!(challenge.max_participants && (challenge.participant_count ?? 0) >= challenge.max_participants);
-  }
-
   function daysLeftLabel(endDate: string) {
     const d = differenceInDays(parseISO(endDate), new Date());
     if (d < 0) return 'Ending soon';
     if (d === 0) return 'Last day!';
     return `${d}d left`;
-  }
-
-  function JoinButton({ item }: { item: FitnessChallenge }) {
-    const joined = isJoined(item.id);
-    const full = isFull(item);
-    const busy = joining === item.id;
-    return (
-      <TouchableOpacity
-        style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
-        onPress={() => !joined && !full && handleJoin(item)}
-        disabled={joined || full || busy}
-      >
-        <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
-          {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
-        </Text>
-      </TouchableOpacity>
-    );
   }
 
   return (
@@ -161,10 +160,10 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
                     {modeEmoji} {modes.map(m => SCORING_MODE_LABELS[m]).join(' · ')}
                   </Text>
                   <Text style={[s.cardMeta, { marginTop: 2 }]}>
-                    👥 {item.participant_count ?? 0} þátttakendur · {daysLeftLabel(item.end_date)}
+                    👥 {item.participant_count ?? 0} participants · {daysLeftLabel(item.end_date)}
                   </Text>
                 </View>
-                <JoinButton item={item} />
+                <JoinButton item={item} joining={joining} myChallenges={myChallenges} onJoin={handleJoin} />
               </View>
             );
           })}
@@ -215,7 +214,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
                     {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeftLabel(item.end_date)}
                   </Text>
                 </View>
-                <JoinButton item={item} />
+                <JoinButton item={item} joining={joining} myChallenges={myChallenges} onJoin={handleJoin} />
               </View>
             );
           })}
@@ -229,8 +228,8 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
   section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
-  sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2 },
-  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2, fontFamily: F.uiBold },
+  sectionSub: { fontSize: 12, color: C.muted, marginBottom: 10, fontFamily: F.ui },
 
   globalCard: {
     backgroundColor: C.card,
@@ -246,7 +245,7 @@ const s = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: 6,
   },
-  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
+  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8, fontFamily: F.uiBold },
 
   filterBar: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
   filterBtn: {
@@ -265,16 +264,16 @@ const s = StyleSheet.create({
     borderRadius: 14, padding: 14, marginBottom: 8, gap: 12,
   },
   cardContent: { flex: 1 },
-  cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4, fontFamily: F.uiBold },
+  cardMeta: { fontSize: 12, color: C.muted, fontFamily: F.ui },
 
   joinBtn: { backgroundColor: C.primary, paddingHorizontal: 16, paddingVertical: 9, borderRadius: 10 },
   joinBtnDisabled: { backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: C.border },
-  joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
+  joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000', fontFamily: F.uiBold },
   joinBtnTextDisabled: { color: C.muted },
 
   empty: { paddingTop: 40, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 36 },
-  emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center' },
+  emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  emptySub: { fontSize: 13, color: C.muted, textAlign: 'center', fontFamily: F.ui },
 });

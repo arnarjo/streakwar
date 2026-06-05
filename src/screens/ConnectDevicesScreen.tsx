@@ -5,25 +5,19 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import * as WebBrowser from 'expo-web-browser';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
+import { C } from '../theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  green: '#22C55E',
-  error: '#EF4444',
-};
 
 const OAUTH_PROVIDERS: ProviderKey[] = ['strava'];
 const COMING_SOON_PROVIDERS: ProviderKey[] = [];
@@ -31,7 +25,7 @@ const COMING_SOON_PROVIDERS: ProviderKey[] = [];
 
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const {
     connections, syncing, isConnected, connectNative,
     confirmHealthConnectConnection, syncNow, disconnect,
@@ -54,11 +48,9 @@ export default function ConnectDevicesScreen() {
   // When user returns from Health Connect settings, re-check if permissions were granted
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
-      console.log('[ConnectDevices] AppState changed to:', state, 'Awaiting HC:', awaitingHCReturn.current);
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
         const confirmed = await confirmHealthConnectConnection();
-        console.log('[ConnectDevices] Connection confirmed:', confirmed);
         if (!mounted.current) return;
         setConnecting(null);
         if (confirmed) {
@@ -85,8 +77,6 @@ export default function ConnectDevicesScreen() {
         return;
       }
       // Show debug info so we can diagnose why requestPermission() failed
-      if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
-
       // Permissions not granted via dialog — open HC permissions page directly.
       // AppState listener will detect when user returns and check if granted.
       awaitingHCReturn.current = true;
@@ -108,10 +98,15 @@ export default function ConnectDevicesScreen() {
   async function handleOAuthConnect(provider: ProviderKey) {
     if (!profile?.id) return;
     setConnecting(provider);
-    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}&user_id=${profile.id}`;
+    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}`;
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       // openAuthSessionAsync closes the custom tab when it detects the streakwar:// redirect
-      const result = await WebBrowser.openAuthSessionAsync(url, 'streakwar://');
+      const result = await WebBrowser.openAuthSessionAsync(
+        url,
+        'streakwar://',
+        { headers: { 'Authorization': `Bearer ${session?.access_token}` } } as any,
+      );
       if (result.type === 'success' && result.url?.includes('oauth-success')) {
         const parsedProvider = new URL(result.url).searchParams.get('provider') as ProviderKey | null;
         await fetchConnections();

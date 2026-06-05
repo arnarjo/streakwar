@@ -22,25 +22,26 @@ export function useLeague(userId: string) {
     setLoading(true);
     const weekStart = currentMonday();
 
-    const { data: tierRow } = await supabase
-      .from('user_league_tier')
-      .select('tier')
-      .eq('user_id', userId)
-      .maybeSingle();
+    const [{ data: tierRow }, { data: membership }] = await Promise.all([
+      supabase
+        .from('user_league_tier')
+        .select('tier')
+        .eq('user_id', userId)
+        .maybeSingle(),
+      supabase
+        .from('league_memberships')
+        .select('group_id')
+        .eq('user_id', userId)
+        .eq('week_start', weekStart)
+        .maybeSingle(),
+    ]);
 
     if (tierRow) {
       setMyTier(tierRow.tier as LeagueTier);
     } else {
-      await supabase.from('user_league_tier').insert({ user_id: userId, tier: 'bronze' });
+      // No league tier yet — use default; row creation happens server-side on signup
       setMyTier('bronze');
     }
-
-    const { data: membership } = await supabase
-      .from('league_memberships')
-      .select('group_id')
-      .eq('user_id', userId)
-      .eq('week_start', weekStart)
-      .maybeSingle();
 
     if (!membership) {
       setLoading(false);

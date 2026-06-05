@@ -15,7 +15,7 @@
 import * as BackgroundFetch from 'expo-background-fetch';
 import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
 import { supabase } from './supabase';
 import { pollHealthConnect } from './healthConnect';
 import { syncRecentWorkouts, syncTodaySteps } from './healthKit';
@@ -25,18 +25,18 @@ const USER_ID_KEY = 'streakwar_user_id';
 
 /** Call this when the user logs in to persist their ID for background tasks */
 export async function persistUserId(userId: string) {
-  await AsyncStorage.setItem(USER_ID_KEY, userId);
+  await SecureStore.setItemAsync(USER_ID_KEY, userId);
 }
 
 /** Call this when the user logs out */
 export async function clearUserId() {
-  await AsyncStorage.removeItem(USER_ID_KEY);
+  await SecureStore.deleteItemAsync(USER_ID_KEY);
 }
 
 // Define the task before any component mounts
 TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
   try {
-    const userId = await AsyncStorage.getItem(USER_ID_KEY);
+    const userId = await SecureStore.getItemAsync(USER_ID_KEY);
     if (!userId) return BackgroundFetch.BackgroundFetchResult.NoData;
 
     // JWT may have expired in background — refresh before making authenticated DB calls

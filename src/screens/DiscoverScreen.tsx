@@ -5,21 +5,20 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
 import { differenceInDays, parseISO } from 'date-fns';
+import { C, F } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', green: '#22C55E',
-};
 
 export default function DiscoverScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const { joinPublic } = useFitnessChallenges(profile?.id ?? '');
   const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
@@ -32,7 +31,7 @@ export default function DiscoverScreen() {
     setError(false);
     const { data, error: fetchError } = await supabase
       .from('fitness_challenges')
-      .select(`*, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name), participant_count:challenge_participants(count)`)
+      .select(`id, title, description, activity_type, scoring_mode, start_date, end_date, is_public, created_by, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name), participant_count:challenge_participants(count)`)
       .eq('is_public', true)
       .in('status', ['upcoming', 'active'])
       .order('created_at', { ascending: false })
@@ -83,14 +82,26 @@ export default function DiscoverScreen() {
         <Text style={s.subtitle}>Public challenges anyone can join</Text>
       </View>
       <View style={s.searchRow}>
-        <TextInput
-          style={s.searchInput}
-          placeholder="🔍  Search challenges..."
-          placeholderTextColor={C.muted}
-          value={search}
-          onChangeText={setSearch}
-          autoCorrect={false}
-        />
+        <View style={s.searchInputWrap}>
+          <TextInput
+            style={s.searchInput}
+            placeholder="🔍  Search challenges..."
+            placeholderTextColor={C.muted}
+            value={search}
+            onChangeText={setSearch}
+            autoCorrect={false}
+            accessibilityLabel="Search challenges"
+          />
+          {search.length > 0 && (
+            <TouchableOpacity
+              style={s.searchClearBtn}
+              onPress={() => setSearch('')}
+              accessibilityLabel="Clear search"
+            >
+              <Text style={s.searchClearText}>✕</Text>
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
       <FlatList
         data={filtered}
@@ -99,7 +110,7 @@ export default function DiscoverScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={loading} onRefresh={fetchPublic} tintColor={C.primary} />}
         renderItem={({ item }) => {
-          const daysLeft = differenceInDays(parseISO(item.end_date), new Date());
+          const daysLeft = Math.max(0, differenceInDays(parseISO(item.end_date), new Date()));
           const isActive = item.status === 'active';
           const scoringLabel = (item.scoring_modes ?? []).slice(0, 2).map((m: string) => (SCORING_MODE_LABELS[m as keyof typeof SCORING_MODE_LABELS] ?? m)?.split(' ')[0] ?? '').filter(Boolean).join(' · ');
           return (
@@ -115,7 +126,7 @@ export default function DiscoverScreen() {
               </View>
               {item.description ? <Text style={s.cardDesc} numberOfLines={2}>{item.description}</Text> : null}
               <View style={s.cardFooter}>
-                <Text style={s.cardStats}>👥 {item.participant_count ?? 0}  ·  ⏱ {daysLeft} days left</Text>
+                <Text style={s.cardStats}>👥 {item.participant_count ?? 0}  ·  ⏱ {daysLeft === 0 ? 'Ending today' : `${daysLeft} days left`}</Text>
                 <TouchableOpacity
                   style={[s.joinBtn, joining === item.id && { opacity: 0.5 }]}
                   onPress={() => handleJoin(item.id, item.name)}
@@ -149,26 +160,29 @@ export default function DiscoverScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { paddingHorizontal: 20, paddingTop: 12, paddingBottom: 4 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle: { fontSize: 13, color: C.muted, marginTop: 2 },
+  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, fontFamily: F.uiBold },
+  subtitle: { fontSize: 13, color: C.muted, marginTop: 2, fontFamily: F.ui },
   searchRow: { paddingHorizontal: 16, paddingVertical: 12 },
-  searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, color: C.text, fontSize: 14 },
+  searchInputWrap: { position: 'relative' },
+  searchInput: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12, paddingRight: 40, color: C.text, fontSize: 14 },
+  searchClearBtn: { position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center', paddingHorizontal: 4 },
+  searchClearText: { color: C.muted, fontSize: 14, fontWeight: '700' },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   card: { backgroundColor: '#151C24', borderRadius: 16, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', padding: 16, marginBottom: 10, gap: 8 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  cardName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 3 },
-  cardMeta: { fontSize: 12, color: C.muted },
+  cardName: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 3, fontFamily: F.uiBold },
+  cardMeta: { fontSize: 12, color: C.muted, fontFamily: F.ui },
   statusBadge: { borderWidth: 1, borderRadius: 8, paddingHorizontal: 9, paddingVertical: 4, alignSelf: 'flex-start' },
-  statusText: { fontSize: 11, fontWeight: '700' },
-  cardDesc: { fontSize: 13, color: C.muted, lineHeight: 19 },
+  statusText: { fontSize: 11, fontWeight: '700', fontFamily: F.uiBold },
+  cardDesc: { fontSize: 13, color: C.muted, lineHeight: 19, fontFamily: F.ui },
   cardFooter: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   cardStats: { fontSize: 12, color: C.muted },
   joinBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8 },
-  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  joinBtnText: { color: '#000', fontWeight: '800', fontSize: 13, fontFamily: F.uiBold },
   empty: { alignItems: 'center', paddingTop: 64, gap: 12, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted, fontFamily: F.uiBold },
+  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
   createBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  createBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  createBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 });

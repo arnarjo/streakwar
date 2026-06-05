@@ -7,6 +7,8 @@ import {
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { RootStackParamList } from '../navigation/RootNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
@@ -15,26 +17,16 @@ import { ACTIVITY_LABELS, ACTIVITY_OPTIONS } from '../types/database';
 import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
+import { supabase } from '../lib/supabase';
 import { format } from 'date-fns';
+import { C, S, R, FS, F } from '../theme';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  borderFocus: '#F97316',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
-
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const route = useRoute<any>();
   const preselectedChallengeId = route.params?.challengeId as string | undefined;
   const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
@@ -60,6 +52,7 @@ export default function LogWorkoutScreen() {
   const [mediaUri, setMediaUri] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
+  const [pointsAwarded, setPointsAwarded] = useState<number | null>(null);
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
 
@@ -67,8 +60,12 @@ export default function LogWorkoutScreen() {
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const successTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (successTimeoutRef.current) clearTimeout(successTimeoutRef.current);
+  }, []);
 
   function toggleTimer() {
     if (timerRunning) {
@@ -90,7 +87,11 @@ export default function LogWorkoutScreen() {
 
   const timerDisplay = `${String(Math.floor(timerSeconds / 60)).padStart(2, '0')}:${String(timerSeconds % 60).padStart(2, '0')}`;
 
-  const activeChallenges = myChallenges.filter(c => c.status === 'active');
+  const todayStr = format(new Date(), 'yyyy-MM-dd');
+  const activeChallenges = myChallenges.filter(c =>
+    c.status === 'active' ||
+    (c.status === 'upcoming' && c.start_date <= todayStr)
+  );
 
   function showSuccessAndGoBack() {
     HapticsModule?.notificationAsync?.(HapticsModule?.NotificationFeedbackType?.Success)?.catch?.(() => {});
@@ -99,7 +100,7 @@ export default function LogWorkoutScreen() {
       Animated.spring(successScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
       Animated.timing(successOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start(() => {
-      setTimeout(() => {
+      successTimeoutRef.current = setTimeout(() => {
         Animated.timing(successOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
           navigation.goBack();
         });
@@ -115,12 +116,16 @@ export default function LogWorkoutScreen() {
   async function handleSave() {
     if (!profile?.id) return;
 
-    const durationVal = duration !== '' ? parseFloat(duration) : null;
+    if (duration !== '' && parseFloat(duration) <= 0) {
+      Alert.alert('Invalid Input', 'Duration must be greater than 0.');
+      return;
+    }
+    const durationVal = duration !== '' ? Math.round(parseFloat(duration)) : null;
     const distanceVal = distance !== '' ? parseFloat(distance) : null;
     const caloriesVal = calories !== '' ? parseInt(calories, 10) : null;
     const stepsVal = steps !== '' ? parseInt(steps, 10) : null;
 
-    if (durationVal !== null && (isNaN(durationVal) || durationVal <= 0)) {
+    if (durationVal !== null && isNaN(durationVal)) {
       Alert.alert('Invalid Input', 'Duration must be a positive number.');
       return;
     }
@@ -189,6 +194,23 @@ export default function LogWorkoutScreen() {
         workoutDateStr === todayStr ? todayStr : (streak?.last_active_date ?? null),
         firstName
       ).catch(() => {});
+
+      // Fetch points awarded for selected challenge
+      if (selectedChallengeId && profile?.id) {
+        supabase
+          .from('challenge_participants')
+          .select('total_points')
+          .eq('challenge_id', selectedChallengeId)
+          .eq('user_id', profile.id)
+          .single()
+          .then(({ data }) => {
+            setPointsAwarded(data?.total_points ?? null);
+          })
+          .catch(() => {});
+      } else {
+        setPointsAwarded(null);
+      }
+
       showSuccessAndGoBack();
     }
   }
@@ -208,6 +230,8 @@ export default function LogWorkoutScreen() {
             style={[s.saveBtn, saving && { opacity: 0.5 }]}
             onPress={handleSave}
             disabled={saving}
+            accessibilityLabel="Save workout"
+            accessibilityRole="button"
           >
             {saving
               ? <ActivityIndicator color="#000" size="small" />
@@ -438,18 +462,6 @@ export default function LogWorkoutScreen() {
             numberOfLines={3}
           />
 
-          {/* Save */}
-          <TouchableOpacity
-            style={[s.saveBigBtn, saving && { opacity: 0.5 }]}
-            onPress={handleSave}
-            disabled={saving}
-            activeOpacity={0.85}
-          >
-            {saving
-              ? <ActivityIndicator color="#000" />
-              : <Text style={s.saveBigBtnText}>Save workout 💪</Text>
-            }
-          </TouchableOpacity>
 
         </ScrollView>
       </KeyboardAvoidingView>
@@ -460,7 +472,9 @@ export default function LogWorkoutScreen() {
             <View style={s.successIconCircle}>
               <Text style={s.successIconText}>✓</Text>
             </View>
-            <Text style={s.successTitle}>Workout logged! 💪</Text>
+            <Text style={s.successTitle}>
+              {pointsAwarded != null ? `Workout logged! +${pointsAwarded} pts 🔥` : 'Workout logged! 💪'}
+            </Text>
             <Text style={s.successSub}>Keep that streak going!</Text>
           </Animated.View>
         </Animated.View>
@@ -481,16 +495,18 @@ const s = StyleSheet.create({
     borderBottomColor: C.border,
   },
   cancelText: { color: C.muted, fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800', color: C.text },
+  title: { fontSize: 17, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
   saveBtn: {
     backgroundColor: C.primary,
     borderRadius: 9,
     paddingHorizontal: 16,
-    paddingVertical: 7,
-    minWidth: 60,
+    paddingVertical: 12,
+    minWidth: 64,
+    minHeight: 44,
     alignItems: 'center',
+    justifyContent: 'center',
   },
-  saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
 
   scroll: { padding: 20, gap: 0, paddingBottom: 60 },
   sectionLabel: {

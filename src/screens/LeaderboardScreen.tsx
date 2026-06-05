@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
   TouchableOpacity, StatusBar, Share, Alert, Modal, ActivityIndicator,
@@ -11,12 +11,7 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeaderboardEntry, LeagueTier } from '../types/database';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-  gold: '#F59E0B', silver: '#9CA3AF', bronze: '#B45309',
-};
+import { C, S, R, FS, F } from '../theme';
 
 type Tab = 'league' | 'week' | 'world' | 'friends';
 
@@ -39,6 +34,8 @@ function initials(entry: LeaderboardEntry) {
   return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
 }
 
+const NUDGE_EMOJIS = ['💪', '🔥', '👏', '😤', '⚡'];
+
 export default function LeaderboardScreen() {
   const { profile } = useAuth();
   const userId = profile?.id ?? '';
@@ -59,7 +56,6 @@ export default function LeaderboardScreen() {
   const [nudgeSending, setNudgeSending] = useState(false);
   const [nudgedToday, setNudgedToday] = useState<Set<string>>(new Set());
 
-  const NUDGE_EMOJIS = ['💪', '🔥', '👏', '😤', '⚡'];
 
   async function sendNudge(receiverId: string, emoji?: string) {
     setNudgeSending(true);
@@ -95,7 +91,7 @@ export default function LeaderboardScreen() {
     fetchWeekly();
     fetchGlobal();
     fetchFriends();
-  }, []);
+  }, [fetchWeekly, fetchGlobal, fetchFriends]);
 
   const onRefresh = useCallback(() => {
     fetchWeekly();
@@ -121,7 +117,7 @@ export default function LeaderboardScreen() {
   const data = tab === 'week' ? weeklyBoard : tab === 'world' ? globalBoard : friendsBoard;
   const myRank = tab === 'week' ? myWeeklyRank : tab === 'world' ? myGlobalRank : null;
 
-  function renderRow({ item, index }: { item: LeaderboardEntry; index: number }) {
+  const renderRow = useCallback(({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const rank = index + 1;
     const isMe = item.id === userId;
     const isFollowing = following.has(item.id);
@@ -158,6 +154,7 @@ export default function LeaderboardScreen() {
             style={[s.followBtn, isFollowing && s.followingBtn]}
             onPress={() => isFollowing ? unfollow(item.id) : follow(item.id)}
             activeOpacity={0.7}
+            accessibilityLabel={isFollowing ? 'Unfollow' : 'Follow'}
           >
             <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
               {isFollowing ? '✓' : '+'}
@@ -169,13 +166,14 @@ export default function LeaderboardScreen() {
             style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
             onPress={() => setNudgeTarget({ id: item.id, name: item.full_name ?? item.username })}
             activeOpacity={0.7}
+            accessibilityLabel="Send nudge"
           >
             <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
           </TouchableOpacity>
         )}
       </View>
     );
-  }
+  }, [tab, following, userId, nudgedToday, unfollow, follow, setNudgeTarget]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -229,6 +227,9 @@ export default function LeaderboardScreen() {
             key={key}
             style={[s.tab, tab === key && s.tabActive]}
             onPress={() => setTab(key)}
+            accessibilityLabel={label.replace(/[^\w\s]/g, '').trim() + ' leaderboard'}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === key }}
           >
             <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
@@ -249,7 +250,7 @@ export default function LeaderboardScreen() {
               </Text>
               {(() => {
                 const dayOfWeek = new Date().getDay(); // 0=Sun
-                const daysLeft = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+                const daysLeft = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
                 return (
                   <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
                     Top 5 promote · Bottom 5 relegate · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
@@ -290,8 +291,8 @@ export default function LeaderboardScreen() {
                   <Text style={s.leagueMemberName} numberOfLines={1}>
                     {name}{isMe ? ' (you)' : ''}
                   </Text>
-                  {isPromotion && <Text style={{ fontSize: 10, color: '#22C55E', fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
-                  {isRelegation && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
+                  {isPromotion && <Text style={{ fontSize: 10, color: C.green, fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
+                  {isRelegation && <Text style={{ fontSize: 10, color: C.error, fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
                 </View>
                 <Text style={s.leaguePts}>{item.weekly_points} pts</Text>
                 {!isMe && (
@@ -347,6 +348,7 @@ export default function LeaderboardScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={renderRow}
+          getItemLayout={(_, index) => ({ length: 74, offset: 74 * index, index })}
           ListFooterComponent={(() => {
             const userInData = data.some(item => item.id === userId);
             if (userInData || myRank === null || !profile) return null;
@@ -378,18 +380,28 @@ export default function LeaderboardScreen() {
             );
           })()}
           ListEmptyComponent={
-            !loading ? (
-              <View style={s.empty}>
-                <Text style={s.emptyEmoji}>{tab === 'friends' ? '👥' : '🏆'}</Text>
-                <Text style={s.emptyTitle}>
-                  {tab === 'friends' ? 'No friends yet' : tab === 'week' ? 'No workouts this week' : 'No one here yet'}
-                </Text>
-                <Text style={s.emptyText}>
-                  {tab === 'friends'
-                    ? 'Switch to Week or All-time and tap + to follow people'
-                    : 'Log your first workout to appear here'}
-                </Text>
+            loading && data.length === 0 ? (
+              <View style={{ alignItems: 'center', paddingTop: 60 }}>
+                <ActivityIndicator color={C.primary} size="small" />
               </View>
+            ) : !loading ? (
+              tab === 'friends' ? (
+                <View style={{ alignItems: 'center', paddingTop: 60, gap: 12 }}>
+                  <Text style={{ fontSize: 32 }}>👥</Text>
+                  <Text style={{ color: C.text, fontSize: 16, fontWeight: '700' }}>No friends yet</Text>
+                  <Text style={{ color: C.muted, fontSize: 13, textAlign: 'center', paddingHorizontal: 32 }}>
+                    Follow other athletes to see them on your leaderboard
+                  </Text>
+                </View>
+              ) : (
+                <View style={s.empty}>
+                  <Text style={s.emptyEmoji}>🏆</Text>
+                  <Text style={s.emptyTitle}>
+                    {tab === 'week' ? 'No workouts this week' : 'No one here yet'}
+                  </Text>
+                  <Text style={s.emptyText}>Log your first workout to appear here</Text>
+                </View>
+              )
             ) : null
           }
         />
@@ -400,9 +412,9 @@ export default function LeaderboardScreen() {
 
 const s = StyleSheet.create({
   container:    { flex: 1, backgroundColor: C.bg },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
-  title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle:     { fontSize: 13, color: C.muted, marginTop: 2 },
+  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[2] + 2 },
+  title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5, fontFamily: F.uiBold },
+  subtitle:     { fontSize: 13, color: C.muted, marginTop: 2, fontFamily: F.ui },
   headerRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
   shareBtn:     { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
   shareBtnText: { fontSize: 12, fontWeight: '700', color: C.text },
@@ -413,7 +425,7 @@ const s = StyleSheet.create({
   scoringRow:   { flexDirection: 'row', paddingHorizontal: 16, gap: 5, marginBottom: 10 },
   chip:         { flex: 1, backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingVertical: 6, alignItems: 'center', gap: 2 },
   chipIcon:     { fontSize: 12 },
-  chipLabel:    { fontSize: 8, color: C.muted, fontWeight: '600', textAlign: 'center' },
+  chipLabel:    { fontSize: 10, color: C.muted, fontWeight: '600', textAlign: 'center' },
 
   tabs:         { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, backgroundColor: C.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.border },
   tab:          { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
@@ -422,7 +434,7 @@ const s = StyleSheet.create({
   tabTextActive:{ color: '#000' },
 
   list:         { paddingHorizontal: 16, paddingBottom: 100 },
-  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
+  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: S[3], marginBottom: S[2], gap: S[2] + 2 },
   rowMe:        { borderColor: C.primary + '50', backgroundColor: C.primary + '08' },
   rowGold:      { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   rowSilver:    { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
@@ -432,10 +444,10 @@ const s = StyleSheet.create({
   avatarMe:     { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
   avatarText:   { fontSize: 13, fontWeight: '800', color: C.muted },
   info:         { flex: 1 },
-  name:         { fontSize: 14, fontWeight: '700', color: C.text },
+  name:         { fontSize: 14, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   username:     { fontSize: 11, color: C.muted, marginTop: 1 },
   ptsBadge:     { alignItems: 'flex-end' },
-  pts:          { fontSize: 16, fontWeight: '900', color: C.text },
+  pts:          { fontSize: 16, fontWeight: '900', color: C.text, fontFamily: F.uiBold },
   ptsLabel:     { fontSize: 9, color: C.muted, fontWeight: '600' },
   followBtn:    { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   followingBtn: { backgroundColor: C.primary },
@@ -446,10 +458,10 @@ const s = StyleSheet.create({
   emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.muted },
   emptyText:    { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
 
-  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
+  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: S[3], marginBottom: 6, gap: S[2] + 2 },
   leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
-  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
+  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: C.green },
+  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: C.error },
   leagueRowGold:       { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   leagueRowSilver:     { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
   leagueRowBronze:     { borderLeftWidth: 3, borderLeftColor: '#B45309' },
@@ -470,7 +482,7 @@ const s = StyleSheet.create({
   nudgeEmojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   nudgeEmoji: { fontSize: 26 },
   nudgeTextBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
-  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15, fontFamily: F.uiBold },
 
   pinnedFooter: {
     paddingTop: 10,
@@ -479,7 +491,7 @@ const s = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.07)',
   },
   pinnedLabel: {
-    fontSize: 9, fontWeight: '700', color: '#637C8F',
+    fontSize: 11, fontWeight: '700', color: C.muted,
     letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4,
   },
 });

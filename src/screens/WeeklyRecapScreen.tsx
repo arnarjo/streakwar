@@ -1,10 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Share, StatusBar,
+  Share, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
 import { toLocalDate } from '../lib/dateUtils';
 import { useAuth } from '../hooks/useAuth';
@@ -12,11 +15,8 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
+import { C } from '../theme';
 
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
 
 function getLastMonday(): string {
   const d = new Date();
@@ -34,8 +34,8 @@ function getCurrentMonday(): string {
 
 export default function WeeklyRecapScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'WeeklyRecap'>>();
   const isCurrentWeek = route.params?.week === 'current';
 
   const weekStart = isCurrentWeek ? getCurrentMonday() : getLastMonday();
@@ -54,13 +54,15 @@ export default function WeeklyRecapScreen() {
   const [totalPts, setTotalPts] = useState(0);
   const [prevWorkouts, setPrevWorkouts] = useState(0);
   const [error, setError] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   async function load() {
     if (!profile?.id) return;
+    setLoading(true);
     try {
       const { data: workouts, error: workoutsError } = await supabase
         .from('workout_posts')
-        .select('steps, duration_minutes, distance_km')
+        .select('steps, duration_minutes, distance_km, points_awarded')
         .eq('user_id', profile!.id)
         .gte('workout_date', weekStart)
         .lte('workout_date', weekEndStr);
@@ -73,11 +75,7 @@ export default function WeeklyRecapScreen() {
       const steps = (workouts ?? []).reduce((s, w) => s + (w.steps ?? 0), 0);
       setTotalSteps(steps);
 
-      const pts = (workouts ?? []).reduce((s, w) =>
-        s + 1
-        + Math.floor((w.steps ?? 0) / 1000)
-        + Math.floor(w.distance_km ?? 0)
-        + Math.floor((w.duration_minutes ?? 0) / 30), 0);
+      const pts = (workouts ?? []).reduce((s, w) => s + (w.points_awarded ?? 0), 0);
       setTotalPts(pts);
 
       const prevStart = new Date(weekStart);
@@ -89,14 +87,16 @@ export default function WeeklyRecapScreen() {
         .from('workout_posts')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', profile!.id)
-        .gte('workout_date', prevStart.toISOString().slice(0, 10))
-        .lte('workout_date', prevEnd.toISOString().slice(0, 10));
+        .gte('workout_date', toLocalDate(prevStart))
+        .lte('workout_date', toLocalDate(prevEnd));
 
       if (prevError) { setError(true); return; }
 
       setPrevWorkouts(prevCount ?? 0);
     } catch {
       setError(true);
+    } finally {
+      setLoading(false);
     }
   }
 
@@ -130,12 +130,18 @@ export default function WeeklyRecapScreen() {
     return "Tough week — you'll come back stronger! 💪";
   }
 
+  if (loading) return (
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <ActivityIndicator color={C.primary} size="large" />
+    </View>
+  );
+
   if (error) return (
     <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 24 }}>
-      <Text style={{ color: '#9CA3AF', fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
+      <Text style={{ color: C.muted, fontSize: 16, marginBottom: 16, textAlign: 'center' }}>
         Could not load your weekly recap. Check your connection and try again.
       </Text>
-      <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: '#22C55E', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
+      <TouchableOpacity onPress={() => { setError(false); load(); }} style={{ backgroundColor: C.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 8 }}>
         <Text style={{ color: '#fff', fontWeight: '600' }}>Try Again</Text>
       </TouchableOpacity>
     </View>

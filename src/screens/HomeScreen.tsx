@@ -1,33 +1,28 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
   TouchableOpacity, StatusBar, Animated as RNAnimated,
 } from 'react-native';
 import ReAnimated, {
-  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
+  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle, cancelAnimation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useLeaderboard } from '../hooks/useLeaderboard';
 import { useLeague } from '../hooks/useLeague';
+import { useMilestones } from '../hooks/useMilestones';
 import { LEAGUE_TIER_META } from '../types/database';
-import type { WorkoutComment, LeagueTier } from '../types/database';
+import type { WorkoutComment, WorkoutPost, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
-import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
-import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C, S, R, FS, F } from '../theme';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
@@ -36,17 +31,18 @@ export default function HomeScreen() {
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
   const { rival, rivalDiff, fetchWeekly } = useLeaderboard(profile?.id ?? '');
-  const { myTier, myRank, members: leagueMembers } = useLeague(profile?.id ?? '');
+  const { myTier, myRank, members: leagueMembers, refresh: refreshLeague } = useLeague(profile?.id ?? '');
+  const { milestones, fetchMilestones, reactToMilestone, removeReaction } = useMilestones(profile?.id ?? '');
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
-  const daysUntilSunday = (() => {
+  const daysUntilSunday = useMemo(() => {
     const d = new Date().getDay();
-    return d === 0 ? 7 : 7 - d;
-  })();
+    return d === 0 ? 0 : 7 - d;
+  }, []);
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
-  const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
+  const [firstRunDismissed, setFirstRunDismissed] = React.useState(false);
 
   const streakGlowOpacity = useSharedValue(0.06);
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     streakGlowOpacity.value = withRepeat(
       withSequence(
         withTiming(0.18, { duration: 1800 }),
@@ -55,68 +51,20 @@ export default function HomeScreen() {
       -1,
       false,
     );
-  }, []);
+    return () => { cancelAnimation(streakGlowOpacity); };
+  }, [streakGlowOpacity]));
   const streakGlowStyle = useAnimatedStyle(() => ({
     opacity: streakGlowOpacity.value,
   }));
 
-  const fetchMilestones = useCallback(async () => {
-    if (!profile?.id) return;
-    const { data: parts } = await supabase
-      .from('challenge_participants')
-      .select('challenge_id')
-      .eq('user_id', profile.id);
-    if (!parts || parts.length === 0) return;
-
-    const { data: peers } = await supabase
-      .from('challenge_participants')
-      .select('user_id')
-      .in('challenge_id', parts.map(p => p.challenge_id))
-      .neq('user_id', profile.id);
-
-    if (!peers || peers.length === 0) return;
-    const peerIds = [...new Set(peers.map(p => p.user_id))];
-
-    const { data } = await supabase
-      .from('streak_milestones')
-      .select('*, profile:profiles(id, username, full_name)')
-      .in('user_id', peerIds)
-      .gte('achieved_at', new Date(Date.now() - 7 * 24 * 3600 * 1000).toISOString())
-      .order('achieved_at', { ascending: false })
-      .limit(5);
-
-    if (!data) return;
-
-    const milestoneIds = data.map((m: any) => m.id);
-    const { data: allReactions } = await supabase
-      .from('milestone_reactions')
-      .select('milestone_id, reaction, user_id')
-      .in('milestone_id', milestoneIds);
-
-    const reactionsByMilestone = new Map<string, { counts: Record<string, number>; myReaction: string | null }>();
-    for (const r of allReactions ?? []) {
-      if (!reactionsByMilestone.has(r.milestone_id)) {
-        reactionsByMilestone.set(r.milestone_id, { counts: {}, myReaction: null });
-      }
-      const entry = reactionsByMilestone.get(r.milestone_id)!;
-      entry.counts[r.reaction] = (entry.counts[r.reaction] ?? 0) + 1;
-      if (r.user_id === profile.id) entry.myReaction = r.reaction;
-    }
-
-    setMilestones(data.map((m: any) => {
-      const r = reactionsByMilestone.get(m.id);
-      return { ...m, reaction_counts: r?.counts ?? {}, my_reaction: r?.myReaction ?? null };
-    }));
-  }, [profile?.id]);
-
-  async function handleShare() {
+  const handleShare = useCallback(async () => {
     await Share.share({
       message:
         `🔥 ${streak?.current_streak ?? 0}-day streak on StreakWar!\n` +
         `⭐ ${(profile?.total_points ?? 0).toLocaleString()} total points\n` +
         `\nCan you beat me? Download StreakWar 💪`,
     });
-  }
+  }, [streak, profile]);
 
   useEffect(() => {
     fetchFeed();
@@ -126,10 +74,22 @@ export default function HomeScreen() {
   }, [fetchMilestones, fetchFeed, fetchWeekly]);
 
   const onRefresh = useCallback(async () => {
-    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones()]);
-  }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones]);
+    await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones(), refreshLeague()]);
+  }, [fetchFeed, refreshChallenges, fetchWeekly, fetchMilestones, refreshLeague]);
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
+
+  const renderFeedItem = useCallback(({ item }: { item: WorkoutPost }) => (
+    <WorkoutPostCard
+      post={item}
+      currentUserId={profile?.id}
+      onReact={toggleReaction}
+      onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
+      onAddComment={(id: string, text: string) => addComment(id, text)}
+      onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+      onDelete={(postId) => deleteWorkout(postId)}
+    />
+  ), [profile?.id, toggleReaction, fetchComments, addComment, navigation, deleteWorkout]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -139,14 +99,14 @@ export default function HomeScreen() {
         <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
-              {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
+              {profile?.full_name?.split(' ').filter(Boolean).map((w: string) => w[0]).filter(Boolean).join('').slice(0, 2).toUpperCase() ?? '?'}
             </Text>
           </View>
         </TouchableOpacity>
 
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.greeting}>
-            Hæ, {profile?.full_name?.split(' ')[0] ?? 'there'}!
+            Hey, {profile?.full_name?.split(' ')[0] ?? 'there'}!
           </Text>
           <Text style={s.subGreeting}>Ready to move today?</Text>
         </View>
@@ -154,10 +114,10 @@ export default function HomeScreen() {
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
             <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
-              <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
+              <Text style={s.rankPts}>⭐ {(profile?.total_points ?? 0).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)} accessibilityLabel="Log a workout" accessibilityRole="button">
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
@@ -170,12 +130,25 @@ export default function HomeScreen() {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
-          ListHeaderComponent={
+          ListHeaderComponent={useMemo(() => (
             <>
+              {feed.length === 0 && !loading && !myChallenges?.length && !firstRunDismissed && (
+                <View style={s.firstRunBanner}>
+                  <Text style={s.firstRunTitle}>Welcome to StreakWar! 👋</Text>
+                  <TouchableOpacity style={s.firstRunBtn} onPress={() => { setFirstRunDismissed(true); navigation.navigate('Challenges'); }}>
+                    <Text style={s.firstRunBtnText}>Join a challenge →</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={[s.firstRunBtn, s.firstRunBtnSecondary]} onPress={() => { setFirstRunDismissed(true); navigation.navigate('ConnectDevices'); }}>
+                    <Text style={[s.firstRunBtnText, s.firstRunBtnTextSecondary]}>Connect health app →</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
               {streak && streak.current_streak > 0 && (() => {
-                const toNext = 10 - (streak.current_streak % 10);
-                const milestone = Math.ceil(streak.current_streak / 10) * 10;
-                const progress = (streak.current_streak % 10) / 10 * 100;
+                const remainder = streak.current_streak % 10;
+                const toNext = remainder === 0 ? 10 : 10 - remainder;
+                const milestone = remainder === 0 ? streak.current_streak + 10 : Math.ceil(streak.current_streak / 10) * 10;
+                const progress = remainder === 0 ? 0 : remainder / 10 * 100;
                 return (
                   <View style={{ position: 'relative', marginBottom: 14 }}>
                     <ReAnimated.View style={[
@@ -196,7 +169,7 @@ export default function HomeScreen() {
                             <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
                           )}
                         </View>
-                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
+                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare} accessibilityLabel="Share your streak" accessibilityRole="button">
                           <Text style={s.streakShareText}>📤  Share</Text>
                         </TouchableOpacity>
                       </View>
@@ -271,10 +244,25 @@ export default function HomeScreen() {
                 <View style={s.section}>
                   <Text style={s.sectionLabel}>Streak milestones</Text>
                   {milestones.map(m => (
-                    <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+                    <StreakMilestoneCard
+                      key={m.id}
+                      item={m}
+                      currentUserId={profile?.id ?? ''}
+                      onReact={reactToMilestone}
+                      onRemoveReact={removeReaction}
+                    />
                   ))}
                 </View>
               )}
+
+              <TouchableOpacity
+                style={s.weeklyRecapBanner}
+                onPress={() => navigation.navigate('WeeklyRecap', { week: 'current' })}
+                activeOpacity={0.85}
+              >
+                <Text style={s.weeklyRecapText}>📊 View Weekly Recap</Text>
+                <Text style={s.bannerChev}>›</Text>
+              </TouchableOpacity>
 
               {!loading && feed.length > 0 && (
                 <View style={s.sectionHeader}>
@@ -282,18 +270,9 @@ export default function HomeScreen() {
                 </View>
               )}
             </>
-          }
-          renderItem={({ item }) => (
-            <WorkoutPostCard
-              post={item}
-              currentUserId={profile?.id}
-              onReact={toggleReaction}
-              onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
-              onAddComment={(id: string, text: string) => addComment(id, text)}
-              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
-              onDelete={(postId) => deleteWorkout(postId)}
-            />
-          )}
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          ), [streak, leagueMembers, myRank, myTier, tierMeta, daysUntilSunday, rival, rivalDiff, activeChallenges, milestones, loading, feed.length, myChallenges, firstRunDismissed, profile?.id, navigation, handleShare, reactToMilestone, removeReaction])}
+          renderItem={renderFeedItem}
           ListEmptyComponent={
             loading ? (
               <View style={{ paddingHorizontal: 16 }}>
@@ -320,23 +299,23 @@ export default function HomeScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: S[5], paddingTop: S[3], paddingBottom: S[4] },
   headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
   headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
-  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
-  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1 },
+  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3, fontFamily: F.uiBold },
+  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1, fontFamily: F.ui },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
   rankPts: { fontSize: 13, fontWeight: '900', color: C.primary },
-  logBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
-  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
-  list: { paddingHorizontal: 16, paddingBottom: 100 },
+  logBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[4], paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
+  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
+  list: { paddingHorizontal: S[4], paddingBottom: 100 },
   streakHero: {
     backgroundColor: C.card,
     borderWidth: 1,
     borderColor: C.primary + '30',
-    borderRadius: 22,
-    padding: 20,
+    borderRadius: R.xl,
+    padding: S[5],
     marginBottom: 0,
     overflow: 'hidden',
     shadowColor: C.primary,
@@ -348,7 +327,7 @@ const s = StyleSheet.create({
   streakHeroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
   streakHeroLeft: { gap: 2 },
   streakHeroNumber: { fontSize: 64, fontWeight: '800', color: C.primary, letterSpacing: -2, lineHeight: 60 },
-  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text },
+  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
   streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.muted },
   streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
@@ -362,27 +341,35 @@ const s = StyleSheet.create({
     backgroundColor: C.primary + '12',
     borderWidth: 1.5,
     borderColor: C.primary + '30',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
+    borderRadius: R.lg,
+    padding: S[4] + 2,
+    marginBottom: S[3],
     alignItems: 'center',
     gap: 4,
   },
   streakStartTitle: { fontSize: 16, fontWeight: '800', color: C.primary },
   streakStartSub: { fontSize: 13, color: C.muted },
-  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: 10, borderRadius: 16, backgroundColor: C.card, borderWidth: 1 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: S[2] + 2, borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1 },
   bannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
+  sectionLabel: { fontSize: 11, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', fontFamily: F.uiBold },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
   empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
-  emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text, fontFamily: F.uiBold },
+  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20, fontFamily: F.ui },
+  emptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[5], paddingVertical: S[3], marginTop: S[2] },
+  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
+  weeklyRecapBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12, paddingHorizontal: 15, marginBottom: S[2] + 2, borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  weeklyRecapText: { fontSize: 14, fontWeight: '700', color: C.text, fontFamily: F.uiBold },
+  firstRunBanner: { backgroundColor: C.card, borderWidth: 1, borderColor: C.primary + '30', borderRadius: R.lg, padding: S[4], marginBottom: S[3], gap: 10, alignItems: 'stretch' },
+  firstRunTitle: { fontSize: 16, fontWeight: '800', color: C.text, fontFamily: F.uiBold, marginBottom: 2 },
+  firstRunBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingVertical: 12, alignItems: 'center' },
+  firstRunBtnSecondary: { backgroundColor: 'transparent', borderWidth: 1, borderColor: C.primary + '50' },
+  firstRunBtnText: { color: '#000', fontWeight: '800', fontSize: 14, fontFamily: F.uiBold },
+  firstRunBtnTextSecondary: { color: C.primary },
 });

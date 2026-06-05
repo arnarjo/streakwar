@@ -11,8 +11,11 @@ import { supabase } from './src/lib/supabase';
 import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
 import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
 import { initHealthConnect } from './src/lib/healthConnect';
-import { Platform, Linking } from 'react-native';
+import { Platform, Linking, View } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
+import { useFonts, Saira_400Regular, Saira_700Bold, Saira_800ExtraBold } from '@expo-google-fonts/saira';
+import { SairaCondensed_700Bold, SairaCondensed_800ExtraBold } from '@expo-google-fonts/saira-condensed';
+import { AuthProvider } from './src/context/AuthContext';
 
 function AppInner() {
   const [session, setSession] = useState<Session | null>(null);
@@ -90,13 +93,27 @@ async function bootHealthSync(userId: string) {
 }
 
 export default function App() {
+  const [fontsLoaded] = useFonts({
+    Saira_400Regular,
+    Saira_700Bold,
+    Saira_800ExtraBold,
+    SairaCondensed_700Bold,
+    SairaCondensed_800ExtraBold,
+  });
+
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: '#0C1117' }} />;
+  }
+
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
-          <AppInner />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
+            <AppInner />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

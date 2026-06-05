@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 
 export const TRASH_TALK_MESSAGES: Record<string, string> = {
@@ -21,6 +21,7 @@ export interface ChallengeMessage {
 export function useChallengeMessages(challengeId: string, userId: string) {
   const [messages, setMessages] = useState<ChallengeMessage[]>([]);
   const [sending, setSending] = useState(false);
+  const sendingRef = useRef(false);
 
   const fetch = useCallback(async () => {
     if (!challengeId) return;
@@ -34,16 +35,18 @@ export function useChallengeMessages(challengeId: string, userId: string) {
   }, [challengeId]);
 
   const sendMessage = useCallback(async (messageKey: string) => {
-    if (!userId || sending) return;
+    if (!userId || sendingRef.current) return;
+    sendingRef.current = true;
     setSending(true);
     await supabase.from('challenge_messages').insert({
       challenge_id: challengeId,
       sender_id: userId,
       message_key: messageKey,
     });
+    sendingRef.current = false;
     setSending(false);
     await fetch();
-  }, [challengeId, userId, sending, fetch]);
+  }, [challengeId, userId, fetch]);
 
   return { messages, sending, fetch, sendMessage };
 }

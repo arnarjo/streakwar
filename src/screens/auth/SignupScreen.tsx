@@ -7,11 +7,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
+import { C } from '../../theme';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444', success: '#22C55E',
-};
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type FormErrors = { fullName?: string; username?: string; email?: string; password?: string; confirm?: string };
@@ -30,6 +27,28 @@ export default function SignupScreen({ navigation }: Props) {
   const [errors, setErrors] = useState<FormErrors>({});
   const [step, setStep] = useState<1 | 2>(1);
   const shakeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+
+  function animateStepIn() {
+    slideAnim.setValue(30);
+    fadeAnim.setValue(0);
+    Animated.parallel([
+      Animated.timing(slideAnim, { toValue: 0, duration: 250, useNativeDriver: true }),
+      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+    ]).start();
+  }
+
+  function goToStep2() {
+    if (!validateStep1()) return;
+    setStep(2);
+    animateStepIn();
+  }
+
+  function goToStep1() {
+    setStep(1);
+    animateStepIn();
+  }
 
   async function handleSocialSignIn(provider: 'google' | 'facebook') {
     setSocialLoading(provider);
@@ -63,12 +82,17 @@ export default function SignupScreen({ navigation }: Props) {
     const e: FormErrors = {};
     if (!email.trim()) e.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) e.email = 'Invalid email address';
-    if (!password) e.password = 'Password is required';
-    else if (password.length < 8) e.password = 'At least 8 characters required';
-    else if (!/[A-Z]/.test(password)) e.password = 'Must contain at least one uppercase letter';
-    else if (!/[a-z]/.test(password)) e.password = 'Must contain at least one lowercase letter';
-    else if (!/[0-9]/.test(password)) e.password = 'Must contain at least one number';
-    else if (!/[^A-Za-z0-9]/.test(password)) e.password = 'Must contain at least one special character (!@#$...)';
+    if (!password) {
+      e.password = 'Password is required';
+    } else {
+      const pwErrors: string[] = [];
+      if (password.length < 8) pwErrors.push('at least 8 characters');
+      if (!/[A-Z]/.test(password)) pwErrors.push('one uppercase letter');
+      if (!/[a-z]/.test(password)) pwErrors.push('one lowercase letter');
+      if (!/[0-9]/.test(password)) pwErrors.push('one number');
+      if (!/[^A-Za-z0-9]/.test(password)) pwErrors.push('one special character (!@#$...)');
+      if (pwErrors.length > 0) e.password = 'Must include: ' + pwErrors.join(', ');
+    }
     if (!confirm) e.confirm = 'Please confirm your password';
     else if (password !== confirm) e.confirm = 'Passwords do not match';
     setErrors(e);
@@ -86,8 +110,8 @@ export default function SignupScreen({ navigation }: Props) {
       if (error.message.includes('already registered')) setErrors({ email: 'This email is already registered' });
       else Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
     } else {
-      Alert.alert('Welcome! 🎉', "We've sent a confirmation email. Check your inbox.", [
-        { text: 'OK', onPress: () => navigation.navigate('Login') },
+      Alert.alert('Check your email', "We've sent a confirmation link to " + email.trim() + ". Tap the link and you'll be signed in automatically.", [
+        { text: 'OK', onPress: () => navigation.replace('Login') },
       ]);
     }
   }
@@ -114,7 +138,7 @@ export default function SignupScreen({ navigation }: Props) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
 
-          <TouchableOpacity style={s.backBtn} onPress={() => step === 2 ? setStep(1) : navigation.goBack()}>
+          <TouchableOpacity style={s.backBtn} onPress={() => step === 2 ? goToStep1() : navigation.goBack()}>
             <Text style={s.backText}>← Back</Text>
           </TouchableOpacity>
 
@@ -161,7 +185,7 @@ export default function SignupScreen({ navigation }: Props) {
             </>
           )}
 
-          <Animated.View style={{ transform: [{ translateX: shakeAnim }] }}>
+          <Animated.View style={{ transform: [{ translateX: shakeAnim }, { translateX: slideAnim }], opacity: fadeAnim }}>
             {step === 1 ? (
               <>
                 <View style={s.inputGroup}>
@@ -169,7 +193,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.fullName && s.inputError]}
                     placeholder="Jane Smith"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={fullName}
                     onChangeText={t => { setFullName(t); setErrors(e => ({ ...e, fullName: undefined })); }}
                     autoCapitalize="words"
@@ -185,19 +209,19 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.prefixInput, errors.username && s.inputError]}
                       placeholder="jane.smith"
-                      placeholderTextColor={C.dimmed}
+                      placeholderTextColor={C.muted}
                       value={username}
                       onChangeText={t => { setUsername(t.toLowerCase().replace(/\s/g, '')); setErrors(e => ({ ...e, username: undefined })); }}
                       autoCapitalize="none"
                       autoCorrect={false}
                       returnKeyType="done"
-                      onSubmitEditing={() => validateStep1() && setStep(2)}
+                      onSubmitEditing={goToStep2}
                     />
                   </View>
                   {errors.username && <Text style={s.errorText}>{errors.username}</Text>}
                 </View>
 
-                <TouchableOpacity style={s.primaryBtn} onPress={() => validateStep1() && setStep(2)} activeOpacity={0.85}>
+                <TouchableOpacity style={s.primaryBtn} onPress={goToStep2} activeOpacity={0.85}>
                   <Text style={s.primaryBtnText}>Next →</Text>
                 </TouchableOpacity>
               </>
@@ -208,7 +232,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.email && s.inputError]}
                     placeholder="you@example.com"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={email}
                     onChangeText={t => { setEmail(t); setErrors(e => ({ ...e, email: undefined })); }}
                     keyboardType="email-address"
@@ -225,7 +249,7 @@ export default function SignupScreen({ navigation }: Props) {
                     <TextInput
                       style={[s.input, s.passwordInput, errors.password && s.inputError]}
                       placeholder="8+ chars, A-Z, 0-9, !@#..."
-                      placeholderTextColor={C.dimmed}
+                      placeholderTextColor={C.muted}
                       value={password}
                       onChangeText={t => { setPassword(t); setErrors(e => ({ ...e, password: undefined })); }}
                       secureTextEntry={!showPassword}
@@ -251,7 +275,7 @@ export default function SignupScreen({ navigation }: Props) {
                   <TextInput
                     style={[s.input, errors.confirm && s.inputError, confirm.length > 0 && password === confirm && s.inputSuccess]}
                     placeholder="Repeat your password"
-                    placeholderTextColor={C.dimmed}
+                    placeholderTextColor={C.muted}
                     value={confirm}
                     onChangeText={t => { setConfirm(t); setErrors(e => ({ ...e, confirm: undefined })); }}
                     secureTextEntry={!showPassword}
@@ -295,7 +319,7 @@ const s = StyleSheet.create({
   backText: { color: C.muted, fontSize: 14, fontWeight: '600' },
   progressBar: { height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 6, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: C.primary, borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: C.dimmed, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
+  progressLabel: { fontSize: 11, color: C.muted, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
   logo: { fontSize: 24, fontWeight: '900', color: C.primary, letterSpacing: 4, marginBottom: 12 },
   title: { fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
   subtitle: { fontSize: 14, color: C.muted, marginBottom: 28, lineHeight: 20 },
@@ -334,5 +358,5 @@ const s = StyleSheet.create({
   socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
-  dividerText: { color: C.dimmed, fontSize: 12 },
+  dividerText: { color: C.muted, fontSize: 12 },
 });
