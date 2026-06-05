@@ -6,11 +6,14 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { usePremium } from '../hooks/usePremium';
 import UpgradeModal from '../components/UpgradeModal';
+import { ProBadge } from '../components/ProBadge';
 import {
   SCORING_MODE_LABELS, TIE_BREAK_LABELS,
 } from '../types/database';
@@ -49,7 +52,7 @@ type Step = 1 | 2 | 3 | 4;
 
 export default function CreateChallengeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'CreateChallenge'>>();
   const { createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore } = usePremium(profile?.id ?? '');
 
@@ -310,9 +313,7 @@ export default function CreateChallengeScreen() {
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, flex: 1 }}>
                       <Text style={s.toggleLabel}>{SCORING_MODE_LABELS[mode]}</Text>
                       {isProMode && !isPro && (
-                        <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                          <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
-                        </View>
+                        <ProBadge />
                       )}
                     </View>
                     <View style={[s.checkbox, active && s.checkboxActive]}>
@@ -379,9 +380,7 @@ export default function CreateChallengeScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Text style={s.switchLabel}>Require photo proof?</Text>
                     {!isPro && (
-                      <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
-                      </View>
+                      <ProBadge />
                     )}
                   </View>
                   <Text style={s.switchHint}>Participants must upload a photo</Text>
@@ -431,9 +430,7 @@ export default function CreateChallengeScreen() {
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
                     <Text style={s.switchLabel}>Open to everyone?</Text>
                     {!isPro && (
-                      <View style={{ backgroundColor: '#FBBF2420', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 }}>
-                        <Text style={{ fontSize: 9, fontWeight: '800', color: '#FBBF24', letterSpacing: 0.5 }}>PRO</Text>
-                      </View>
+                      <ProBadge />
                     )}
                   </View>
                   <Text style={s.switchHint}>Appears in the Discover tab</Text>
