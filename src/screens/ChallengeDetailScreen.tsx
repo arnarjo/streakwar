@@ -18,7 +18,7 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
@@ -420,9 +420,9 @@ const s = StyleSheet.create({
   },
   backBtn: { padding: 12, minHeight: 44, minWidth: 44, alignItems: 'center', justifyContent: 'center' },
   backText: { fontSize: 22, color: C.text },
-  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: C.text },
+  navTitle: { flex: 1, fontSize: 17, fontWeight: '700', fontFamily: F.bold, color: C.text },
   shareBtn: { padding: 4 },
-  shareText: { color: C.primary, fontWeight: '700', fontSize: 14 },
+  shareText: { color: C.primary, fontWeight: '700', fontFamily: F.bold, fontSize: 14 },
 
   tabs: {
     flexDirection: 'row',
@@ -438,7 +438,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
   tabActive: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
-  tabText: { fontSize: 12, color: C.muted2, fontWeight: '600' },
+  tabText: { fontSize: 12, color: C.muted2, fontWeight: '600', fontFamily: F.medium },
   tabTextActive: { color: C.primary },
 
   list: { paddingHorizontal: 16, paddingBottom: 100 },
@@ -454,17 +454,17 @@ const s = StyleSheet.create({
     marginBottom: 16,
     gap: 6,
   },
-  myRankLabel: { fontSize: 11, fontWeight: '700', color: C.primary, letterSpacing: 1 },
+  myRankLabel: { fontSize: 11, fontWeight: '700', fontFamily: F.bold, color: C.primary, letterSpacing: 1 },
   myRankRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  myRankNum: { fontSize: 24, fontWeight: '900', color: C.primary },
-  myRankScore: { fontSize: 16, fontWeight: '600', color: C.text, flex: 1 },
+  myRankNum: { fontSize: 24, fontWeight: '900', fontFamily: F.disp, color: C.primary },
+  myRankScore: { fontSize: 16, fontWeight: '600', fontFamily: F.medium, color: C.text, flex: 1 },
   logWorkoutBtn: {
     backgroundColor: C.primary,
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12 },
+  logWorkoutBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 12 },
 
   podium: {
     flexDirection: 'row',
@@ -475,7 +475,7 @@ const s = StyleSheet.create({
     gap: 4,
   },
   podiumSlot: { alignItems: 'center', gap: 4 },
-  podiumScore: { fontSize: 11, color: C.muted2, fontWeight: '600' },
+  podiumScore: { fontSize: 11, color: C.muted2, fontWeight: '600', fontFamily: F.medium },
   podiumAvatar: {
     width: 44,
     height: 44,
@@ -487,7 +487,7 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   podiumAvatarImg: { width: 44, height: 44, borderRadius: 22 },
-  podiumAvatarText: { fontSize: 16, fontWeight: '800' },
+  podiumAvatarText: { fontSize: 16, fontWeight: '800', fontFamily: F.disp },
   podiumBar: {
     width: '100%',
     borderWidth: 1,
@@ -499,9 +499,9 @@ const s = StyleSheet.create({
     borderBottomLeftRadius: 0,
     borderBottomRightRadius: 0,
   },
-  podiumRankNum: { fontSize: 16, fontWeight: '900', paddingVertical: 4 },
-  podiumName: { fontSize: 11, color: C.muted2, fontWeight: '600', textAlign: 'center' },
-  restLabel: { fontSize: 12, fontWeight: '700', color: C.muted2, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
+  podiumRankNum: { fontSize: 16, fontWeight: '900', fontFamily: F.disp, paddingVertical: 4 },
+  podiumName: { fontSize: 11, color: C.muted2, fontWeight: '600', fontFamily: F.medium, textAlign: 'center' },
+  restLabel: { fontSize: 12, fontWeight: '700', fontFamily: F.bold, color: C.muted2, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
 
   rankRow: {
     flexDirection: 'row',
@@ -515,7 +515,7 @@ const s = StyleSheet.create({
     borderColor: C.border,
   },
   rankRowMe: { borderColor: C.primary + '40', backgroundColor: C.primary + '08' },
-  rankNum: { fontSize: 14, fontWeight: '700', color: C.muted2, width: 28 },
+  rankNum: { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.muted2, width: 28 },
   rankAvatar: {
     width: 36,
     height: 36,
@@ -526,9 +526,9 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: C.border,
   },
-  rankAvatarText: { fontSize: 13, fontWeight: '700', color: C.muted2 },
-  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text },
-  rankScore: { fontSize: 14, fontWeight: '800', color: C.text },
+  rankAvatarText: { fontSize: 13, fontWeight: '700', fontFamily: F.bold, color: C.muted2 },
+  rankName: { flex: 1, fontSize: 14, fontWeight: '600', fontFamily: F.medium, color: C.text },
+  rankScore: { fontSize: 14, fontWeight: '800', fontFamily: F.disp, color: C.text },
 
   infoCard: {
     backgroundColor: C.card,
@@ -538,7 +538,7 @@ const s = StyleSheet.create({
     padding: 14,
     gap: 4,
   },
-  infoLabel: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5 },
+  infoLabel: { fontSize: 10, fontWeight: '700', fontFamily: F.bold, color: C.muted2, letterSpacing: 1.5 },
   infoValue: { fontSize: 14, color: C.text, lineHeight: 20 },
   shareCardBtn: {
     backgroundColor: C.primary,
@@ -546,14 +546,14 @@ const s = StyleSheet.create({
     paddingVertical: 14,
     alignItems: 'center',
   },
-  shareCardBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  shareCardBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 15 },
 
   trashGrid: { padding: 16, gap: 8 },
   trashBtn: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 12, paddingHorizontal: 16, paddingVertical: 12 },
-  trashBtnText: { fontSize: 14, color: '#EEF4F8', fontWeight: '600' },
+  trashBtnText: { fontSize: 14, color: '#EEF4F8', fontWeight: '600', fontFamily: F.medium },
   messageList: { paddingHorizontal: 16, paddingBottom: 40 },
   messageRow: { backgroundColor: '#1E2A35', borderRadius: 10, padding: 12, marginBottom: 6 },
-  messageSender: { fontSize: 11, color: '#F97316', fontWeight: '700', marginBottom: 2 },
+  messageSender: { fontSize: 11, color: '#F97316', fontWeight: '700', fontFamily: F.bold, marginBottom: 2 },
   messageText: { fontSize: 14, color: '#EEF4F8' },
   emptyBanter: { alignItems: 'center', paddingTop: 32 },
   emptyBanterText: { fontSize: 14, color: '#4A6070', textAlign: 'center' },
@@ -566,7 +566,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
   },
   shareRankBtnBusy: { opacity: 0.5 },
-  shareRankBtnText: { color: C.primary, fontWeight: '700', fontSize: 13 },
+  shareRankBtnText: { color: C.primary, fontWeight: '700', fontFamily: F.bold, fontSize: 13 },
 
   offScreen: { position: 'absolute', top: -1000, left: -1000, opacity: 0 },
 });

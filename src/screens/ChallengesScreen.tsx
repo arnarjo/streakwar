@@ -16,7 +16,7 @@ import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 import UpgradeModal from '../components/UpgradeModal';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
 const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
@@ -287,33 +287,33 @@ export default function ChallengesScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
+  title: { fontSize: 24, fontWeight: '800', fontFamily: F.disp, color: C.text, letterSpacing: -0.5 },
   headerBtns: { flexDirection: 'row', gap: 8 },
   joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  joinBtnText: { color: C.text, fontWeight: '700', fontSize: 13 },
+  joinBtnText: { color: C.text, fontWeight: '700', fontFamily: F.bold, fontSize: 13 },
   createBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  createBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  createBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 13 },
   tabs: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 12, gap: 8 },
   tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)' },
   tabActive: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
-  tabText: { fontSize: 13, color: C.muted2, fontWeight: '600' },
+  tabText: { fontSize: 13, color: C.muted2, fontWeight: '600', fontFamily: F.medium },
   tabTextActive: { color: C.primary },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
   empty: { alignItems: 'center', paddingTop: 64, gap: 12 },
   emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted2 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', fontFamily: F.bold, color: C.muted2 },
   emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  emptyBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 14 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
   modalSheet: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 12 },
   modalHandle: { width: 36, height: 4, backgroundColor: C.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
-  modalTitle: { fontSize: 20, fontWeight: '800', color: C.text },
+  modalTitle: { fontSize: 20, fontWeight: '800', fontFamily: F.disp, color: C.text },
   modalSub: { fontSize: 14, color: C.muted2 },
-  codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 6, textAlign: 'center' },
+  codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 24, fontWeight: '800', fontFamily: F.disp, letterSpacing: 6, textAlign: 'center' },
   joinConfirmBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
-  joinConfirmBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  joinConfirmBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 15 },
   cancelBtn: { alignItems: 'center', paddingVertical: 4 },
-  cancelBtnText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
+  cancelBtnText: { color: C.muted2, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
   quickBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,7 +327,7 @@ const s = StyleSheet.create({
     marginBottom: 14,
   },
   quickBannerEmoji: { fontSize: 24 },
-  quickBannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
+  quickBannerTitle: { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
   quickBannerSub: { fontSize: 12, color: C.muted2, marginTop: 2 },
   quickBannerArrow: { fontSize: 18, color: C.primary, fontWeight: '700' },
   quickInfoRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
@@ -339,7 +339,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10,
     paddingVertical: 4,
   },
-  quickTagText: { color: C.primary, fontSize: 12, fontWeight: '700' },
+  quickTagText: { color: C.primary, fontSize: 12, fontWeight: '700', fontFamily: F.bold },
   nameInput: {
     backgroundColor: C.bg,
     borderWidth: 1,
@@ -350,6 +350,7 @@ const s = StyleSheet.create({
     color: C.text,
     fontSize: 16,
     fontWeight: '600',
+    fontFamily: F.medium,
   },
   inviteCodeBox: {
     backgroundColor: C.bg,
@@ -362,6 +363,7 @@ const s = StyleSheet.create({
   inviteCode: {
     fontSize: 32,
     fontWeight: '900',
+    fontFamily: F.disp,
     color: C.primary,
     letterSpacing: 6,
   },

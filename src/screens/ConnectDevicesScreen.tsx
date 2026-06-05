@@ -13,7 +13,7 @@ import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConne
 import { formatDistanceToNow } from 'date-fns';
 import { logger } from '../lib/logger';
 
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
@@ -336,8 +336,8 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800', color: C.text },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
+  title: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text },
   scroll: { padding: 20, paddingBottom: 60, gap: 0 },
 
   explainer: {
@@ -351,7 +351,7 @@ const s = StyleSheet.create({
     gap: 8,
   },
   explainerEmoji: { fontSize: 32 },
-  explainerTitle: { fontSize: 17, fontWeight: '800', color: C.text },
+  explainerTitle: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text },
   explainerText: { fontSize: 13, color: C.muted2, textAlign: 'center', lineHeight: 19 },
 
   statusRow: {
@@ -367,7 +367,7 @@ const s = StyleSheet.create({
     marginBottom: 20,
   },
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: C.success },
-  statusText: { flex: 1, fontSize: 13, color: C.success, fontWeight: '600' },
+  statusText: { flex: 1, fontSize: 13, color: C.success, fontWeight: '600', fontFamily: F.medium },
 
   warningRow: {
     flexDirection: 'row',
@@ -381,15 +381,16 @@ const s = StyleSheet.create({
     marginBottom: 20,
   },
   warningEmoji: { fontSize: 24 },
-  warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
-  warningSub: { fontSize: 12, color: C.muted2, marginTop: 2, fontWeight: '600' },
+  warningTitle: { fontSize: 14, fontWeight: '800', fontFamily: F.disp, color: C.error },
+  warningSub: { fontSize: 12, color: C.muted2, marginTop: 2, fontWeight: '600', fontFamily: F.medium },
 
   syncNowBtn: { paddingHorizontal: 10, paddingVertical: 4, minHeight: 44, justifyContent: 'center' },
-  syncNowText: { color: C.primary, fontSize: 13, fontWeight: '700' },
+  syncNowText: { color: C.primary, fontSize: 13, fontWeight: '700', fontFamily: F.bold },
 
   sectionLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: F.bold,
     color: C.muted2,
     letterSpacing: 1.5,
     marginBottom: 10,
@@ -413,16 +414,16 @@ const r = StyleSheet.create({
   left: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
   icon: { fontSize: 24, marginTop: 2 },
   labelRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 3 },
-  label: { fontSize: 15, fontWeight: '700', color: C.text },
+  label: { fontSize: 15, fontWeight: '700', fontFamily: F.bold, color: C.text },
   connectedBadge: {
     backgroundColor: C.success + '20',
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 2,
   },
-  connectedText: { fontSize: 10, color: C.success, fontWeight: '700' },
+  connectedText: { fontSize: 10, color: C.success, fontWeight: '700', fontFamily: F.bold },
   desc: { fontSize: 12, color: C.muted2, lineHeight: 17 },
-  lastSync: { fontSize: 11, color: C.success, marginTop: 3, fontWeight: '600' },
+  lastSync: { fontSize: 11, color: C.success, marginTop: 3, fontWeight: '600', fontFamily: F.medium },
   btn: {
     borderRadius: 10,
     paddingVertical: 9,
@@ -435,5 +436,5 @@ const r = StyleSheet.create({
     borderColor: C.error + '40',
     backgroundColor: 'transparent',
   },
-  btnText: { fontSize: 13, fontWeight: '800', color: '#000' },
+  btnText: { fontSize: 13, fontWeight: '800', fontFamily: F.disp, color: '#000' },
 });

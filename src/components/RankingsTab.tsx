@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } from 'react-native';
 import type { LeaderboardEntry } from '../types/database';
 import { getInitials } from '../lib/utils';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 function medalOrRank(rank: number) {
   if (rank === 1) return '🥇';
@@ -155,27 +155,27 @@ const s = StyleSheet.create({
   rowGold:          { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   rowSilver:        { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
   rowBronze:        { borderLeftWidth: 3, borderLeftColor: '#B45309' },
-  rank:             { width: 30, fontSize: 13, fontWeight: '800', textAlign: 'center' },
+  rank:             { width: 30, fontSize: 13, fontWeight: '800', fontFamily: F.disp, textAlign: 'center' },
   avatar:           { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E2A35', alignItems: 'center', justifyContent: 'center' },
   avatarMe:         { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
-  avatarText:       { fontSize: 13, fontWeight: '800', color: C.muted },
+  avatarText:       { fontSize: 13, fontWeight: '800', fontFamily: F.disp, color: C.muted },
   info:             { flex: 1 },
-  name:             { fontSize: 14, fontWeight: '700', color: C.text },
+  name:             { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
   username:         { fontSize: 11, color: C.muted, marginTop: 1 },
   ptsBadge:         { alignItems: 'flex-end' },
-  pts:              { fontSize: 16, fontWeight: '900', color: C.text },
-  ptsLabel:         { fontSize: 9, color: C.muted, fontWeight: '600' },
+  pts:              { fontSize: 16, fontWeight: '900', fontFamily: F.disp, color: C.text },
+  ptsLabel:         { fontSize: 9, color: C.muted, fontWeight: '600', fontFamily: F.medium },
   followBtn:        { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
   followingBtn:     { backgroundColor: C.primary },
-  followBtnText:    { fontSize: 15, color: C.primary, fontWeight: '800', lineHeight: 17 },
+  followBtnText:    { fontSize: 15, color: C.primary, fontWeight: '800', fontFamily: F.disp, lineHeight: 17 },
   followingBtnText: { color: '#000' },
   nudgeBtn:         { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
   nudgeBtnDone:     { backgroundColor: C.primary + '20', borderColor: C.primary },
   nudgeBtnText:     { fontSize: 14, lineHeight: 16 },
   empty:            { alignItems: 'center', paddingTop: 64, gap: 12, paddingHorizontal: 32 },
   emptyEmoji:       { fontSize: 48 },
-  emptyTitle:       { fontSize: 16, fontWeight: '700', color: C.muted },
+  emptyTitle:       { fontSize: 16, fontWeight: '700', fontFamily: F.bold, color: C.muted },
   emptyText:        { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
   pinnedFooter:     { paddingTop: 10, marginTop: 8, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.07)' },
-  pinnedLabel:      { fontSize: 9, fontWeight: '700', color: '#637C8F', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
+  pinnedLabel:      { fontSize: 9, fontWeight: '700', fontFamily: F.bold, color: '#637C8F', letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4 },
 });

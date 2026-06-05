@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
+import { F } from '../theme';
 
 const C = {
   card: '#151C24',
@@ -128,9 +129,9 @@ const s = StyleSheet.create({
     gap: 12,
   },
   topRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  name: { fontSize: 16, fontWeight: '700', color: C.text, marginBottom: 2 },
+  name: { fontSize: 16, fontWeight: '700', fontFamily: F.bold, color: C.text, marginBottom: 2 },
   scoring: { fontSize: 12, color: C.muted },
-  participantBadge: { fontSize: 11, color: C.muted, marginTop: 2, fontWeight: '600' },
+  participantBadge: { fontSize: 11, color: C.muted, marginTop: 2, fontWeight: '600', fontFamily: F.medium },
   statusBadge: {
     borderWidth: 1,
     borderRadius: 8,
@@ -138,7 +139,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
     alignSelf: 'flex-start',
   },
-  statusText: { fontSize: 11, fontWeight: '700' },
+  statusText: { fontSize: 11, fontWeight: '700', fontFamily: F.bold },
   progressTrack: {
     height: 5,
     backgroundColor: 'rgba(255,255,255,0.07)',
@@ -152,15 +153,15 @@ const s = StyleSheet.create({
   },
   bottomRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   rankHero: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
-  rankHeroText: { fontSize: 22, fontWeight: '900', color: C.primary },
-  rankHeroScore: { fontSize: 13, fontWeight: '600', color: C.muted },
+  rankHeroText: { fontSize: 22, fontWeight: '900', fontFamily: F.disp, color: C.primary },
+  rankHeroScore: { fontSize: 13, fontWeight: '600', fontFamily: F.medium, color: C.muted },
   publicBadge: {
     backgroundColor: 'rgba(255,255,255,0.07)',
     borderRadius: 6,
     paddingHorizontal: 7,
     paddingVertical: 3,
   },
-  publicText: { fontSize: 11, color: C.muted, fontWeight: '600' },
+  publicText: { fontSize: 11, color: C.muted, fontWeight: '600', fontFamily: F.medium },
   compactRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,7 +181,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  compactName: { fontSize: 14, fontWeight: '700', color: C.text },
+  compactName: { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
   compactSub: { fontSize: 12, color: C.muted, marginTop: 2 },
-  compactRank: { fontSize: 12, fontWeight: '700', color: C.primary },
+  compactRank: { fontSize: 12, fontWeight: '700', fontFamily: F.bold, color: C.primary },
 });

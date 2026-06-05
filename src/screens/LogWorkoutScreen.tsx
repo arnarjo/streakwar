@@ -18,7 +18,7 @@ import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
@@ -471,8 +471,8 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  cancelText: { color: C.muted, fontSize: 15, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800', color: C.text },
+  cancelText: { color: C.muted, fontSize: 15, fontWeight: '600', fontFamily: F.medium },
+  title: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text },
   saveBtn: {
     backgroundColor: C.primary,
     borderRadius: 9,
@@ -481,12 +481,13 @@ const s = StyleSheet.create({
     minWidth: 60,
     alignItems: 'center',
   },
-  saveBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  saveBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 14 },
 
   scroll: { padding: 20, gap: 0, paddingBottom: 60 },
   sectionLabel: {
     fontSize: 10,
     fontWeight: '700',
+    fontFamily: F.bold,
     color: C.muted,
     letterSpacing: 1.5,
     marginBottom: 10,
@@ -515,7 +516,7 @@ const s = StyleSheet.create({
     backgroundColor: C.primary + '15',
   },
   activityEmoji: { fontSize: 16 },
-  activityName: { fontSize: 13, fontWeight: '600', color: C.muted },
+  activityName: { fontSize: 13, fontWeight: '600', fontFamily: F.medium, color: C.muted },
 
   statsGrid: {
     flexDirection: 'row',
@@ -533,11 +534,12 @@ const s = StyleSheet.create({
   },
   statCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   statCardEmoji: { fontSize: 13 },
-  statCardLabel: { fontSize: 11.5, fontWeight: '600', color: C.muted },
+  statCardLabel: { fontSize: 11.5, fontWeight: '600', fontFamily: F.medium, color: C.muted },
   statCardField: {
     color: C.text,
     fontSize: 24,
     fontWeight: '700',
+    fontFamily: F.bold,
     padding: 0,
   },
 
@@ -557,7 +559,7 @@ const s = StyleSheet.create({
     backgroundColor: C.primary + '15',
     borderColor: C.primary + '50',
   },
-  dateChipText: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  dateChipText: { color: C.muted, fontSize: 13, fontWeight: '600', fontFamily: F.medium },
   dateChipTextActive: { color: C.primary },
 
   challengeList: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
@@ -574,7 +576,7 @@ const s = StyleSheet.create({
     borderColor: C.primary + '60',
     backgroundColor: C.primary + '15',
   },
-  challengeChipText: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  challengeChipText: { color: C.muted, fontSize: 13, fontWeight: '600', fontFamily: F.medium },
 
   mediaPicker: {
     borderRadius: 14,
@@ -592,9 +594,9 @@ const s = StyleSheet.create({
     gap: 8,
   },
   mediaIcon: { fontSize: 32 },
-  mediaText: { color: C.muted, fontSize: 14, fontWeight: '600' },
+  mediaText: { color: C.muted, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
   removeMedia: { alignItems: 'center', marginTop: 6 },
-  removeMediaText: { color: C.error, fontSize: 13, fontWeight: '600' },
+  removeMediaText: { color: C.error, fontSize: 13, fontWeight: '600', fontFamily: F.medium },
 
   captionInput: {
     backgroundColor: C.card,
@@ -619,14 +621,14 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
   },
-  timerDisplay: { fontSize: 42, fontWeight: '900', color: C.text, letterSpacing: 2, fontVariant: ['tabular-nums'] },
+  timerDisplay: { fontSize: 42, fontWeight: '900', fontFamily: F.disp, color: C.text, letterSpacing: 2, fontVariant: ['tabular-nums'] },
   timerBtns: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   timerBtn: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 10, paddingHorizontal: 20, paddingVertical: 9 },
   timerBtnActive: { backgroundColor: C.primary + '30', borderColor: C.primary + '80' },
-  timerBtnText: { color: C.primary, fontWeight: '800', fontSize: 14 },
+  timerBtnText: { color: C.primary, fontWeight: '800', fontFamily: F.disp, fontSize: 14 },
   timerUseBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 16, paddingVertical: 9 },
-  timerUseBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
-  timerResetText: { color: C.muted, fontSize: 13, fontWeight: '600' },
+  timerUseBtnText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 14 },
+  timerResetText: { color: C.muted, fontSize: 13, fontWeight: '600', fontFamily: F.medium },
 
   saveBigBtn: {
     backgroundColor: C.primary,
@@ -635,7 +637,7 @@ const s = StyleSheet.create({
     alignItems: 'center',
     marginTop: 24,
   },
-  saveBigBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+  saveBigBtnText: { color: '#000', fontSize: 16, fontWeight: '800', fontFamily: F.disp, letterSpacing: 0.2 },
 
   successOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -665,7 +667,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 8,
   },
-  successIconText: { fontSize: 36, color: '#22C55E', fontWeight: '900', lineHeight: 40 },
-  successTitle: { fontSize: 20, fontWeight: '900', color: '#EEF4F8' },
+  successIconText: { fontSize: 36, color: '#22C55E', fontWeight: '900', fontFamily: F.disp, lineHeight: 40 },
+  successTitle: { fontSize: 20, fontWeight: '900', fontFamily: F.disp, color: '#EEF4F8' },
   successSub: { fontSize: 14, color: '#637C8F' },
 });

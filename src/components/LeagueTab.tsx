@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } fr
 import type { LeagueMember, LeagueTier } from '../types/database';
 import { LEAGUE_TIER_META } from '../types/database';
 import { getInitials } from '../lib/utils';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 function medalOrRank(rank: number) {
   if (rank === 1) return '🥇';
@@ -101,7 +101,7 @@ export function LeagueTab({ leagueMembers, myTier, loading, onRefresh, userId, n
 
 const s = StyleSheet.create({
   list:           { paddingHorizontal: 16, paddingBottom: 100 },
-  leagueTitle:    { fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 },
+  leagueTitle:    { fontSize: 20, fontWeight: '900', fontFamily: F.disp, letterSpacing: -0.5, marginBottom: 4 },
   leagueSubtitle: { fontSize: 12, color: C.muted, marginBottom: 12 },
   empty:          { paddingVertical: 24, alignItems: 'center' },
   emptyText:      { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
@@ -112,13 +112,13 @@ const s = StyleSheet.create({
   rowGold:        { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
   rowSilver:      { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
   rowBronze:      { borderLeftWidth: 3, borderLeftColor: '#B45309' },
-  rankText:       { fontSize: 14, fontWeight: '800', width: 32, textAlign: 'center' },
+  rankText:       { fontSize: 14, fontWeight: '800', fontFamily: F.disp, width: 32, textAlign: 'center' },
   avatar:         { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + '20', alignItems: 'center', justifyContent: 'center' },
-  avatarText:     { fontSize: 13, fontWeight: '800', color: C.primary },
-  memberName:     { fontSize: 14, fontWeight: '700', color: C.text },
-  promotionLabel: { fontSize: 10, color: '#22C55E', fontWeight: '700', marginTop: 2 },
-  relegationLabel:{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 },
-  pts:            { fontSize: 15, fontWeight: '900', color: C.primary },
+  avatarText:     { fontSize: 13, fontWeight: '800', fontFamily: F.disp, color: C.primary },
+  memberName:     { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
+  promotionLabel: { fontSize: 10, color: '#22C55E', fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
+  relegationLabel:{ fontSize: 10, color: '#EF4444', fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
+  pts:            { fontSize: 15, fontWeight: '900', fontFamily: F.disp, color: C.primary },
   nudgeBtn:       { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
   nudgeBtnDone:   { backgroundColor: C.primary + '20', borderColor: C.primary },
   nudgeBtnText:   { fontSize: 14, lineHeight: 16 },

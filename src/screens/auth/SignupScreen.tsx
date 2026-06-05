@@ -7,7 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
-import { C } from '../../theme';
+import { C, F } from '../../theme';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 type FormErrors = { fullName?: string; username?: string; email?: string; password?: string; confirm?: string };
@@ -288,15 +288,15 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 48 },
   backBtn: { paddingTop: 8, paddingBottom: 12, alignSelf: 'flex-start' },
-  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
   progressBar: { height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, marginBottom: 6, overflow: 'hidden' },
   progressFill: { height: '100%', backgroundColor: C.primary, borderRadius: 2 },
-  progressLabel: { fontSize: 11, color: C.dimmed, marginBottom: 24, fontWeight: '600', letterSpacing: 0.5 },
-  logo: { fontSize: 24, fontWeight: '900', color: C.primary, letterSpacing: 4, marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
+  progressLabel: { fontSize: 11, color: C.dimmed, marginBottom: 24, fontWeight: '600', fontFamily: F.medium, letterSpacing: 0.5 },
+  logo: { fontSize: 24, fontWeight: '900', fontFamily: F.disp, color: C.primary, letterSpacing: 4, marginBottom: 12 },
+  title: { fontSize: 26, fontWeight: '800', fontFamily: F.disp, color: C.text, marginBottom: 6, letterSpacing: -0.3 },
   subtitle: { fontSize: 14, color: C.muted2, marginBottom: 28, lineHeight: 20 },
   inputGroup: { marginBottom: 18 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
+  label: { fontSize: 10, fontWeight: '700', fontFamily: F.bold, color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
   input: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.borderAlt, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1 },
   inputError: { borderColor: C.error },
   inputSuccess: { borderColor: C.success },
@@ -304,7 +304,7 @@ const s = StyleSheet.create({
   successText: { color: C.success, fontSize: 12, marginTop: 5, marginLeft: 4 },
   prefixRow: { flexDirection: 'row', alignItems: 'center' },
   prefixBox: { backgroundColor: C.bg, borderWidth: 1, borderRightWidth: 0, borderColor: C.borderAlt, borderTopLeftRadius: 12, borderBottomLeftRadius: 12, paddingHorizontal: 14, paddingVertical: 14, justifyContent: 'center' },
-  prefixText: { color: C.muted2, fontSize: 16, fontWeight: '600' },
+  prefixText: { color: C.muted2, fontSize: 16, fontWeight: '600', fontFamily: F.medium },
   prefixInput: { borderTopLeftRadius: 0, borderBottomLeftRadius: 0 },
   passwordRow: { flexDirection: 'row', alignItems: 'center' },
   passwordInput: { borderTopRightRadius: 0, borderBottomRightRadius: 0 },
@@ -312,22 +312,22 @@ const s = StyleSheet.create({
   strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8 },
   strengthTrack: { flex: 1, height: 3, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 2, overflow: 'hidden' },
   strengthFill: { height: '100%', borderRadius: 2 },
-  strengthLabel: { fontSize: 11, fontWeight: '700', minWidth: 60, textAlign: 'right' },
+  strengthLabel: { fontSize: 11, fontWeight: '700', fontFamily: F.bold, minWidth: 60, textAlign: 'right' },
   primaryBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center', marginTop: 4 },
   btnDisabled: { opacity: 0.6 },
-  primaryBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+  primaryBtnText: { color: '#000', fontSize: 16, fontWeight: '800', fontFamily: F.disp, letterSpacing: 0.2 },
   loginLink: { alignItems: 'center', marginTop: 24 },
   loginLinkText: { color: C.muted2, fontSize: 14 },
   legalText: { color: C.muted2, fontSize: 11, textAlign: 'center', marginTop: 16, lineHeight: 17, paddingHorizontal: 16 },
-  legalLink: { color: C.primary, fontWeight: '600' },
+  legalLink: { color: C.primary, fontWeight: '600', fontFamily: F.medium },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
     paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10,
   },
   facebookBtn: { backgroundColor: '#1877F2', borderColor: '#1877F2' },
-  socialIcon: { fontSize: 17, fontWeight: '800', color: C.text, width: 20, textAlign: 'center' },
-  socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
+  socialIcon: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text, width: 20, textAlign: 'center' },
+  socialBtnText: { fontSize: 15, fontWeight: '700', fontFamily: F.bold, color: C.text },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 20 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
   dividerText: { color: C.dimmed, fontSize: 12 },

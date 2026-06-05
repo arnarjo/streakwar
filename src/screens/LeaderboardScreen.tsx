@@ -12,7 +12,7 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
-import { C } from '../theme';
+import { C, F } from '../theme';
 import { LeagueTab } from '../components/LeagueTab';
 import { RankingsTab } from '../components/RankingsTab';
 
@@ -213,29 +213,29 @@ export default function LeaderboardScreen() {
 const s = StyleSheet.create({
   container:       { flex: 1, backgroundColor: C.bg },
   header:          { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
-  title:           { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
+  title:           { fontSize: 24, fontWeight: '800', fontFamily: F.disp, color: C.text, letterSpacing: -0.5 },
   subtitle:        { fontSize: 13, color: C.muted, marginTop: 2 },
   headerRight:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   shareBtn:        { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border, minHeight: 44, justifyContent: 'center' },
-  shareBtnText:    { fontSize: 12, fontWeight: '700', color: C.text },
+  shareBtnText:    { fontSize: 12, fontWeight: '700', fontFamily: F.bold, color: C.text },
   myPtsBadge:      { backgroundColor: C.primary + '18', borderWidth: 1, borderColor: C.primary + '35', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, alignItems: 'center' },
-  myPtsNum:        { fontSize: 15, fontWeight: '900', color: C.primary },
-  myPtsLabel:      { fontSize: 9, color: C.primary, fontWeight: '600', marginTop: 1 },
+  myPtsNum:        { fontSize: 15, fontWeight: '900', fontFamily: F.disp, color: C.primary },
+  myPtsLabel:      { fontSize: 9, color: C.primary, fontWeight: '600', fontFamily: F.medium, marginTop: 1 },
   scoringRow:      { flexDirection: 'row', paddingHorizontal: 16, gap: 5, marginBottom: 10 },
   chip:            { flex: 1, backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingVertical: 6, alignItems: 'center', gap: 2 },
   chipIcon:        { fontSize: 12 },
-  chipLabel:       { fontSize: 8, color: C.muted, fontWeight: '600', textAlign: 'center' },
+  chipLabel:       { fontSize: 8, color: C.muted, fontWeight: '600', fontFamily: F.medium, textAlign: 'center' },
   tabs:            { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, backgroundColor: C.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.border },
   tab:             { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
   tabActive:       { backgroundColor: C.primary },
-  tabText:         { fontSize: 12, fontWeight: '700', color: C.muted },
+  tabText:         { fontSize: 12, fontWeight: '700', fontFamily: F.bold, color: C.muted },
   tabTextActive:   { color: '#000' },
   modalOverlay:    { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
   nudgeModal:      { backgroundColor: '#151C24', borderRadius: 20, padding: 24, alignItems: 'center', gap: 16, width: 280, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  nudgeModalTitle: { fontSize: 16, fontWeight: '800', color: C.text },
+  nudgeModalTitle: { fontSize: 16, fontWeight: '800', fontFamily: F.disp, color: C.text },
   nudgeEmojiRow:   { flexDirection: 'row', gap: 12 },
   nudgeEmojiBtn:   { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   nudgeEmoji:      { fontSize: 26 },
   nudgeTextBtn:    { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
-  nudgeTextBtnText:{ color: '#000', fontWeight: '800', fontSize: 15 },
+  nudgeTextBtnText:{ color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 15 },
 });

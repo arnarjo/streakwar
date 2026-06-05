@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
 import { supabase } from '../../lib/supabase';
-import { C } from '../../theme';
+import { C, F } from '../../theme';
 
 type Props = { navigation: NativeStackNavigationProp<any> };
 
@@ -224,14 +224,14 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   scroll: { flexGrow: 1, paddingHorizontal: 24, paddingBottom: 40 },
   backBtn: { paddingTop: 8, paddingBottom: 16, alignSelf: 'flex-start' },
-  backText: { color: C.muted2, fontSize: 14, fontWeight: '600' },
+  backText: { color: C.muted2, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
   logoArea: { alignItems: 'center', marginBottom: 32, marginTop: 8 },
-  logo: { fontSize: 28, fontWeight: '900', color: C.primary, letterSpacing: 5 },
+  logo: { fontSize: 28, fontWeight: '900', fontFamily: F.disp, color: C.primary, letterSpacing: 5 },
   logoLine: { width: 40, height: 3, borderRadius: 2, marginTop: 6 },
-  title: { fontSize: 28, fontWeight: '800', color: C.text, marginBottom: 6, letterSpacing: -0.3 },
+  title: { fontSize: 28, fontWeight: '800', fontFamily: F.disp, color: C.text, marginBottom: 6, letterSpacing: -0.3 },
   subtitle: { fontSize: 15, color: C.muted2, marginBottom: 28 },
   inputGroup: { marginBottom: 16 },
-  label: { fontSize: 10, fontWeight: '700', color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
+  label: { fontSize: 10, fontWeight: '700', fontFamily: F.bold, color: C.muted2, letterSpacing: 1.5, marginBottom: 8 },
   input: {
     backgroundColor: C.bg, borderWidth: 1, borderColor: C.borderAlt, borderRadius: 12,
     paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 15, flex: 1,
@@ -246,21 +246,21 @@ const s = StyleSheet.create({
   },
   eyeIcon: { fontSize: 16 },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 20, marginTop: -4 },
-  forgotText: { color: C.primary, fontSize: 13, fontWeight: '600' },
+  forgotText: { color: C.primary, fontSize: 13, fontWeight: '600', fontFamily: F.medium },
   loginBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
   btnDisabled: { opacity: 0.6 },
-  loginBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
+  loginBtnText: { color: '#000', fontSize: 16, fontWeight: '800', fontFamily: F.disp, letterSpacing: 0.2 },
   divider: { flexDirection: 'row', alignItems: 'center', gap: 12, marginVertical: 24 },
   dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255,255,255,0.07)' },
   dividerText: { color: C.dimmed, fontSize: 13 },
   signupBtn: { borderWidth: 1, borderColor: C.borderAlt, borderRadius: 14, paddingVertical: 15, alignItems: 'center' },
-  signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700' },
+  signupBtnText: { color: C.text, fontSize: 15, fontWeight: '700', fontFamily: F.bold },
   socialBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', borderRadius: 14,
     paddingVertical: 14, backgroundColor: 'rgba(255,255,255,0.06)', marginBottom: 10,
   },
   facebookBtn: { backgroundColor: '#1877F2', borderColor: '#1877F2' },
-  socialIcon: { fontSize: 17, fontWeight: '800', color: C.text, width: 20, textAlign: 'center' },
-  socialBtnText: { fontSize: 15, fontWeight: '700', color: C.text },
+  socialIcon: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text, width: 20, textAlign: 'center' },
+  socialBtnText: { fontSize: 15, fontWeight: '700', fontFamily: F.bold, color: C.text },
 });

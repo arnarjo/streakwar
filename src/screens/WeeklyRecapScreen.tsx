@@ -12,7 +12,7 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
-import { C } from '../theme';
+import { C, F } from '../theme';
 
 function getLastMonday(): string {
   const d = new Date();
@@ -198,24 +198,24 @@ export default function WeeklyRecapScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  back: { color: C.muted, fontSize: 14, fontWeight: '600' },
-  title: { fontSize: 17, fontWeight: '800', color: C.text },
-  shareBtn: { color: C.primary, fontSize: 14, fontWeight: '700' },
+  back: { color: C.muted, fontSize: 14, fontWeight: '600', fontFamily: F.medium },
+  title: { fontSize: 17, fontWeight: '800', fontFamily: F.disp, color: C.text },
+  shareBtn: { color: C.primary, fontSize: 14, fontWeight: '700', fontFamily: F.bold },
   scroll: { padding: 20, paddingBottom: 80, gap: 16 },
   leagueCard: { borderWidth: 2, borderRadius: 16, padding: 20, alignItems: 'center', gap: 6, backgroundColor: C.card },
-  leagueTier: { fontSize: 22, fontWeight: '900' },
-  leagueRank: { fontSize: 32, fontWeight: '900', color: C.text },
+  leagueTier: { fontSize: 22, fontWeight: '900', fontFamily: F.disp },
+  leagueRank: { fontSize: 32, fontWeight: '900', fontFamily: F.disp, color: C.text },
   leagueSub: { fontSize: 12, color: C.muted },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   statCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 16, alignItems: 'center', gap: 4 },
   statIcon: { fontSize: 24 },
-  statValue: { fontSize: 30, fontWeight: '900', color: C.text },
-  statLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  statValue: { fontSize: 30, fontWeight: '900', fontFamily: F.disp, color: C.text },
+  statLabel: { fontSize: 12, color: C.muted, fontWeight: '600', fontFamily: F.medium },
   statSub: { fontSize: 10, color: C.muted, textAlign: 'center' },
   heroSection:   { alignItems: 'center', paddingBottom: 4 },
-  heroHeadline:  { fontSize: 26, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 32 },
+  heroHeadline:  { fontSize: 26, fontWeight: '900', fontFamily: F.disp, color: C.text, textAlign: 'center', lineHeight: 32 },
   heroSub:       { fontSize: 13, color: C.muted, marginTop: 4, textAlign: 'center' },
   shareCard: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 18, alignItems: 'center', gap: 4, marginTop: 8 },
-  shareCardTitle: { color: '#000', fontSize: 16, fontWeight: '800' },
+  shareCardTitle: { color: '#000', fontSize: 16, fontWeight: '800', fontFamily: F.disp },
   shareCardSub: { color: '#00000080', fontSize: 12 },
 });
