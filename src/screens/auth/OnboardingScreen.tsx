@@ -81,6 +81,10 @@ export default function OnboardingScreen({ navigation }: Props) {
           [{ nativeEvent: { contentOffset: { x: scrollX } } }],
           { useNativeDriver: false }
         )}
+        onMomentumScrollEnd={(e) => {
+          const index = Math.round(e.nativeEvent.contentOffset.x / width);
+          setCurrentIndex(index);
+        }}
         renderItem={({ item }) => (
           <View style={[s.slide, { width }]}>
             <View style={[s.emojiCircle, { borderColor: item.accent + '40', backgroundColor: item.accent + '15' }]}>

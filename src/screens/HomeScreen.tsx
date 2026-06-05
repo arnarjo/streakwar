@@ -1,13 +1,13 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
   TouchableOpacity, StatusBar, Animated as RNAnimated,
 } from 'react-native';
 import ReAnimated, {
-  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
+  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle, cancelAnimation,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useStreaks } from '../hooks/useStreaks';
@@ -42,7 +42,7 @@ export default function HomeScreen() {
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
 
   const streakGlowOpacity = useSharedValue(0.06);
-  useEffect(() => {
+  useFocusEffect(useCallback(() => {
     streakGlowOpacity.value = withRepeat(
       withSequence(
         withTiming(0.18, { duration: 1800 }),
@@ -51,7 +51,8 @@ export default function HomeScreen() {
       -1,
       false,
     );
-  }, []);
+    return () => { cancelAnimation(streakGlowOpacity); };
+  }, [streakGlowOpacity]));
   const streakGlowStyle = useAnimatedStyle(() => ({
     opacity: streakGlowOpacity.value,
   }));
@@ -105,14 +106,14 @@ export default function HomeScreen() {
     }));
   }, [profile?.id]);
 
-  async function handleShare() {
+  const handleShare = useCallback(async () => {
     await Share.share({
       message:
         `🔥 ${streak?.current_streak ?? 0}-day streak on StreakWar!\n` +
         `⭐ ${(profile?.total_points ?? 0).toLocaleString()} total points\n` +
         `\nCan you beat me? Download StreakWar 💪`,
     });
-  }
+  }, [streak, profile]);
 
   useEffect(() => {
     fetchFeed();
@@ -120,6 +121,27 @@ export default function HomeScreen() {
     fetchMilestones();
     RNAnimated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fetchMilestones, fetchFeed, fetchWeekly]);
+
+  const handleMilestoneReact = useCallback(async (milestoneId: string, emoji: string) => {
+    try {
+      await supabase.from('milestone_reactions')
+        .upsert({ milestone_id: milestoneId, user_id: profile?.id, reaction: emoji },
+          { onConflict: 'milestone_id,user_id' });
+    } catch (err) {
+      console.warn('[HomeScreen] react failed:', err);
+    }
+  }, [profile?.id]);
+
+  const handleMilestoneRemoveReact = useCallback(async (milestoneId: string, _emoji: string) => {
+    try {
+      await supabase.from('milestone_reactions')
+        .delete()
+        .eq('milestone_id', milestoneId)
+        .eq('user_id', profile?.id);
+    } catch (err) {
+      console.warn('[HomeScreen] remove react failed:', err);
+    }
+  }, [profile?.id]);
 
   const onRefresh = useCallback(async () => {
     await Promise.all([fetchFeed(), refreshChallenges(), fetchWeekly(), fetchMilestones()]);
@@ -178,7 +200,7 @@ export default function HomeScreen() {
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
-          ListHeaderComponent={
+          ListHeaderComponent={useMemo(() => (
             <>
               {streak && streak.current_streak > 0 && (() => {
                 const remainder = streak.current_streak % 10;

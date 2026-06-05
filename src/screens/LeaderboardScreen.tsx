@@ -117,7 +117,7 @@ export default function LeaderboardScreen() {
   const data = tab === 'week' ? weeklyBoard : tab === 'world' ? globalBoard : friendsBoard;
   const myRank = tab === 'week' ? myWeeklyRank : tab === 'world' ? myGlobalRank : null;
 
-  function renderRow({ item, index }: { item: LeaderboardEntry; index: number }) {
+  const renderRow = useCallback(({ item, index }: { item: LeaderboardEntry; index: number }) => {
     const rank = index + 1;
     const isMe = item.id === userId;
     const isFollowing = following.has(item.id);
@@ -171,7 +171,7 @@ export default function LeaderboardScreen() {
         )}
       </View>
     );
-  }
+  }, [tab, following, userId, nudgedToday, unfollow, follow, setNudgeTarget]);
 
   return (
     <SafeAreaView style={s.container} edges={['top']}>
@@ -346,6 +346,7 @@ export default function LeaderboardScreen() {
           showsVerticalScrollIndicator={false}
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={renderRow}
+          getItemLayout={(_, index) => ({ length: 74, offset: 74 * index, index })}
           ListFooterComponent={(() => {
             const userInData = data.some(item => item.id === userId);
             if (userInData || myRank === null || !profile) return null;

@@ -21,7 +21,7 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
-import { C } from '../theme';
+import { C, S, R, F } from '../theme';
 
 
 function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
@@ -258,9 +258,6 @@ export default function ProfileScreen() {
             <View style={s.avatar}>
               <Text style={s.avatarText}>{initials}</Text>
             </View>
-            <TouchableOpacity style={s.editAvatarBtn} onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}>
-              <Text style={{ fontSize: 14 }}>📷</Text>
-            </TouchableOpacity>
           </View>
           <Text style={s.fullName}>{profile?.full_name ?? profile?.username}</Text>
           <Text style={s.username}>@{profile?.username}</Text>
@@ -279,14 +276,6 @@ export default function ProfileScreen() {
               <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity
-            style={s.editProfileBtn}
-            onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}
-            accessibilityLabel="Edit profile"
-            accessibilityRole="button"
-          >
-            <Text style={s.editProfileBtnText}>Edit profile</Text>
-          </TouchableOpacity>
         </View>
 
         <UpgradeModal
