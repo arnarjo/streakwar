@@ -24,8 +24,6 @@ import { format, subDays, startOfWeek } from 'date-fns';
 import { C, S, R, F } from '../theme';
 
 
-function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
-function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
@@ -73,7 +71,7 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
       result.push(col);
     }
     return result;
-  }, [userId, heatmapData]);
+  }, [heatmapData]);
 
   const hasData = heatmapData.size > 0;
 
