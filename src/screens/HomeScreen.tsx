@@ -398,7 +398,7 @@ const s = StyleSheet.create({
   },
   streakStartTitle: { fontSize: 16, fontWeight: '800', color: C.primary },
   streakStartSub: { fontSize: 13, color: C.muted },
-  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: 10, borderRadius: 16, backgroundColor: C.card, borderWidth: 1 },
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: S[2] + 2, borderRadius: R.lg, backgroundColor: C.card, borderWidth: 1 },
   bannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   bannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
@@ -411,6 +411,6 @@ const s = StyleSheet.create({
   emptyEmoji: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text },
   emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
-  emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
+  emptyBtn: { backgroundColor: C.primary, borderRadius: R.md, paddingHorizontal: S[5], paddingVertical: S[3], marginTop: S[2] },
   emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
 });
