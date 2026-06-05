@@ -24,6 +24,7 @@ import ConnectDevicesScreen       from '../screens/ConnectDevicesScreen';
 import WeeklyRecapScreen          from '../screens/WeeklyRecapScreen';
 import DiscoverScreen             from '../screens/DiscoverScreen';
 import DiscoverChallengesScreen   from '../screens/DiscoverChallengesScreen';
+import SettingsScreen             from '../screens/SettingsScreen';
 
 export type RootStackParamList = {
   Main: undefined;
@@ -155,6 +156,7 @@ export default function RootNavigator({ onRouteChange }: Props) {
               options={{ presentation: 'modal' }} />
             <Stack.Screen name="ConnectDevices"  component={ConnectDevicesScreen} />
             <Stack.Screen name="WeeklyRecap"     component={WeeklyRecapScreen} options={{ headerShown: false }} />
+            <Stack.Screen name="Settings"        component={SettingsScreen} />
           </>
         ) : (
           <>
