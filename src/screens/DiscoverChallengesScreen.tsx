@@ -1,13 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity,
   RefreshControl, Alert, ScrollView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { differenceInDays, parseISO } from 'date-fns';
 import { supabase } from '../lib/supabase';
 import { SCORING_MODE_LABELS } from '../types/database';
-import type { FitnessChallenge, ScoringMode } from '../types/database';
+import type { FitnessChallenge } from '../types/database';
 import { C } from '../theme';
 
 type Props = {
@@ -16,73 +16,77 @@ type Props = {
   onRefreshMyChallenges: () => Promise<void>;
 };
 
-type Filter = 'all' | ScoringMode;
-const FILTERS: Array<{ key: Filter; label: string }> = [
-  { key: 'all',         label: 'All' },
-  { key: 'days_active', label: '📅 Days Active' },
-  { key: 'workouts',    label: '💪 Workouts' },
-  { key: 'steps',       label: '👟 Steps' },
-  { key: 'distance_km', label: '📍 Distance' },
-];
+type JoinButtonProps = {
+  item: FitnessChallenge;
+  joined: boolean;
+  full: boolean;
+  busy: boolean;
+  onJoin: (item: FitnessChallenge) => void;
+};
 
-const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: string }> = {
-  weekly:  { border: C.primary, badge: '#F9731620', emoji: '🔥' },
-  monthly: { border: C.gold,    badge: '#F59E0B20', emoji: '🏆' },
+function JoinButton({ item, joined, full, busy, onJoin }: JoinButtonProps) {
+  return (
+    <TouchableOpacity
+      style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
+      onPress={() => !joined && !full && onJoin(item)}
+      disabled={joined || full || busy}
+      accessibilityRole="button"
+      accessibilityLabel={joined ? 'Þegar í challenge' : full ? 'Fullt' : `Taka þátt í ${item.name}`}
+    >
+      <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
+        {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
+      </Text>
+    </TouchableOpacity>
+  );
+}
+
+const BADGE_STYLE: Record<string, { border: string; badge: string; label: string }> = {
+  daily:   { border: '#10B981', badge: '#10B98120', label: '⚡ DAGLEG' },
+  weekly:  { border: C.primary, badge: '#F9731620', label: '🔥 WEEKLY' },
+  monthly: { border: C.gold,    badge: '#F59E0B20', label: '🏆 MONTHLY' },
+  none:    { border: C.muted2,  badge: 'rgba(255,255,255,0.04)', label: '🎉 SÉRSTAKUR' },
 };
 
 export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
   const navigation = useNavigation<any>();
 
-  const [globalChallenges, setGlobalChallenges] = useState<FitnessChallenge[]>([]);
-  const [challenges, setChallenges] = useState<FitnessChallenge[]>([]);
+  const [dailyMissions, setDailyMissions] = useState<FitnessChallenge[]>([]);
+  const [recurringChallenges, setRecurringChallenges] = useState<FitnessChallenge[]>([]);
+  const [specialChallenges, setSpecialChallenges] = useState<FitnessChallenge[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState(false);
-  const [filter, setFilter] = useState<Filter>('all');
   const [joining, setJoining] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setLoading(true);
     setLoadError(false);
 
-    const [globalRes, publicRes] = await Promise.all([
-      // Global (StreakWar-managed) challenges — always at top
-      supabase
-        .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
-        .eq('is_global', true)
-        .in('status', ['active', 'upcoming'])
-        .order('renewal_type', { ascending: true }), // weekly before monthly
+    const { data, error } = await supabase
+      .from('fitness_challenges')
+      .select('*, challenge_participants(count)')
+      .eq('is_global', true)
+      .in('status', ['active', 'upcoming'])
+      .order('start_date', { ascending: true });
 
-      // User-created public challenges
-      supabase
-        .from('fitness_challenges')
-        .select('*, challenge_participants(count)')
-        .eq('is_public', true)
-        .eq('is_global', false)
-        .in('status', ['active', 'upcoming'])
-        .order('created_at', { ascending: false })
-        .limit(50),
-    ]);
-
-    if (globalRes.error || publicRes.error) {
+    if (error) {
       setLoadError(true);
     } else {
-      const toCount = (data: any[]) =>
-        data.map((c: any) => ({
-          ...c,
-          participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
-        }));
-      setGlobalChallenges(toCount(globalRes.data ?? []));
-      setChallenges(toCount(publicRes.data ?? []));
+      const withCount = (data ?? []).map((c: any) => ({
+        ...c,
+        participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
+      }));
+      setDailyMissions(withCount.filter((c: FitnessChallenge) => c.renewal_type === 'daily'));
+      setRecurringChallenges(withCount.filter((c: FitnessChallenge) =>
+        c.renewal_type === 'weekly' || c.renewal_type === 'monthly'
+      ));
+      setSpecialChallenges(withCount.filter((c: FitnessChallenge) =>
+        c.renewal_type === 'none'
+      ));
     }
     setLoading(false);
   }, []);
 
   useEffect(() => { load(); }, [load]);
-
-  const filtered = filter === 'all'
-    ? challenges
-    : challenges.filter(c => (c.scoring_modes ?? []).includes(filter as ScoringMode));
 
   async function handleJoin(challenge: FitnessChallenge) {
     setJoining(challenge.id);
@@ -107,26 +111,51 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
   function daysLeftLabel(endDate: string) {
     const d = differenceInDays(parseISO(endDate), new Date());
     if (d < 0) return 'Ending soon';
-    if (d === 0) return 'Last day!';
+    if (d === 0) return 'Í dag!';
     return `${d}d left`;
   }
 
-  function JoinButton({ item }: { item: FitnessChallenge }) {
-    const joined = isJoined(item.id);
-    const full = isFull(item);
-    const busy = joining === item.id;
+  function ChallengeCard({ item }: { item: FitnessChallenge }) {
+    const style = BADGE_STYLE[item.renewal_type ?? 'none'] ?? BADGE_STYLE.none;
+    const modes = item.scoring_modes ?? [];
+    const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
     return (
-      <TouchableOpacity
-        style={[s.joinBtn, (joined || full) && s.joinBtnDisabled]}
-        onPress={() => !joined && !full && handleJoin(item)}
-        disabled={joined || full || busy}
-      >
-        <Text style={[s.joinBtnText, (joined || full) && s.joinBtnTextDisabled]}>
-          {busy ? '...' : joined ? 'Joined' : full ? 'Full' : 'Join'}
-        </Text>
-      </TouchableOpacity>
+      <View style={[s.card, { borderColor: style.border + '80' }]}>
+        <View style={[s.badge, { backgroundColor: style.badge }]}>
+          <Text style={[s.badgeText, { color: style.border }]}>{style.label}</Text>
+        </View>
+        <View style={s.cardContent}>
+          <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
+          <Text style={s.cardMeta}>
+            {modeEmoji} {modes.map(m => SCORING_MODE_LABELS[m]).join(' · ')}
+          </Text>
+          <Text style={[s.cardMeta, { marginTop: 2 }]}>
+            👥 {item.participant_count ?? 0} þátttakendur · {daysLeftLabel(item.end_date)}
+          </Text>
+        </View>
+        <JoinButton
+          item={item}
+          joined={isJoined(item.id)}
+          full={isFull(item)}
+          busy={joining === item.id}
+          onJoin={handleJoin}
+        />
+      </View>
     );
   }
+
+  function Section({ title, sub, items }: { title: string; sub: string; items: FitnessChallenge[] }) {
+    if (items.length === 0) return null;
+    return (
+      <View style={s.section}>
+        <Text style={s.sectionTitle}>{title}</Text>
+        <Text style={s.sectionSub}>{sub}</Text>
+        {items.map(item => <ChallengeCard key={item.id} item={item} />)}
+      </View>
+    );
+  }
+
+  const hasAnything = dailyMissions.length > 0 || recurringChallenges.length > 0 || specialChallenges.length > 0;
 
   return (
     <ScrollView
@@ -134,88 +163,31 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
       contentContainerStyle={{ paddingBottom: 40 }}
       refreshControl={<RefreshControl refreshing={loading} onRefresh={load} tintColor={C.primary} />}
     >
-      {/* ── Global Challenges ── */}
-      {globalChallenges.length > 0 && (
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>🌍 Global Challenges</Text>
-          <Text style={s.sectionSub}>Open to everyone — resets automatically</Text>
-          {globalChallenges.map(item => {
-            const style = GLOBAL_COLORS[item.renewal_type] ?? GLOBAL_COLORS.weekly;
-            const modes = item.scoring_modes ?? [];
-            const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
-            return (
-              <View key={item.id} style={[s.globalCard, { borderColor: style.border + '80' }]}>
-                <View style={[s.globalBadge, { backgroundColor: style.badge }]}>
-                  <Text style={[s.globalBadgeText, { color: style.border }]}>
-                    {style.emoji} {item.renewal_type === 'weekly' ? 'WEEKLY' : 'MONTHLY'}
-                  </Text>
-                </View>
-                <View style={s.cardContent}>
-                  <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={s.cardMeta}>
-                    {modeEmoji} {modes.map(m => SCORING_MODE_LABELS[m]).join(' · ')}
-                  </Text>
-                  <Text style={[s.cardMeta, { marginTop: 2 }]}>
-                    👥 {item.participant_count ?? 0} þátttakendur · {daysLeftLabel(item.end_date)}
-                  </Text>
-                </View>
-                <JoinButton item={item} />
-              </View>
-            );
-          })}
-        </View>
-      )}
-
-      {/* ── Filter bar ── */}
-      <FlatList
-        horizontal
-        data={FILTERS}
-        keyExtractor={f => f.key}
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={s.filterBar}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={[s.filterBtn, filter === item.key && s.filterBtnActive]}
-            onPress={() => setFilter(item.key)}
-          >
-            <Text style={[s.filterBtnText, filter === item.key && s.filterBtnTextActive]}>
-              {item.label}
-            </Text>
-          </TouchableOpacity>
-        )}
-      />
-
-      {/* ── User-created public challenges ── */}
-      {filtered.length === 0 && !loading ? (
+      {!hasAnything && !loading && (
         <View style={s.empty}>
           <Text style={s.emptyEmoji}>{loadError ? '⚠️' : '🔍'}</Text>
-          <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'No public challenges yet'}</Text>
+          <Text style={s.emptyTitle}>{loadError ? 'Failed to load' : 'No challenges yet'}</Text>
           <Text style={s.emptySub}>
-            {loadError
-              ? 'Check your connection and pull down to retry'
-              : 'Create a challenge and make it public to show up here'}
+            {loadError ? 'Check your connection and pull down to retry' : 'Check back soon'}
           </Text>
         </View>
-      ) : (
-        <View style={s.list}>
-          {filtered.map(item => {
-            const modes = item.scoring_modes ?? [];
-            const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
-            return (
-              <View key={item.id} style={s.card}>
-                <View style={s.cardContent}>
-                  <Text style={s.cardName} numberOfLines={1}>{item.name}</Text>
-                  <Text style={s.cardMeta}>
-                    {modeEmoji} {SCORING_MODE_LABELS[modes[0]] ?? 'Unknown'} · 👥 {item.participant_count ?? 0}
-                    {item.max_participants ? `/${item.max_participants}` : ''} · {daysLeftLabel(item.end_date)}
-                  </Text>
-                </View>
-                <JoinButton item={item} />
-              </View>
-            );
-          })}
-        </View>
       )}
+
+      <Section
+        title="⚡ Dagsverkefni"
+        sub="Dagleg mission — breytist þrisvar í viku"
+        items={dailyMissions}
+      />
+      <Section
+        title="🔥 Viku & Mánaðar"
+        sub="Endurnýjast sjálfkrafa — alltaf í gangi"
+        items={recurringChallenges}
+      />
+      <Section
+        title="🎉 Helgadagar & Sérstakir"
+        sub="Curated challenges yfir árið"
+        items={specialChallenges}
+      />
     </ScrollView>
   );
 }
@@ -223,11 +195,11 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
 
-  section: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 4 },
+  section: { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 4 },
   sectionTitle: { fontSize: 16, fontWeight: '800', color: C.text, marginBottom: 2 },
   sectionSub: { fontSize: 12, color: C.muted2, marginBottom: 10 },
 
-  globalCard: {
+  card: {
     backgroundColor: C.card,
     borderWidth: 1.5,
     borderRadius: 16,
@@ -235,30 +207,13 @@ const s = StyleSheet.create({
     marginBottom: 10,
     gap: 8,
   },
-  globalBadge: {
+  badge: {
     alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 6,
   },
-  globalBadgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
-
-  filterBar: { paddingHorizontal: 16, paddingVertical: 10, gap: 8 },
-  filterBtn: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
-  },
-  filterBtnActive: { backgroundColor: C.primary + '20', borderColor: C.primary + '60' },
-  filterBtnText: { fontSize: 13, color: C.muted2, fontWeight: '600' },
-  filterBtnTextActive: { color: C.primary },
-
-  list: { paddingHorizontal: 16 },
-  card: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: C.card, borderWidth: 1, borderColor: C.border,
-    borderRadius: 14, padding: 14, marginBottom: 8, gap: 12,
-  },
+  badgeText: { fontSize: 10, fontWeight: '800', letterSpacing: 0.8 },
   cardContent: { flex: 1 },
   cardName: { fontSize: 15, fontWeight: '800', color: C.text, marginBottom: 4 },
   cardMeta: { fontSize: 12, color: C.muted2 },
@@ -268,7 +223,7 @@ const s = StyleSheet.create({
   joinBtnText: { fontSize: 13, fontWeight: '800', color: '#000' },
   joinBtnTextDisabled: { color: C.muted2 },
 
-  empty: { paddingTop: 40, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
+  empty: { paddingTop: 60, alignItems: 'center', gap: 8, paddingHorizontal: 32 },
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 16, fontWeight: '800', color: C.text },
   emptySub: { fontSize: 13, color: C.muted2, textAlign: 'center' },
