@@ -1,0 +1,32 @@
+# .github/workflows/challenge-cron.yml
+name: Challenge Cron
+
+on:
+  schedule:
+    - cron: '0 1 * * *'   # 01:00 UTC daily
+  workflow_dispatch:        # allows manual trigger from GitHub UI
+
+jobs:
+  cron:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Renew recurring challenges
+        run: |
+          curl -sS -X POST \
+            "$SUPABASE_FUNCTIONS_URL/renew-challenges" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --fail-with-body
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+
+      - name: Rotate daily mission
+        run: |
+          curl -sS -X POST \
+            "$SUPABASE_FUNCTIONS_URL/rotate-daily-mission" \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            --fail-with-body
+        env:
+          SUPABASE_FUNCTIONS_URL: ${{ secrets.SUPABASE_FUNCTIONS_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
