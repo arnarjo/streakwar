@@ -32,13 +32,18 @@ serve(async (req) => {
   }
 
   // Idempotent: skip if today's daily challenge already exists
-  const { data: existing } = await supabase
+  const { data: existing, error: existErr } = await supabase
     .from('fitness_challenges')
     .select('id')
     .eq('is_global', true)
     .eq('renewal_type', 'daily')
     .eq('start_date', todayStr)
     .maybeSingle();
+
+  if (existErr) {
+    console.error('Existence check failed:', existErr);
+    return Response.json({ ok: false, error: existErr.message }, { status: 500 });
+  }
 
   if (existing) {
     return Response.json({ ok: true, skipped: true, reason: 'already exists', date: todayStr });
@@ -87,7 +92,7 @@ serve(async (req) => {
 });
 
 /** Returns ISO week number (1–53) for a given Date */
-function isoWeekNumber(date: Date): number {
+export function isoWeekNumber(date: Date): number {
   const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()));
   d.setUTCDate(d.getUTCDate() + 4 - (d.getUTCDay() || 7));
   const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
