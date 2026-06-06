@@ -2,7 +2,8 @@
 
 -- 1. Add 'daily' to renewal_type enum
 ALTER TABLE fitness_challenges
-  DROP CONSTRAINT IF EXISTS fitness_challenges_renewal_type_check;
+  DROP CONSTRAINT IF EXISTS fitness_challenges_renewal_type_check,
+  DROP CONSTRAINT IF EXISTS fitness_challenges_renewal_type_check1;
 ALTER TABLE fitness_challenges
   ADD CONSTRAINT fitness_challenges_renewal_type_check
     CHECK (renewal_type IN ('none', 'weekly', 'monthly', 'daily'));
@@ -14,7 +15,7 @@ CREATE TABLE IF NOT EXISTS daily_mission_templates (
   description   text    NOT NULL,
   scoring_modes text[]  NOT NULL,
   goal_label    text    NOT NULL,
-  sort_order    integer NOT NULL,
+  sort_order    integer NOT NULL UNIQUE,
   is_active     boolean NOT NULL DEFAULT true
 );
 
@@ -28,7 +29,7 @@ VALUES
   ('Göngudagur 🚶',   '10.000 skref í dag',                      ARRAY['steps'],       '10.000 skref',5),
   ('Kílómetrarnir 📍', 'Ferðastu 3 km á hvaða hátt sem er',     ARRAY['distance_km'], '3 km',        6),
   ('Kraftdagur ⚡',    '45 mínútur af hreyfingu',                ARRAY['workouts'],    '45 mín',      7)
-ON CONFLICT DO NOTHING;
+ON CONFLICT (sort_order) DO NOTHING;
 
 -- 3. Fix RLS: users can no longer create public challenges
 DROP POLICY IF EXISTS "Authenticated users create challenges" ON fitness_challenges;
@@ -38,3 +39,9 @@ CREATE POLICY "Authenticated users create challenges" ON fitness_challenges
     AND is_public = false
     AND is_global = false
   );
+
+-- 4. Fix RLS: lock UPDATE policy to prevent escalating is_public
+DROP POLICY IF EXISTS "Creator updates challenge" ON fitness_challenges;
+CREATE POLICY "Creator updates challenge" ON fitness_challenges
+  FOR UPDATE USING (auth.uid() = created_by AND is_global = false)
+  WITH CHECK (auth.uid() = created_by AND is_global = false AND is_public = false);
