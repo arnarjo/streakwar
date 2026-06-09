@@ -43,15 +43,15 @@ export function useFitnessChallenges(userId: string) {
           challenge_participants?: Array<{ count: number | string }>;
         }) | null;
       };
-      const challenges = (data as ParticipantRow[])
+      const challenges = (data as unknown as ParticipantRow[])
+        .filter((row) => row.fitness_challenges != null)
         .map((row) => ({
-          ...row.fitness_challenges,
+          ...row.fitness_challenges!,
           my_score: row.score,
           my_rank: row.rank,
-          participant_count: Number(row.fitness_challenges?.challenge_participants?.[0]?.count ?? 0),
-        }))
-        .filter(Boolean);
-      setMyChallenges(challenges);
+          participant_count: Number(row.fitness_challenges!.challenge_participants?.[0]?.count ?? 0),
+        }));
+      setMyChallenges(challenges as unknown as FitnessChallenge[]);
     }
     setLoading(false);
   }, [userId]);

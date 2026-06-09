@@ -3,7 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 
 interface Props {
   challengeName: string;
-  renewalType: 'weekly' | 'monthly' | 'none';
+  renewalType: 'weekly' | 'monthly' | 'none' | 'daily';
   rank: number | null;
   score: number;
   username: string;

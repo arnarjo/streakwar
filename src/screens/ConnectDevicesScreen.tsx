@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
+import { supabase } from '../lib/supabase';
 import { useAuth } from '../hooks/useAuth';
 import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
@@ -46,11 +47,11 @@ export default function ConnectDevicesScreen() {
   // When user returns from Health Connect settings, re-check if permissions were granted
   useEffect(() => {
     const sub = AppState.addEventListener('change', async (state) => {
-      console.log('[ConnectDevices] AppState changed to:', state, 'Awaiting HC:', awaitingHCReturn.current);
+      logger.debug('[ConnectDevices] AppState changed', { state, awaitingHC: awaitingHCReturn.current });
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
         const confirmed = await confirmHealthConnectConnection();
-        console.log('[ConnectDevices] Connection confirmed:', confirmed);
+        logger.debug('[ConnectDevices] Connection confirmed', { confirmed });
         if (!mounted.current) return;
         setConnecting(null);
         if (confirmed) {
@@ -98,12 +99,40 @@ export default function ConnectDevicesScreen() {
   }
 
   async function handleOAuthConnect(provider: ProviderKey) {
-    if (!profile?.id) return;
     setConnecting(provider);
-    const url = `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}&user_id=${profile.id}`;
     try {
+      // Get the session token so we can authenticate without putting user_id in the URL
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        Alert.alert('Not signed in', 'Please sign in and try again.');
+        setConnecting(null);
+        return;
+      }
+
+      // Call oauth-init with Authorization header instead of user_id query param.
+      // Use redirect: 'manual' to capture the 302 Location header before the browser
+      // follows it — the captured URL is the provider's authorization page.
+      const initResponse = await fetch(
+        `${SUPABASE_URL}/functions/v1/oauth-init?provider=${provider}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json',
+          },
+          redirect: 'manual',
+        }
+      );
+
+      // oauth-init returns a 302 redirect to the provider's authorization URL
+      const authUrl = initResponse.headers.get('Location');
+      if (!authUrl) {
+        Alert.alert('Connection failed', 'Could not start authorization. Please try again.');
+        setConnecting(null);
+        return;
+      }
+
       // openAuthSessionAsync closes the custom tab when it detects the streakwar:// redirect
-      const result = await WebBrowser.openAuthSessionAsync(url, 'streakwar://');
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'streakwar://');
       if (result.type === 'success' && result.url?.includes('oauth-success')) {
         const parsedProvider = new URL(result.url).searchParams.get('provider') as ProviderKey | null;
         await fetchConnections();

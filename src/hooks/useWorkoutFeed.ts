@@ -8,6 +8,7 @@ export function useWorkoutFeed(userId: string) {
   const [loading, setLoading] = useState(false);
   const [feedError, setFeedError] = useState<string | null>(null);
   const reactionInFlight = useRef<Set<string>>(new Set());
+  const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const fetchFeed = useCallback(async (challengeId?: string) => {
     if (!userId) return;
@@ -106,14 +107,16 @@ export function useWorkoutFeed(userId: string) {
           table: 'workout_posts',
         },
         () => {
-          // Refresh feed when any new workout post is inserted
-          // The fetchFeed function already filters by challenges the user is in
-          fetchFeed();
+          // Debounce so rapid consecutive inserts only trigger one fetch.
+          // The fetchFeed function already filters by challenges the user is in.
+          clearTimeout(debounceTimer.current);
+          debounceTimer.current = setTimeout(() => fetchFeed(), 1500);
         }
       )
       .subscribe();
 
     return () => {
+      clearTimeout(debounceTimer.current);
       supabase.removeChannel(channel);
     };
   }, [userId, fetchFeed]); // fetchFeed is memoized, safe to include

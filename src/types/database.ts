@@ -107,7 +107,7 @@ export const ACHIEVEMENT_META: Record<AchievementKey, { icon: string; title: str
   steps_100k:    { icon: '👟', title: 'Step Legend',      desc: '100 000 total steps logged'       },
 };
 
-export type RenewalType = 'none' | 'weekly' | 'monthly';
+export type RenewalType = 'none' | 'weekly' | 'monthly' | 'daily';
 
 export interface FitnessChallenge {
   id: string;

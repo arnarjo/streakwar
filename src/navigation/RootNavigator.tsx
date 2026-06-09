@@ -6,15 +6,16 @@ import { View } from 'react-native';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { useAuth } from '../hooks/useAuth';
 import { navigationRef } from './navigationRef';
-import { C } from '../theme';
+import { C, F } from '../theme';
+import type { WorkoutPost } from '../types/database';
 
 export type RootStackParamList = {
   Main:            undefined;
   ChallengeDetail: { challengeId: string };
   CreateChallenge: undefined;
-  LogWorkout:      undefined;
+  LogWorkout:      { challengeId?: string; editWorkout?: WorkoutPost } | undefined;
   ConnectDevices:  undefined;
-  WeeklyRecap:     undefined;
+  WeeklyRecap:     { week?: string } | undefined;
   ResetPassword:   undefined;
   Onboarding:      undefined;
   Login:           undefined;
@@ -101,7 +102,7 @@ function MainTabs() {
           paddingTop: 8,
           paddingBottom: 12,
         },
-        tabBarLabelStyle:  { marginBottom: 4, fontSize: 10 },
+        tabBarLabelStyle:  { marginBottom: 4, fontSize: 10, fontFamily: F.medium },
         tabBarItemStyle:   { paddingVertical: 4 },
         tabBarActiveTintColor:   C.primary,
         tabBarInactiveTintColor: C.muted2,

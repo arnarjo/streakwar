@@ -142,14 +142,14 @@ export default function ProfileScreen() {
     leagueAlerts: true,
   });
 
-  async function fetchStats() {
+  const fetchStats = useCallback(async () => {
     if (!profile?.id) return;
     const { count } = await supabase
       .from('workout_posts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', profile.id);
     setTotalWorkouts(count ?? 0);
-  }
+  }, [profile?.id]);
 
   const fetchHeatmap = useCallback(async () => {
     if (!profile?.id) return;
@@ -176,9 +176,10 @@ export default function ProfileScreen() {
   }
 
   async function toggleNotifPref(key: keyof typeof notifPrefs) {
+    if (!profile) return;
     const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
     setNotifPrefs(updated);
-    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
+    await AsyncStorage.setItem(`notif_prefs_${profile.id}`, JSON.stringify(updated));
     if (key === 'streakReminder') {
       if (!updated.streakReminder) {
         await cancelStreakReminders();
@@ -186,9 +187,9 @@ export default function ProfileScreen() {
         const { data: streakData } = await supabase
           .from('user_streaks')
           .select('current_streak, last_active_date')
-          .eq('user_id', profile!.id)
+          .eq('user_id', profile.id)
           .single();
-        const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
+        const firstName = profile.full_name?.split(' ')[0] ?? profile.username;
         scheduleStreakReminder(
           streakData?.current_streak ?? 0,
           streakData?.last_active_date,
@@ -198,7 +199,7 @@ export default function ProfileScreen() {
     }
   }
 
-  useEffect(() => { fetchStats(); fetchHeatmap(); loadNotifPrefs(); }, [profile?.id]);
+  useEffect(() => { fetchStats(); fetchHeatmap(); loadNotifPrefs(); }, [profile?.id, fetchStats, fetchHeatmap]);
 
   async function onRefresh() {
     setRefreshing(true);
@@ -233,9 +234,6 @@ export default function ProfileScreen() {
 
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={s.settingsBtn}>
-          <Text style={s.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
