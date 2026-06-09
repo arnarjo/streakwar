@@ -1,5 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { AppState } from 'react-native';
+import { logger } from '../lib/logger';
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import Constants from 'expo-constants';
@@ -63,7 +64,7 @@ export function usePushNotifications(
     if (!userId) return;
 
     registerForPushNotifications(userId, refreshReminders).catch((e) =>
-      console.warn('[PushNotifications] registration failed:', e)
+      logger.warn('[PushNotifications] registration failed:', e)
     );
 
     // Re-schedule reminders each time the app comes to the foreground so
@@ -147,7 +148,7 @@ async function registerForPushNotifications(
     }
   }
   if (finalStatus !== 'granted') {
-    console.warn('[PushNotifications] permission denied');
+    logger.warn('[PushNotifications] permission denied');
     return;
   }
 
@@ -156,7 +157,7 @@ async function registerForPushNotifications(
 
   const projectId = Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
   if (!projectId) {
-    console.warn('[PushNotifications] no projectId found in config');
+    logger.warn('[PushNotifications] no projectId found in config');
     return;
   }
 
@@ -164,7 +165,7 @@ async function registerForPushNotifications(
   try {
     token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
   } catch (e) {
-    console.warn('[PushNotifications] getExpoPushTokenAsync failed:', e);
+    logger.warn('[PushNotifications] getExpoPushTokenAsync failed:', e);
     return;
   }
 
@@ -173,5 +174,5 @@ async function registerForPushNotifications(
     .update({ push_token: token })
     .eq('id', userId);
 
-  if (error) console.warn('[PushNotifications] failed to save token:', error);
+  if (error) logger.warn('[PushNotifications] failed to save token:', error);
 }

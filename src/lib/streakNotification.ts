@@ -10,6 +10,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { toLocalDate } from './dateUtils';
+import { logger } from './logger';
 
 const MORNING_ID = 'streakwar-morning-reminder';
 const EVENING_BASE_ID = 'streakwar-evening-reminder-';
@@ -101,7 +102,7 @@ export async function scheduleStreakReminder(
       });
     }
   } catch (e) {
-    console.warn('[StreakNotification] schedule failed:', e);
+    logger.warn('[StreakNotification] schedule failed', e);
   }
 }
 

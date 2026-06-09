@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
 import type { FitnessChallenge, ChallengeParticipant, ScoringMode, TieBreakRule, RenewalType } from '../types/database';
 
 export function useFitnessChallenges(userId: string) {
@@ -30,7 +31,7 @@ export function useFitnessChallenges(userId: string) {
     if (!mountedRef.current) return;
 
     if (error) {
-      console.warn('[useFitnessChallenges] fetch error:', error.message);
+      logger.warn('[useFitnessChallenges] fetch error', error.message);
       setLoading(false);
       return;
     }

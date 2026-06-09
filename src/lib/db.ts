@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { logger } from './logger';
 
 /** Returns the challenge_id of the user's first active challenge, or null. */
 export async function getActiveChallengeId(userId: string): Promise<string | null> {
@@ -12,7 +13,7 @@ export async function getActiveChallengeId(userId: string): Promise<string | nul
     .maybeSingle();
 
   if (error && error.code !== 'PGRST116') {
-    console.warn('[db] getActiveChallengeId failed:', error.message);
+    logger.warn('[db] getActiveChallengeId failed', error.message);
   }
 
   // PostgREST join returns nested object — extract the scalar field

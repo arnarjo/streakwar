@@ -17,6 +17,7 @@ import * as TaskManager from 'expo-task-manager';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
+import { logger } from './logger';
 import { pollHealthConnect } from './healthConnect';
 import { syncRecentWorkouts, syncTodaySteps } from './healthKit';
 
@@ -71,7 +72,7 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
       ? BackgroundFetch.BackgroundFetchResult.NewData
       : BackgroundFetch.BackgroundFetchResult.NoData;
   } catch (err) {
-    console.warn('[BackgroundSync] task error:', err);
+    logger.warn('[BackgroundSync] task error:', err);
     return BackgroundFetch.BackgroundFetchResult.Failed;
   }
 });
@@ -96,7 +97,7 @@ export async function registerBackgroundSync(): Promise<void> {
       });
     }
   } catch (err) {
-    console.warn('[BackgroundSync] register failed:', err);
+    logger.warn('[BackgroundSync] register failed:', err);
   }
 }
 
@@ -108,6 +109,6 @@ export async function unregisterBackgroundSync(): Promise<void> {
       await BackgroundFetch.unregisterTaskAsync(BACKGROUND_SYNC_TASK);
     }
   } catch (err) {
-    console.warn('[BackgroundSync] unregister failed:', err);
+    logger.warn('[BackgroundSync] unregister failed:', err);
   }
 }

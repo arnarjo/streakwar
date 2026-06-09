@@ -71,7 +71,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
     if (error) {
       setLoadError(true);
     } else {
-      const withCount = (data ?? []).map((c: any) => ({
+      const withCount = (data ?? []).map((c) => ({
         ...c,
         participant_count: Number(c.challenge_participants?.[0]?.count ?? 0),
       }));

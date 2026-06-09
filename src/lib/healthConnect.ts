@@ -11,6 +11,7 @@
  */
 
 import { Platform, Linking } from 'react-native';
+import { logger } from './logger';
 import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
@@ -177,7 +178,7 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   const { getGrantedPermissions } = HealthConnect;
   const granted: any[] = await getGrantedPermissions().catch(() => []);
   if (!granted.some((g: any) => g.recordType === 'ExerciseSession')) {
-    console.log('[HealthConnect] poll skipped — permissions not granted');
+    logger.debug('[HealthConnect] poll skipped — permissions not granted');
     _pollInFlight = false;
     return 0;
   }

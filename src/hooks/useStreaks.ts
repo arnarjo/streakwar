@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { logger } from '../lib/logger';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { toLocalDate } from '../lib/dateUtils';
@@ -47,7 +48,7 @@ export async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
       .eq('user_id', data.user_id);
 
     if (error) {
-      console.warn('[streak] decay DB update failed:', error.message);
+      logger.warn('[streak] decay DB update failed', error.message);
     }
 
     scheduleStreakReminder(0).catch(() => {});
@@ -120,7 +121,7 @@ export function useStreaks(userId: string) {
           if (next.current_streak > (prev.current_streak ?? 0)) {
             for (const t of MILESTONE_THRESHOLDS) {
               if (next.current_streak >= t && (prev.current_streak ?? 0) < t) {
-                recordMilestone(userId, t).catch(console.warn);
+                recordMilestone(userId, t).catch((e) => logger.warn('[streak] recordMilestone failed', e));
               }
             }
           }

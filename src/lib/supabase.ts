@@ -1,5 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
+import { logger } from './logger';
 import * as SecureStore from 'expo-secure-store';
 
 const ExpoSecureStoreAdapter = {
@@ -12,7 +13,7 @@ const supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL ?? 'https://not-configu
 const supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ?? 'not-configured';
 
 if (!process.env.EXPO_PUBLIC_SUPABASE_URL || !process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY) {
-  console.error('[Supabase] env vars missing — add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to eas.json "env" field');
+  logger.error('[Supabase] env vars missing — add EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY to eas.json "env" field');
 }
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {

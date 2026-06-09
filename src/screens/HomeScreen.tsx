@@ -303,7 +303,7 @@ export default function HomeScreen() {
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
             <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard')}>
-              <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
+              <Text style={s.rankPts}>⭐ {(profile?.total_points ?? 0).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')} accessibilityLabel="Log workout" accessibilityRole="button">
