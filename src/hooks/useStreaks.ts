@@ -29,21 +29,9 @@ export async function applyStreakDecay(data: UserStreak): Promise<UserStreak> {
     .eq('freeze_date', today)
     .maybeSingle();
 
-  // Already used a freeze today, can't use another
+  // Freeze already used today — streak is protected, nothing to do
   if (freezeData) {
-    // Streak is broken — reset in DB and update notification
-    const { error } = await supabase
-      .from('user_streaks')
-      .update({ current_streak: 0, updated_at: new Date().toISOString() })
-      .eq('user_id', data.user_id);
-
-    if (error) {
-      console.warn('[streak] decay DB update failed:', error.message);
-    }
-
-    scheduleStreakReminder(0).catch(() => {});
-
-    return { ...data, current_streak: 0 };
+    return data;
   }
 
   // Check if user has freeze credits available (via RPC)

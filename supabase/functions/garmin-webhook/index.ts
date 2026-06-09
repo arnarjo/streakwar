@@ -20,7 +20,17 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const GARMIN_CONSUMER_SECRET = Deno.env.get('GARMIN_CONSUMER_SECRET') ?? '';
+const GARMIN_CONSUMER_SECRET = Deno.env.get('GARMIN_CONSUMER_SECRET');
+if (!GARMIN_CONSUMER_SECRET) {
+  throw new Error('GARMIN_CONSUMER_SECRET environment variable is not set');
+}
+
+function timingSafeEqual(a: string, b: string): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  return diff === 0;
+}
 
 async function hmacSha1Hex(secret: string, message: string): Promise<string> {
   const enc = new TextEncoder();
@@ -52,14 +62,14 @@ serve(async (req) => {
 
   const body = await req.text();
 
-  // Verify Garmin signature (optional but recommended in production)
-  // Garmin includes x-garmin-signature header with HMAC-SHA1 of the body
+  // Verify Garmin signature — mandatory
   const signature = req.headers.get('x-garmin-signature');
-  if (GARMIN_CONSUMER_SECRET && signature) {
-    const expected = await hmacSha1Hex(GARMIN_CONSUMER_SECRET, body);
-    if (signature !== expected) {
-      return new Response('Invalid signature', { status: 401 });
-    }
+  if (!signature) {
+    return new Response('Forbidden', { status: 403 });
+  }
+  const expected = await hmacSha1Hex(GARMIN_CONSUMER_SECRET, body);
+  if (!timingSafeEqual(signature, expected)) {
+    return new Response('Invalid signature', { status: 401 });
   }
 
   let payload: any;
@@ -71,6 +81,7 @@ serve(async (req) => {
 
   // Garmin payload structure: { activities: [...] }
   const activities = payload.activities ?? [];
+  const processedUserIds: string[] = [];
 
   for (const act of activities) {
     const garminUserId = act.userId ?? act.userAccessToken;
@@ -127,13 +138,15 @@ serve(async (req) => {
       points_awarded: 0,
       posted_at: new Date().toISOString(),
     });
+    processedUserIds.push(conn.user_id);
   }
 
-  await supabase.from('device_connections')
-    .update({ last_synced_at: new Date().toISOString() })
-    .in('user_id',
-      activities.map((a: any) => a.userId).filter(Boolean).map(String)
-    );
+  if (processedUserIds.length > 0) {
+    await supabase.from('device_connections')
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq('provider', 'garmin')
+      .in('user_id', [...new Set(processedUserIds)]);
+  }
 
   return new Response('OK', { status: 200 });
 });

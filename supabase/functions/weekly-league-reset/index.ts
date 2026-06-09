@@ -45,7 +45,17 @@ function prevTier(tier: Tier): Tier {
   return TIERS[Math.max(idx - 1, 0)];
 }
 
-Deno.serve(async () => {
+Deno.serve(async (req) => {
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  if (!cronSecret) {
+    console.error('CRON_SECRET env var is not set');
+    return new Response('Service unavailable', { status: 503 });
+  }
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
     const lastWeek = getLastMonday();
     const thisWeek = getCurrentMonday();

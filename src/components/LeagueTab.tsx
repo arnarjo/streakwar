@@ -4,20 +4,7 @@ import type { LeagueMember, LeagueTier } from '../types/database';
 import { LEAGUE_TIER_META } from '../types/database';
 import { getInitials } from '../lib/utils';
 import { C, F } from '../theme';
-
-function medalOrRank(rank: number) {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `#${rank}`;
-}
-
-function rankColor(rank: number) {
-  if (rank === 1) return C.gold;
-  if (rank === 2) return C.silver;
-  if (rank === 3) return C.bronze;
-  return C.muted;
-}
+import { medalOrRank, rankColor } from '../lib/rankUtils';
 
 interface Props {
   leagueMembers: LeagueMember[];
@@ -42,7 +29,7 @@ export function LeagueTab({ leagueMembers, myTier, loading, onRefresh, userId, n
       refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
       ListHeaderComponent={
         <View style={{ paddingBottom: 8 }}>
-          <Text style={[s.leagueTitle, { color: tierMeta?.color ?? '#B45309' }]}>
+          <Text style={[s.leagueTitle, { color: tierMeta?.color ?? C.bronze }]}>
             {tierMeta?.emoji} {tierMeta?.label} League
           </Text>
           <Text style={s.leagueSubtitle}>
@@ -88,6 +75,8 @@ export function LeagueTab({ leagueMembers, myTier, loading, onRefresh, userId, n
               <TouchableOpacity
                 style={[s.nudgeBtn, nudgedToday.has(item.user_id) && s.nudgeBtnDone]}
                 onPress={() => onNudge(item.user_id, item.full_name ?? item.username)}
+                accessibilityLabel={nudgedToday.has(item.user_id) ? 'Already nudged' : `Nudge ${item.full_name ?? item.username ?? 'this person'}`}
+                accessibilityRole="button"
               >
                 <Text style={s.nudgeBtnText}>{nudgedToday.has(item.user_id) ? '✓' : '💪'}</Text>
               </TouchableOpacity>
@@ -107,17 +96,17 @@ const s = StyleSheet.create({
   emptyText:      { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
   row:            { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
   rowMe:          { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
-  rowPromotion:   { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  rowRelegation:  { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
-  rowGold:        { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
-  rowSilver:      { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
-  rowBronze:      { borderLeftWidth: 3, borderLeftColor: '#B45309' },
+  rowPromotion:   { borderLeftWidth: 3, borderLeftColor: C.success },
+  rowRelegation:  { borderLeftWidth: 3, borderLeftColor: C.error },
+  rowGold:        { borderLeftWidth: 3, borderLeftColor: C.gold },
+  rowSilver:      { borderLeftWidth: 3, borderLeftColor: C.silver },
+  rowBronze:      { borderLeftWidth: 3, borderLeftColor: C.bronze },
   rankText:       { fontSize: 14, fontWeight: '800', fontFamily: F.disp, width: 32, textAlign: 'center' },
   avatar:         { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + '20', alignItems: 'center', justifyContent: 'center' },
   avatarText:     { fontSize: 13, fontWeight: '800', fontFamily: F.disp, color: C.primary },
   memberName:     { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
-  promotionLabel: { fontSize: 10, color: '#22C55E', fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
-  relegationLabel:{ fontSize: 10, color: '#EF4444', fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
+  promotionLabel: { fontSize: 10, color: C.success, fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
+  relegationLabel:{ fontSize: 10, color: C.error, fontWeight: '700', fontFamily: F.bold, marginTop: 2 },
   pts:            { fontSize: 15, fontWeight: '900', fontFamily: F.disp, color: C.primary },
   nudgeBtn:       { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
   nudgeBtnDone:   { backgroundColor: C.primary + '20', borderColor: C.primary },

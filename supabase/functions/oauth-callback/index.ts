@@ -25,6 +25,23 @@ interface TokenResponse {
   user_id?: string;                 // Fitbit
 }
 
+async function verifyAndParseState(stateRaw: string): Promise<{provider: string, userId: string, ts: number}> {
+  const { payload, sig } = JSON.parse(atob(stateRaw));
+  const secret = Deno.env.get('OAUTH_STATE_SECRET');
+  if (!secret) throw new Error('OAUTH_STATE_SECRET not set');
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']
+  );
+  const sigBytes = Uint8Array.from(sig.match(/../g)!.map((h: string) => parseInt(h, 16)));
+  const valid = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(payload));
+  if (!valid) throw new Error('Invalid state signature');
+  const data = JSON.parse(payload);
+  // Check state is not older than 10 minutes
+  if (Date.now() - data.ts > 10 * 60 * 1000) throw new Error('State expired');
+  return data;
+}
+
 async function exchangeStrava(code: string): Promise<TokenResponse> {
   const res = await fetch('https://www.strava.com/oauth/token', {
     method: 'POST',
@@ -36,6 +53,7 @@ async function exchangeStrava(code: string): Promise<TokenResponse> {
       grant_type: 'authorization_code',
     }),
   });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
@@ -53,12 +71,32 @@ async function exchangeFitbit(code: string): Promise<TokenResponse> {
       redirect_uri: `${Deno.env.get('SUPABASE_URL')}/functions/v1/oauth-callback?provider=fitbit`,
     }),
   });
+  if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 serve(async (req) => {
   const url = new URL(req.url);
   const provider = url.searchParams.get('provider') ?? '';
+
+  // Garmin uses OAuth 1.0a — no state param, handle before any OAuth 2.0 logic
+  if (provider === 'garmin') {
+    const oauthToken = url.searchParams.get('oauth_token') ?? '';
+    if (!oauthToken) {
+      return Response.redirect('streakwar://oauth-error?reason=missing_garmin_params', 302);
+    }
+    // Look up the userId from the pending (is_active=false) device_connection row
+    // that was created during oauth-init when the request token was stored.
+    // Uses external_token_ref (plaintext) for lookup; decrypts refresh_token as request_token_secret.
+    const { data: tokenRows } = await supabase
+      .rpc('find_garmin_pending', { p_oauth_token: oauthToken });
+    const tokenRow = tokenRows?.[0] ?? null;
+    if (!tokenRow) {
+      return Response.redirect('streakwar://oauth-error?reason=missing_request_secret', 302);
+    }
+    return handleGarminCallback(req, tokenRow.user_id, tokenRow.request_token_secret);
+  }
+
   const code = url.searchParams.get('code') ?? '';
   const stateRaw = url.searchParams.get('state') ?? '';
 
@@ -68,7 +106,7 @@ serve(async (req) => {
 
   let userId: string;
   try {
-    const state = JSON.parse(atob(stateRaw));
+    const state = await verifyAndParseState(stateRaw);
     userId = state.userId;
   } catch {
     return Response.redirect('streakwar://oauth-error?reason=bad_state', 302);
@@ -77,11 +115,6 @@ serve(async (req) => {
   let tokens: TokenResponse;
   let externalUserId: string | null = null;
   let expiresAt: Date | null = null;
-
-  // Garmin uses OAuth 1.0a â€” different flow entirely
-  if (provider === 'garmin') {
-    return handleGarminCallback(req, userId);
-  }
 
   try {
     if (provider === 'strava') {
@@ -100,16 +133,16 @@ serve(async (req) => {
     return Response.redirect('streakwar://oauth-error?reason=exchange_failed', 302);
   }
 
-  const { error } = await supabase.from('device_connections').upsert({
-    user_id: userId,
-    provider,
-    is_active: true,
-    access_token: tokens.access_token,
-    refresh_token: tokens.refresh_token ?? null,
-    token_expires_at: expiresAt?.toISOString() ?? null,
-    external_user_id: externalUserId,
-    last_synced_at: null,
-  }, { onConflict: 'user_id,provider' });
+  const { error } = await supabase.rpc('upsert_encrypted_device_tokens', {
+    p_user_id: userId,
+    p_provider: provider,
+    p_access_token: tokens.access_token,
+    p_refresh_token: tokens.refresh_token ?? null,
+    p_external_user_id: externalUserId,
+    p_token_expires_at: expiresAt?.toISOString() ?? null,
+    p_is_active: true,
+    p_scope: null,
+  });
 
   if (error) {
     console.error('DB upsert failed:', error);
@@ -180,7 +213,7 @@ async function buildOAuth1Header(
     .join(', ');
 }
 
-async function handleGarminCallback(req: Request, userId: string): Promise<Response> {
+async function handleGarminCallback(req: Request, userId: string, requestTokenSecret: string): Promise<Response> {
   const url = new URL(req.url);
   const oauthToken = url.searchParams.get('oauth_token') ?? '';
   const oauthVerifier = url.searchParams.get('oauth_verifier') ?? '';
@@ -189,16 +222,7 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
     return Response.redirect('streakwar://oauth-error?reason=missing_garmin_params', 302);
   }
 
-  // Retrieve the request token secret stored by oauth-init
-  const { data: conn } = await supabase
-    .from('device_connections')
-    .select('refresh_token')
-    .eq('user_id', userId)
-    .eq('provider', 'garmin')
-    .eq('is_active', false)
-    .single();
-
-  const requestTokenSecret = conn?.refresh_token ?? '';
+  // requestTokenSecret was already decrypted by find_garmin_pending in the caller
   if (!requestTokenSecret) {
     return Response.redirect('streakwar://oauth-error?reason=missing_request_secret', 302);
   }
@@ -232,17 +256,17 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
     return Response.redirect('streakwar://oauth-error?reason=garmin_empty_token', 302);
   }
 
-  // Store access token (access_token) + secret (refresh_token field) â€” Garmin has no expiry
-  const { error } = await supabase.from('device_connections').upsert({
-    user_id: userId,
-    provider: 'garmin',
-    is_active: true,
-    access_token: accessToken,
-    refresh_token: accessTokenSecret,  // Garmin token secret, never expires
-    token_expires_at: null,
-    external_user_id: null,
-    last_synced_at: null,
-  }, { onConflict: 'user_id,provider' });
+  // Store access token (access_token) + secret (refresh_token field) — Garmin has no expiry
+  const { error } = await supabase.rpc('upsert_encrypted_device_tokens', {
+    p_user_id: userId,
+    p_provider: 'garmin',
+    p_access_token: accessToken,
+    p_refresh_token: accessTokenSecret,  // Garmin token secret, never expires
+    p_external_user_id: null,
+    p_token_expires_at: null,
+    p_is_active: true,
+    p_scope: null,
+  });
 
   if (error) {
     console.error('Garmin DB upsert failed:', error);

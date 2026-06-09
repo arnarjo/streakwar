@@ -3,17 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
-import { F } from '../theme';
-
-const C = {
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
+import { C, F } from '../theme';
 
 type Props = {
   challenge: FitnessChallenge;
@@ -38,7 +28,7 @@ export default function ChallengeCard({ challenge, onPress, compact }: Props) {
     : isActive
     ? daysLeft <= 1 ? 'Last day!' : `${daysLeft} days left`
     : 'Ended';
-  const statusColor = isUpcoming ? C.muted : isActive ? (daysLeft <= 3 ? '#EF4444' : C.green) : C.muted;
+  const statusColor = isUpcoming ? C.muted : isActive ? (daysLeft <= 3 ? C.error : C.success) : C.muted;
 
   const scoringLabels = (challenge.scoring_modes ?? [])
     .slice(0, 2)
@@ -167,10 +157,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     padding: 13,
-    backgroundColor: '#151C24',
+    backgroundColor: C.card,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.07)',
+    borderColor: C.border,
     marginBottom: 8,
   },
   compactIcon: {

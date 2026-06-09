@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import ViewShot from 'react-native-view-shot';
@@ -25,8 +26,8 @@ type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'ChallengeDetail'>>();
-  const route = useRoute<any>();
-  const challengeId = route.params?.challengeId as string;
+  const route = useRoute<RouteProp<RootStackParamList, 'ChallengeDetail'>>();
+  const challengeId = route.params.challengeId;
 
   const [challenge, setChallenge] = useState<FitnessChallenge | null>(null);
   const [loadError, setLoadError] = useState(false);

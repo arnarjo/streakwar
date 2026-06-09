@@ -237,7 +237,30 @@ export default function HomeScreen() {
         <View style={s.section}>
           <Text style={s.sectionLabel}>Streak milestones</Text>
           {milestones.map(m => (
-            <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+            <StreakMilestoneCard
+              key={m.id}
+              item={m}
+              currentUserId={profile?.id ?? ''}
+              onReact={async (emoji) => {
+                const currentReaction = m.my_reaction ?? null;
+                if (currentReaction === emoji) {
+                  const { error } = await supabase
+                    .from('milestone_reactions')
+                    .delete()
+                    .eq('milestone_id', m.id)
+                    .eq('user_id', profile?.id ?? '');
+                  if (error) throw error;
+                } else {
+                  const { error } = await supabase
+                    .from('milestone_reactions')
+                    .upsert(
+                      { milestone_id: m.id, user_id: profile?.id ?? '', reaction: emoji },
+                      { onConflict: 'milestone_id,user_id' },
+                    );
+                  if (error) throw error;
+                }
+              }}
+            />
           ))}
         </View>
       )}

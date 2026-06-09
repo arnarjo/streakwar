@@ -32,8 +32,8 @@ BEGIN
 
   UPDATE device_connections
   SET
-    access_token_enc  = pgp_sym_encrypt(access_token,  enc_key),
-    refresh_token_enc = pgp_sym_encrypt(refresh_token, enc_key)
+    access_token_enc  = extensions.pgp_sym_encrypt(access_token,  enc_key),
+    refresh_token_enc = extensions.pgp_sym_encrypt(refresh_token, enc_key)
   WHERE access_token IS NOT NULL OR refresh_token IS NOT NULL;
 END;
 $$;

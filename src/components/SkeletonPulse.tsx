@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { View, StyleSheet, ViewStyle } from 'react-native';
+import { C } from '../theme';
 import Animated, {
   useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
 } from 'react-native-reanimated';
@@ -30,7 +31,7 @@ export function SkeletonPulse({ width = '100%', height = 16, radius = 6, style }
   return (
     <Animated.View
       style={[
-        { width: width as any, height, borderRadius: radius, backgroundColor: '#1A2332' },
+        { width: width as any, height, borderRadius: radius, backgroundColor: C.cardAlt },
         animStyle,
         style,
       ]}
@@ -61,7 +62,7 @@ export function WorkoutPostSkeleton() {
 
 const sk = StyleSheet.create({
   card: {
-    backgroundColor: '#151C24',
+    backgroundColor: C.card,
     borderRadius: 18,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.07)',

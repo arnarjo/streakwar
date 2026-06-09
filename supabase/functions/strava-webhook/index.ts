@@ -18,6 +18,25 @@ const supabase = createClient(
 
 const STRAVA_VERIFY_TOKEN = Deno.env.get('STRAVA_VERIFY_TOKEN') ?? 'streakwar_strava';
 
+async function verifyStravaSignature(req: Request, rawBody: ArrayBuffer): Promise<boolean> {
+  const sig = req.headers.get('X-Hub-Signature') ?? '';
+  if (!sig.startsWith('sha256=')) return false;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(Deno.env.get('STRAVA_CLIENT_SECRET')!),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, rawBody);
+  const expected = 'sha256=' + Array.from(new Uint8Array(mac)).map(b => b.toString(16).padStart(2, '0')).join('');
+  // Timing-safe comparison
+  if (sig.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 // Strava activity type → our ActivityType
 const STRAVA_TYPE_MAP: Record<string, string> = {
   Run: 'run', VirtualRun: 'run',
@@ -48,9 +67,15 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  const rawBody = await req.arrayBuffer();
+
+  if (!await verifyStravaSignature(req, rawBody)) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
   let event: any;
   try {
-    event = await req.json();
+    event = JSON.parse(new TextDecoder().decode(rawBody));
   } catch {
     return new Response('Bad JSON', { status: 400 });
   }
@@ -65,11 +90,7 @@ serve(async (req) => {
 
   // Find the StreakWar user with this Strava athlete id
   const { data: conn } = await supabase
-    .from('device_connections')
-    .select('user_id, access_token, refresh_token, token_expires_at')
-    .eq('provider', 'strava')
-    .eq('external_user_id', stravaAthleteId)
-    .eq('is_active', true)
+    .rpc('get_device_connection_decrypted', { p_provider: 'strava', p_external_user_id: stravaAthleteId })
     .single();
 
   if (!conn) {
@@ -94,15 +115,13 @@ serve(async (req) => {
     if (refreshRes.ok) {
       const tokens = await refreshRes.json();
       accessToken = tokens.access_token;
-      await supabase.from('device_connections').update({
-        access_token: tokens.access_token,
-        refresh_token: tokens.refresh_token ?? conn.refresh_token,
-        token_expires_at: tokens.expires_at
-          ? new Date(tokens.expires_at * 1000).toISOString()
-          : null,
-      })
-        .eq('user_id', conn.user_id)
-        .eq('provider', 'strava');
+      await supabase.rpc('update_encrypted_device_tokens', {
+        p_user_id: conn.user_id,
+        p_provider: 'strava',
+        p_access_token: tokens.access_token,
+        p_refresh_token: tokens.refresh_token ?? conn.refresh_token,
+        p_token_expires_at: tokens.expires_at ? new Date(tokens.expires_at * 1000).toISOString() : null,
+      });
     } else {
       console.error('Strava token refresh failed:', await refreshRes.text());
       // Continue with existing token — might still work if clock drift

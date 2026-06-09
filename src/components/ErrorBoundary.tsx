@@ -37,7 +37,6 @@ const s = StyleSheet.create({
   container:  { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emoji:      { fontSize: 48, marginBottom: 16 },
   title:      { fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 8 },
-  msg:        { fontSize: 14, color: C.muted2, textAlign: 'center', marginBottom: 24 },
   errorMsg:   { fontSize: 13, color: C.primary, textAlign: 'center', marginBottom: 8, fontWeight: '700' },
   errorStack: { fontSize: 10, color: C.muted2, textAlign: 'left', marginBottom: 16, fontFamily: 'monospace' },
   btn:        { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },

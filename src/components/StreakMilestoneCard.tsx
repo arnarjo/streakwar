@@ -1,12 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Alert } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
-import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#1A1208', border: '#F97316',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
 
 const REACTIONS = ['🔥', '💪', '⚡', '👏', '🏆'];
 
@@ -32,9 +27,10 @@ export interface MilestoneItem {
 interface Props {
   item: MilestoneItem;
   currentUserId: string;
+  onReact?: (emoji: string) => Promise<void>;
 }
 
-export default function StreakMilestoneCard({ item, currentUserId }: Props) {
+export default function StreakMilestoneCard({ item, onReact }: Props) {
   const [reactionCounts, setReactionCounts] = useState<Record<string, number>>(item.reaction_counts ?? {});
   const [myReaction, setMyReaction] = useState<string | null>(item.my_reaction ?? null);
   const [reacting, setReacting] = useState(false);
@@ -59,31 +55,29 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
     : '';
 
   async function handleReact(emoji: string) {
-    if (reacting) return;
+    if (reacting || !onReact) return;
     setReacting(true);
+    const prev = myReaction;
+    const counts = { ...reactionCounts };
+
+    // Optimistic update
+    if (prev) counts[prev] = Math.max(0, (counts[prev] ?? 0) - 1);
+    if (prev === emoji) {
+      setMyReaction(null);
+      setReactionCounts(counts);
+    } else {
+      counts[emoji] = (counts[emoji] ?? 0) + 1;
+      setMyReaction(emoji);
+      setReactionCounts(counts);
+    }
+
     try {
-      const prev = myReaction;
-      const counts = { ...reactionCounts };
-
-      if (prev) counts[prev] = Math.max(0, (counts[prev] ?? 0) - 1);
-
-      if (prev === emoji) {
-        setMyReaction(null);
-        setReactionCounts(counts);
-        await supabase.from('milestone_reactions')
-          .delete()
-          .eq('milestone_id', item.id)
-          .eq('user_id', currentUserId);
-      } else {
-        counts[emoji] = (counts[emoji] ?? 0) + 1;
-        setMyReaction(emoji);
-        setReactionCounts(counts);
-        await supabase.from('milestone_reactions')
-          .upsert({ milestone_id: item.id, user_id: currentUserId, reaction: emoji },
-            { onConflict: 'milestone_id,user_id' });
-      }
-    } catch (err) {
-      console.warn('[StreakMilestoneCard] react failed:', err);
+      await onReact(emoji);
+    } catch {
+      // Roll back optimistic update
+      setMyReaction(prev);
+      setReactionCounts({ ...reactionCounts });
+      Alert.alert('Error', 'Could not save your reaction. Please try again.');
     } finally {
       setReacting(false);
     }
@@ -114,6 +108,8 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
               onPress={() => { animateReaction(emoji); handleReact(emoji); }}
               activeOpacity={0.7}
               disabled={reacting}
+              accessibilityRole="button"
+              accessibilityLabel={`React with ${emoji}`}
             >
               <Animated.View style={{ transform: [{ scale: getReactionScale(emoji) }] }}>
                 <Text style={s.reactEmoji}>{emoji}</Text>
@@ -142,7 +138,7 @@ const s = StyleSheet.create({
   bigEmoji: { fontSize: 32 },
   title: { fontSize: 14, color: C.text, lineHeight: 20, flex: 1 },
   name: { fontWeight: '800', color: C.primary },
-  count: { fontSize: 22, fontWeight: '800', color: '#FBBF24' },
+  count: { fontSize: 22, fontWeight: '800', color: C.warning },
   time: { fontSize: 11, color: C.muted, marginTop: 3 },
   reactRow: { flexDirection: 'row', gap: 6 },
   reactBtn: {
@@ -152,7 +148,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)',
     minHeight: 44,
   },
-  reactBtnActive: { backgroundColor: '#F9731615', borderColor: '#F9731640' },
+  reactBtnActive: { backgroundColor: C.primary + '15', borderColor: C.primary + '40' },
   reactEmoji: { fontSize: 15 },
   reactCount: { fontSize: 12, fontWeight: '700', color: C.muted },
 });

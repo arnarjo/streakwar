@@ -15,12 +15,28 @@
 import { serve } from 'https://deno.land/std@0.224.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+
 const supabase = createClient(
-  Deno.env.get('SUPABASE_URL')!,
+  supabaseUrl,
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const CALLBACK_BASE = Deno.env.get('SUPABASE_URL') + '/functions/v1/oauth-callback';
+async function createSignedState(data: object): Promise<string> {
+  const payload = JSON.stringify(data);
+  const secret = Deno.env.get('OAUTH_STATE_SECRET');
+  if (!secret) throw new Error('OAUTH_STATE_SECRET not set');
+  const key = await crypto.subtle.importKey(
+    'raw', new TextEncoder().encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
+  const sigHex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
+  return btoa(JSON.stringify({ payload, sig: sigHex }));
+}
+
+const CALLBACK_BASE = supabaseUrl + '/functions/v1/oauth-callback';
 
 // â”€â”€â”€ OAuth 2.0 providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -107,7 +123,7 @@ async function handleGarminInit(userId: string): Promise<Response> {
   }
 
   const requestTokenUrl = 'https://connect.garmin.com/oauth-service/oauth/request_token';
-  const callbackUrl = `${CALLBACK_BASE}?provider=garmin&user_id=${encodeURIComponent(userId)}`;
+  const callbackUrl = `${CALLBACK_BASE}?provider=garmin`;
 
   const authHeader = await buildOAuth1Header(
     'POST', requestTokenUrl,
@@ -137,15 +153,23 @@ async function handleGarminInit(userId: string): Promise<Response> {
 
   // Store request token secret so the callback can retrieve it.
   // We use the device_connections row with is_active=false as a temp holder.
-  await supabase.from('device_connections').upsert({
-    user_id: userId,
-    provider: 'garmin',
-    is_active: false,
-    access_token: oauthToken,         // temp: request token
-    refresh_token: oauthTokenSecret,  // temp: request token secret
-    external_user_id: null,
-    last_synced_at: null,
-  }, { onConflict: 'user_id,provider' });
+  // Tokens are encrypted; external_token_ref holds the plaintext oauthToken for lookup.
+  await supabase.rpc('upsert_encrypted_device_tokens', {
+    p_user_id: userId,
+    p_provider: 'garmin',
+    p_access_token: oauthToken,
+    p_refresh_token: oauthTokenSecret,
+    p_external_user_id: null,
+    p_token_expires_at: null,
+    p_is_active: false,
+    p_scope: null,
+  });
+  // Also set external_token_ref for lookup in oauth-callback
+  await supabase.from('device_connections')
+    .update({ external_token_ref: oauthToken })
+    .eq('user_id', userId)
+    .eq('provider', 'garmin')
+    .eq('is_active', false);
 
   const authorizeUrl = `https://connect.garmin.com/oauth-service/oauth/authorize?oauth_token=${oauthToken}`;
   return Response.redirect(authorizeUrl, 302);
@@ -156,13 +180,22 @@ async function handleGarminInit(userId: string): Promise<Response> {
 serve(async (req) => {
   const url = new URL(req.url);
   const provider = url.searchParams.get('provider');
-  const userId = url.searchParams.get('user_id');
 
-  if (!provider || !userId) {
-    return new Response('Missing provider or user_id', { status: 400 });
+  if (!provider) {
+    return new Response('Missing provider', { status: 400 });
   }
 
-  // Garmin uses OAuth 1.0a â€” special handling
+  // Extract userId from JWT instead of query param
+  const authHeader = req.headers.get('Authorization') ?? '';
+  const token = authHeader.replace('Bearer ', '');
+  const userClient = createClient(supabaseUrl, supabaseAnonKey, {
+    global: { headers: { Authorization: `Bearer ${token}` } }
+  });
+  const { data: { user }, error: userError } = await userClient.auth.getUser();
+  if (userError || !user) return new Response('Unauthorized', { status: 401 });
+  const userId = user.id;
+
+  // Garmin uses OAuth 1.0a — special handling
   if (provider === 'garmin') {
     return handleGarminInit(userId);
   }
@@ -172,7 +205,7 @@ serve(async (req) => {
     return new Response(`Unknown provider: ${provider}`, { status: 400 });
   }
 
-  const state = btoa(JSON.stringify({ provider, userId, ts: Date.now() }));
+  const state = await createSignedState({ provider, userId, ts: Date.now() });
   const redirectUri = `${CALLBACK_BASE}?provider=${provider}`;
 
   const params = new URLSearchParams({

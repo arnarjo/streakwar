@@ -22,46 +22,54 @@ export function useLeague(userId: string) {
     setLoading(true);
     const weekStart = currentMonday();
 
-    const { data: tierRow } = await supabase
-      .from('user_league_tier')
-      .select('tier')
-      .eq('user_id', userId)
-      .maybeSingle();
+    try {
+      const { data: tierRow } = await supabase
+        .from('user_league_tier')
+        .select('tier')
+        .eq('user_id', userId)
+        .maybeSingle();
 
-    if (tierRow) {
-      setMyTier(tierRow.tier as LeagueTier);
-    } else {
-      await supabase.from('user_league_tier').insert({ user_id: userId, tier: 'bronze' });
-      setMyTier('bronze');
-    }
+      if (tierRow) {
+        setMyTier(tierRow.tier as LeagueTier);
+      } else {
+        await supabase
+          .from('user_league_tier')
+          .upsert(
+            { user_id: userId, tier: 'bronze' },
+            { onConflict: 'user_id', ignoreDuplicates: true }
+          );
+        setMyTier('bronze');
+      }
 
-    const { data: membership } = await supabase
-      .from('league_memberships')
-      .select('group_id')
-      .eq('user_id', userId)
-      .eq('week_start', weekStart)
-      .maybeSingle();
+      const { data: membership } = await supabase
+        .from('league_memberships')
+        .select('group_id')
+        .eq('user_id', userId)
+        .eq('week_start', weekStart)
+        .maybeSingle();
 
-    if (!membership) {
+      if (!membership) {
+        return;
+      }
+
+      setGroupId(membership.group_id);
+
+      const { data: rows } = await supabase
+        .rpc('get_league_group_leaderboard', {
+          p_group_id: membership.group_id,
+          p_week_start: weekStart,
+        });
+
+      if (rows) {
+        setMembers(rows as LeagueMember[]);
+        const idx = (rows as LeagueMember[]).findIndex(m => m.user_id === userId);
+        setMyRank(idx >= 0 ? idx + 1 : null);
+      }
+    } catch {
+      // silently swallow — loading will be cleared in finally
+    } finally {
       setLoading(false);
-      return;
     }
-
-    setGroupId(membership.group_id);
-
-    const { data: rows } = await supabase
-      .rpc('get_league_group_leaderboard', {
-        p_group_id: membership.group_id,
-        p_week_start: weekStart,
-      });
-
-    if (rows) {
-      setMembers(rows as LeagueMember[]);
-      const idx = (rows as LeagueMember[]).findIndex(m => m.user_id === userId);
-      setMyRank(idx >= 0 ? idx + 1 : null);
-    }
-
-    setLoading(false);
   }, [userId]);
 
   useEffect(() => { fetch(); }, [fetch]);

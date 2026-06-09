@@ -9,8 +9,8 @@ type PurchasesPackage = import('react-native-purchases').PurchasesPackage;
 
 const ENTITLEMENT_PRO = 'pro';
 
-// Set to false before production launch to re-enable Pro gates
-const TESTING_MODE = false;
+// Driven by env var — defaults to false. Set EXPO_PUBLIC_TESTING_MODE=true in .env.local only.
+const TESTING_MODE = process.env.EXPO_PUBLIC_TESTING_MODE === 'true';
 
 const RC_API_KEY = Platform.select({
   ios:     process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS     ?? '',

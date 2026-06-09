@@ -5,7 +5,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
+import type { RouteProp } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../navigation/RootNavigator';
 import { supabase } from '../lib/supabase';
+import { calculatePoints } from '../lib/utils';
 import { toLocalDate } from '../lib/dateUtils';
 import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
@@ -30,8 +34,8 @@ function getCurrentMonday(): string {
 
 export default function WeeklyRecapScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
+  const route = useRoute<RouteProp<RootStackParamList, 'WeeklyRecap'>>();
   const isCurrentWeek = route.params?.week === 'current';
 
   const weekStart = isCurrentWeek ? getCurrentMonday() : getLastMonday();
@@ -69,11 +73,7 @@ export default function WeeklyRecapScreen() {
       const steps = (workouts ?? []).reduce((s, w) => s + (w.steps ?? 0), 0);
       setTotalSteps(steps);
 
-      const pts = (workouts ?? []).reduce((s, w) =>
-        s + 1
-        + Math.floor((w.steps ?? 0) / 1000)
-        + Math.floor(w.distance_km ?? 0)
-        + Math.floor((w.duration_minutes ?? 0) / 30), 0);
+      const pts = (workouts ?? []).reduce((s, w) => s + calculatePoints(w), 0);
       setTotalPts(pts);
 
       const prevStart = new Date(weekStart);

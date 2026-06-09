@@ -7,7 +7,8 @@ import {
 import { ACTIVITY_LABELS, REACTIONS } from '../types/database';
 import type { WorkoutPost, WorkoutComment } from '../types/database';
 import { formatDistanceToNow } from 'date-fns';
-import { C } from '../theme';
+import { C, F } from '../theme';
+import { getInitials } from '../lib/utils';
 
 type Props = {
   post: WorkoutPost;
@@ -88,14 +89,7 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
     ]).start();
   }
 
-  const initials = (post.profile?.full_name ?? post.profile?.username ?? '?')
-    .trim()
-    .split(/\s+/)
-    .map(w => w[0] ?? '')
-    .filter(Boolean)
-    .join('')
-    .slice(0, 2)
-    .toUpperCase() || '?';
+  const initials = getInitials(post.profile?.full_name ?? post.profile?.username);
 
   const sourceLabel = post.source === 'strava' ? 'Strava' : post.source === 'health_connect' ? 'HC sync' : null;
 
@@ -131,7 +125,12 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
           )}
         </View>
         {isOwnPost && (
-          <TouchableOpacity onPress={showPostMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={showPostMenu}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityLabel="More options"
+            accessibilityRole="button"
+          >
             <Text style={s.menuDots}>⋯</Text>
           </TouchableOpacity>
         )}
@@ -174,15 +173,22 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
                   style={[s.reactBtn, active && s.reactBtnActive]}
                   onPress={() => { animateReaction(emoji); onReact(post.id, emoji); }}
                   activeOpacity={0.7}
+                  accessibilityLabel={`React with ${emoji}`}
+                  accessibilityRole="button"
                 >
                   <Text style={s.reactEmoji}>{emoji}</Text>
-                  {count > 0 && <Text style={[s.reactCount, active && { color: '#F97316' }]}>{count}</Text>}
+                  {count > 0 && <Text style={[s.reactCount, active && { color: C.primary }]}>{count}</Text>}
                 </TouchableOpacity>
               </Animated.View>
             );
           })}
         </View>
-        <TouchableOpacity style={s.commentBtn} onPress={openComments}>
+        <TouchableOpacity
+          style={s.commentBtn}
+          onPress={openComments}
+          accessibilityLabel={`${post.comment_count ?? 0} comments, tap to view`}
+          accessibilityRole="button"
+        >
           <Text style={s.commentBtnText}>
             💬 {post.comment_count ?? 0}
           </Text>
@@ -270,14 +276,14 @@ const s = StyleSheet.create({
     overflow: 'hidden',
   },
   avatarImg: { width: 40, height: 40, borderRadius: 20 },
-  avatarText: { fontSize: 15, fontWeight: '700', color: C.primary },
-  name: { fontSize: 14, fontWeight: '700', color: C.text },
-  meta: { fontSize: 12, color: C.muted, marginTop: 1 },
+  avatarText: { fontSize: 15, fontWeight: '700', fontFamily: F.bold, color: C.primary },
+  name: { fontSize: 14, fontWeight: '700', fontFamily: F.bold, color: C.text },
+  meta: { fontSize: 12, color: C.muted, marginTop: 1, fontFamily: F.ui },
   timeRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  time: { fontSize: 11, color: C.muted },
-  timeDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: '#637C8F' },
-  sourceLabel: { fontSize: 11, fontWeight: '500', color: C.muted },
-  menuDots: { fontSize: 18, color: C.muted, paddingLeft: 8, fontWeight: '700' },
+  time: { fontSize: 11, color: C.muted, fontFamily: F.ui },
+  timeDot: { width: 3, height: 3, borderRadius: 2, backgroundColor: C.muted },
+  sourceLabel: { fontSize: 11, fontWeight: '500', fontFamily: F.medium, color: C.muted },
+  menuDots: { fontSize: 18, color: C.muted, paddingLeft: 8, fontWeight: '700', fontFamily: F.bold },
 
   statsRow: {
     flexDirection: 'row',
@@ -292,7 +298,7 @@ const s = StyleSheet.create({
     paddingVertical: 4,
   },
   pointsPill: { backgroundColor: C.primary + '15' },
-  statText: { fontSize: 12, color: C.text, fontWeight: '600' },
+  statText: { fontSize: 12, color: C.text, fontWeight: '600', fontFamily: F.medium },
 
   caption: {
     fontSize: 14,
@@ -300,6 +306,7 @@ const s = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 0,
     lineHeight: 20,
+    fontFamily: F.ui,
   },
   media: {
     width: '100%',
@@ -319,8 +326,8 @@ const s = StyleSheet.create({
   },
   metricItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metricIcon: { fontSize: 14 },
-  metricValue: { fontSize: 16, fontWeight: '700', color: '#EEF4F8' },
-  metricUnit: { fontSize: 12, color: '#637C8F' },
+  metricValue: { fontSize: 16, fontWeight: '700', fontFamily: F.bold, color: C.text },
+  metricUnit: { fontSize: 12, color: C.muted, fontFamily: F.ui },
 
   reactionsRow: {
     flexDirection: 'row',
@@ -333,11 +340,11 @@ const s = StyleSheet.create({
   },
   reactRow: { flexDirection: 'row', gap: 8, flex: 1 },
   reactBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 11, paddingHorizontal: 11, paddingVertical: 7, minHeight: 38, borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)' },
-  reactBtnActive: { backgroundColor: '#F9731615', borderColor: '#F9731640' },
+  reactBtnActive: { backgroundColor: C.primary + '15', borderColor: C.primary + '40' },
   reactEmoji: { fontSize: 16 },
-  reactCount: { fontSize: 12, fontWeight: '700', color: '#637C8F' },
+  reactCount: { fontSize: 12, fontWeight: '700', fontFamily: F.bold, color: C.muted },
   commentBtn: { padding: 6 },
-  commentBtnText: { fontSize: 13, color: C.muted, fontWeight: '600' },
+  commentBtnText: { fontSize: 13, color: C.muted, fontWeight: '600', fontFamily: F.medium },
 
   muted: { color: C.muted, fontSize: 14 },
 
@@ -350,11 +357,11 @@ const s = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: C.border,
   },
-  commentsTitle: { fontSize: 17, fontWeight: '700', color: C.text },
-  commentsClose: { fontSize: 20, color: C.muted, padding: 4 },
+  commentsTitle: { fontSize: 17, fontWeight: '700', fontFamily: F.bold, color: C.text },
+  commentsClose: { fontSize: 20, color: C.muted, padding: 4, fontFamily: F.ui },
   commentItem: { gap: 3 },
-  commentAuthor: { fontSize: 13, fontWeight: '700', color: C.primary },
-  commentContent: { fontSize: 14, color: C.text, lineHeight: 20 },
+  commentAuthor: { fontSize: 13, fontWeight: '700', fontFamily: F.bold, color: C.primary },
+  commentContent: { fontSize: 14, color: C.text, lineHeight: 20, fontFamily: F.ui },
   commentInput: {
     flexDirection: 'row',
     alignItems: 'flex-end',
@@ -381,5 +388,5 @@ const s = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 10,
   },
-  commentSendText: { color: '#000', fontWeight: '800', fontSize: 13 },
+  commentSendText: { color: '#000', fontWeight: '800', fontFamily: F.disp, fontSize: 13 },
 });

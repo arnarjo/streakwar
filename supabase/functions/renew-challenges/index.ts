@@ -26,6 +26,16 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  const cronSecret = Deno.env.get('CRON_SECRET');
+  if (!cronSecret) {
+    console.error('CRON_SECRET env var is not set');
+    return new Response('Service unavailable', { status: 503 });
+  }
+  const authHeader = req.headers.get('Authorization') ?? '';
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    return new Response('Unauthorized', { status: 401 });
+  }
+
   try {
     // Step 1 â€” refresh all challenge statuses
     await supabase.rpc('refresh_challenge_statuses');

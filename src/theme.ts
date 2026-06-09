@@ -11,7 +11,7 @@ export const C = {
   text2:       'rgba(255,255,255,0.55)',
   muted:       '#637C8F',
   muted2:      '#4A6070',
-  dimmed:      '#1E2A35',
+  dimmed:      '#4A6070',
   primary:     '#F97316',
   primaryDark: '#EA580C',
   success:     '#22C55E',

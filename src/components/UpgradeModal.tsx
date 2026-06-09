@@ -5,11 +5,7 @@ import {
 } from 'react-native';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { PremiumOffering } from '../hooks/usePremium';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.08)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', gold: '#FBBF24',
-};
+import { C } from '../theme';
 
 const PRO_FEATURES = [
   { icon: '🛡️', text: 'Streak freeze — protect 1 day per month' },
@@ -106,9 +102,9 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
                   {(() => {
                     const yearlyProduct = offering.yearly?.product;
                     if (yearlyProduct?.price && yearlyProduct.price > 0) {
-                      const monthlyPrice = yearlyProduct.price / 12;
+                      const perMonthPrice = yearlyProduct.price / 12;
                       const symbol = yearlyProduct.priceString?.replace(/[\d.,\s]/g, '').trim() ?? '$';
-                      return <Text style={s.planSub}>~{symbol}{monthlyPrice.toFixed(2)}/month</Text>;
+                      return <Text style={s.planSub}>~{symbol}{perMonthPrice.toFixed(2)}/month</Text>;
                     }
                     return <Text style={s.planSub}>~$2.92/month</Text>;
                   })()}
@@ -165,8 +161,8 @@ const s = StyleSheet.create({
   badge: { alignSelf: 'center', backgroundColor: C.gold + '20', borderWidth: 1, borderColor: C.gold + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 1.5, marginBottom: 16 },
   headline: { fontSize: 32, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 38, marginBottom: 8 },
   reason: { fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  socialProof: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E30', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'center', marginBottom: 20 },
-  socialProofText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
+  socialProof: { backgroundColor: C.success + '15', borderWidth: 1, borderColor: C.success + '30', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'center', marginBottom: 20 },
+  socialProofText: { fontSize: 13, fontWeight: '700', color: C.success },
   featureList: { backgroundColor: C.card, borderRadius: 16, borderWidth: 1, borderColor: C.border, padding: 16, gap: 12, marginBottom: 24 },
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   featureIcon: { fontSize: 22, width: 32, textAlign: 'center' },

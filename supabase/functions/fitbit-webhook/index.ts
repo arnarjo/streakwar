@@ -18,6 +18,24 @@ const supabase = createClient(
 
 const FITBIT_VERIFY_CODE = Deno.env.get('FITBIT_VERIFY_CODE') ?? '';
 
+async function verifyFitbitSignature(req: Request, rawBody: ArrayBuffer): Promise<boolean> {
+  const sig = req.headers.get('X-Fitbit-Signature') ?? '';
+  const secret = Deno.env.get('FITBIT_CLIENT_SECRET')!;
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret + '&'),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign']
+  );
+  const mac = await crypto.subtle.sign('HMAC', key, rawBody);
+  const expected = btoa(String.fromCharCode(...new Uint8Array(mac)));
+  if (sig.length !== expected.length) return false;
+  let diff = 0;
+  for (let i = 0; i < sig.length; i++) diff |= sig.charCodeAt(i) ^ expected.charCodeAt(i);
+  return diff === 0;
+}
+
 // Fitbit activity type id â†’ our ActivityType (best-effort mapping)
 function fitbitActivityToType(logId: number, activityName: string): string {
   const name = activityName.toLowerCase();
@@ -45,13 +63,13 @@ async function refreshFitbitToken(conn: any): Promise<string> {
   });
   const data = await res.json();
   if (data.access_token) {
-    await supabase.from('device_connections').update({
-      access_token: data.access_token,
-      refresh_token: data.refresh_token ?? conn.refresh_token,
-      token_expires_at: data.expires_in
-        ? new Date(Date.now() + data.expires_in * 1000).toISOString()
-        : null,
-    }).eq('user_id', conn.user_id).eq('provider', 'fitbit');
+    await supabase.rpc('update_encrypted_device_tokens', {
+      p_user_id: conn.user_id,
+      p_provider: 'fitbit',
+      p_access_token: data.access_token,
+      p_refresh_token: data.refresh_token ?? conn.refresh_token,
+      p_token_expires_at: data.expires_in ? new Date(Date.now() + data.expires_in * 1000).toISOString() : null,
+    });
     return data.access_token;
   }
   return conn.access_token;
@@ -72,9 +90,15 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  const rawBody = await req.arrayBuffer();
+
+  if (!await verifyFitbitSignature(req, rawBody)) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
   let notifications: any[];
   try {
-    notifications = await req.json();
+    notifications = JSON.parse(new TextDecoder().decode(rawBody));
   } catch {
     return new Response('Bad JSON', { status: 400 });
   }
@@ -85,11 +109,7 @@ serve(async (req) => {
 
     const fitbitUserId = note.ownerId;
     const { data: conn } = await supabase
-      .from('device_connections')
-      .select('*')
-      .eq('provider', 'fitbit')
-      .eq('external_user_id', fitbitUserId)
-      .eq('is_active', true)
+      .rpc('get_device_connection_decrypted', { p_provider: 'fitbit', p_external_user_id: fitbitUserId })
       .single();
 
     if (!conn) continue;

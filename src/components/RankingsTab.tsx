@@ -3,21 +3,7 @@ import { View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity } fr
 import type { LeaderboardEntry } from '../types/database';
 import { getInitials } from '../lib/utils';
 import { C, F } from '../theme';
-
-function medalOrRank(rank: number) {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `#${rank}`;
-}
-
-function rankColor(rank: number) {
-  if (rank === 1) return C.gold;
-  if (rank === 2) return C.silver;
-  if (rank === 3) return C.bronze;
-  return C.muted;
-}
-
+import { medalOrRank, rankColor } from '../lib/rankUtils';
 
 interface Profile {
   full_name: string | null;
@@ -79,6 +65,8 @@ export function RankingsTab({
             style={[s.followBtn, isFollowing && s.followingBtn]}
             onPress={() => isFollowing ? onUnfollow(item.id) : onFollow(item.id)}
             activeOpacity={0.7}
+            accessibilityLabel={isFollowing ? `Unfollow ${item.full_name ?? item.username}` : `Follow ${item.full_name ?? item.username}`}
+            accessibilityRole="button"
           >
             <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
               {isFollowing ? '✓' : '+'}
@@ -90,6 +78,8 @@ export function RankingsTab({
             style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
             onPress={() => onNudge(item.id, item.full_name ?? item.username)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={nudgedToday.has(item.id) ? 'Already nudged' : `Nudge ${item.full_name ?? item.username ?? 'this person'}`}
           >
             <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
           </TouchableOpacity>
@@ -152,11 +142,11 @@ const s = StyleSheet.create({
   list:             { paddingHorizontal: 16, paddingBottom: 100 },
   row:              { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
   rowMe:            { borderColor: C.primary + '50', backgroundColor: C.primary + '08' },
-  rowGold:          { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
-  rowSilver:        { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
-  rowBronze:        { borderLeftWidth: 3, borderLeftColor: '#B45309' },
+  rowGold:          { borderLeftWidth: 3, borderLeftColor: C.gold },
+  rowSilver:        { borderLeftWidth: 3, borderLeftColor: C.silver },
+  rowBronze:        { borderLeftWidth: 3, borderLeftColor: C.bronze },
   rank:             { width: 30, fontSize: 13, fontWeight: '800', fontFamily: F.disp, textAlign: 'center' },
-  avatar:           { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E2A35', alignItems: 'center', justifyContent: 'center' },
+  avatar:           { width: 38, height: 38, borderRadius: 19, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center' },
   avatarMe:         { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
   avatarText:       { fontSize: 13, fontWeight: '800', fontFamily: F.disp, color: C.muted },
   info:             { flex: 1 },

@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { C } from '../theme';
 
 export function NetworkError({ onRetry }: { onRetry: () => void }) {
   return (
@@ -15,10 +16,10 @@ export function NetworkError({ onRetry }: { onRetry: () => void }) {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0C1117', alignItems: 'center', justifyContent: 'center', padding: 32 },
+  container: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', padding: 32 },
   emoji: { fontSize: 48, marginBottom: 16 },
-  title: { fontSize: 20, fontWeight: '800', color: '#EEF4F8', marginBottom: 8 },
-  msg: { fontSize: 14, color: '#4A6070', textAlign: 'center', marginBottom: 24 },
-  btn: { backgroundColor: '#F97316', borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
+  title: { fontSize: 20, fontWeight: '800', color: C.text, marginBottom: 8 },
+  msg: { fontSize: 14, color: C.dimmed, textAlign: 'center', marginBottom: 24 },
+  btn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 },
   btnText: { color: '#000', fontWeight: '800', fontSize: 15 },
 });

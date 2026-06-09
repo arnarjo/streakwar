@@ -73,21 +73,20 @@ export function useLeaderboard(userId: string) {
   }, [userId]);
 
   // ── Friends board ────────────────────────────────────────────
+  // Uses the already-fetched `following` set instead of issuing a second
+  // identical query against the friendships table.  fetchFollowing must run
+  // first (its useEffect fires on mount), so `following` is populated before
+  // callers like follow/unfollow trigger fetchFriends.
   const fetchFriends = useCallback(async () => {
     if (!userId) return;
-    const { data: follows } = await supabase
-      .from('friendships')
-      .select('following_id')
-      .eq('follower_id', userId);
-
-    const ids = [...(follows?.map((f: { following_id: string }) => f.following_id) ?? []), userId];
+    const ids = [...following, userId];
     const { data } = await supabase
       .from('profiles')
       .select(ALL_COLS)
       .in('id', ids)
       .order('total_points', { ascending: false });
     setFriendsBoard((data ?? []) as LeaderboardEntry[]);
-  }, [userId]);
+  }, [userId, following]);
 
   // ── Follow / unfollow ────────────────────────────────────────
   const follow = useCallback(async (targetId: string) => {
