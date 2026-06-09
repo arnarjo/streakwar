@@ -61,6 +61,13 @@ export interface Profile {
   created_at: string;
 }
 
+export interface UserDeviceToken {
+  user_id: string;
+  push_token: string;
+  platform?: string | null;
+  updated_at: string;
+}
+
 export interface Friendship {
   id: string;
   follower_id: string;

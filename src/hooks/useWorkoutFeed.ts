@@ -198,15 +198,19 @@ export function useWorkoutFeed(userId: string) {
     let media_type: 'photo' | 'video' | null = null;
 
     if (params.imageUri) {
+      const ALLOWED_EXTS = new Set(['jpg', 'jpeg', 'png', 'heic', 'heif', 'webp', 'mp4', 'mov']);
       const ext = params.imageUri.split('.').pop()?.toLowerCase();
+      if (!ext || !ALLOWED_EXTS.has(ext)) {
+        return { error: 'Unsupported file type' };
+      }
       const isVideo = ext === 'mp4' || ext === 'mov';
-      const path = `${userId}/${Date.now()}.${ext ?? 'jpg'}`;
+      const path = `${userId}/${Date.now()}.${ext}`;
       const videoContentType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
       const mimeType = isVideo ? videoContentType : 'image/jpeg';
 
       // FormData handles both file:// (iOS) and content:// (Android) URIs correctly
       const formData = new FormData();
-      formData.append('file', { uri: params.imageUri, name: `upload.${ext ?? 'jpg'}`, type: mimeType } as any);
+      formData.append('file', { uri: params.imageUri, name: `upload.${ext}`, type: mimeType } as any);
 
       const { error: uploadError } = await supabase.storage
         .from('workout-media')

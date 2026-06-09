@@ -170,9 +170,8 @@ async function registerForPushNotifications(
   }
 
   const { error } = await supabase
-    .from('profiles')
-    .update({ push_token: token })
-    .eq('id', userId);
+    .from('user_device_tokens')
+    .upsert({ user_id: userId, push_token: token, updated_at: new Date().toISOString() });
 
   if (error) logger.warn('[PushNotifications] failed to save token:', error);
 }

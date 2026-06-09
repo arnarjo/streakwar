@@ -148,14 +148,14 @@ Deno.serve(async (req) => {
       // Fetch all push tokens for this group in one query
       if (pushNotifications.length > 0) {
         const userIds = pushNotifications.map(n => n.user_id);
-        const { data: profiles, error: profilesError } = await supabase
-          .from('profiles')
-          .select('id, push_token')
-          .in('id', userIds);
+        const { data: deviceTokens, error: profilesError } = await supabase
+          .from('user_device_tokens')
+          .select('user_id, push_token')
+          .in('user_id', userIds);
 
-        if (profilesError) throw new Error(`Failed to fetch profiles: ${profilesError.message}`);
+        if (profilesError) throw new Error(`Failed to fetch push tokens: ${profilesError.message}`);
 
-        const tokenMap = new Map((profiles ?? []).map(p => [p.id, p.push_token]));
+        const tokenMap = new Map((deviceTokens ?? []).map(p => [p.user_id, p.push_token]));
 
         // Build expo push notifications
         const expoNotifications = pushNotifications

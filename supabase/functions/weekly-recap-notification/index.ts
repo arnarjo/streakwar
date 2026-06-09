@@ -20,26 +20,25 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('id, push_token, full_name, username')
+    const { data: tokens, error } = await supabase
+      .from('user_device_tokens')
+      .select('user_id, push_token, profiles(full_name, username)')
       .not('push_token', 'is', null);
 
     if (error) throw error;
 
     let sent = 0;
 
-    for (const profile of profiles ?? []) {
-      if (!(profile as any).push_token) continue;
-
-      const name = (profile as any).full_name?.split(' ')[0] ?? (profile as any).username ?? 'there';
+    for (const row of tokens ?? []) {
+      const profile = (row as any).profiles;
+      const name = profile?.full_name?.split(' ')[0] ?? profile?.username ?? 'there';
 
       try {
         await fetch('https://exp.host/--/api/v2/push/send', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            to: (profile as any).push_token,
+            to: row.push_token,
             title: 'Your weekly recap is ready 📊',
             body: `See how you did this week, ${name}!`,
             sound: 'default',

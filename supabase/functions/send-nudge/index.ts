@@ -58,18 +58,18 @@ serve(async (req) => {
 
   await supabase.from('nudges').insert({ sender_id, receiver_id, message, emoji: emoji ?? null });
 
-  const { data: receiver } = await supabase
-    .from('profiles')
+  const { data: receiverToken } = await supabase
+    .from('user_device_tokens')
     .select('push_token')
-    .eq('id', receiver_id)
-    .single();
+    .eq('user_id', receiver_id)
+    .maybeSingle();
 
-  if (receiver?.push_token) {
+  if (receiverToken?.push_token) {
     await fetch('https://exp.host/--/api/v2/push/send', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({
-        to: receiver.push_token,
+        to: receiverToken.push_token,
         title: emoji ? `${emoji} Reaction` : 'ðŸ’ª Nudge!',
         body: notifBody,
         data: { type: 'nudge' },

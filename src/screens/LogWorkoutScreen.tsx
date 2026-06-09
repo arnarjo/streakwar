@@ -8,6 +8,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RouteProp } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/RootNavigator';
 import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
@@ -26,9 +27,9 @@ try { HapticsModule = require('expo-haptics'); } catch {}
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList, 'LogWorkout'>>();
-  const route = useRoute<any>();
-  const preselectedChallengeId = route.params?.challengeId as string | undefined;
-  const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
+  const route = useRoute<RouteProp<RootStackParamList, 'LogWorkout'>>();
+  const preselectedChallengeId = route.params?.challengeId;
+  const editWorkout = route.params?.editWorkout;
   const isEditMode = !!editWorkout;
 
   const { logWorkout, updateWorkout, pickMedia } = useWorkoutFeed(profile?.id ?? '');
@@ -53,13 +54,17 @@ export default function LogWorkoutScreen() {
   const [showSuccess, setShowSuccess] = useState(false);
   const successScale = useRef(new Animated.Value(0)).current;
   const successOpacity = useRef(new Animated.Value(0)).current;
+  const successTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Timer
   const [timerRunning, setTimerRunning] = useState(false);
   const [timerSeconds, setTimerSeconds] = useState(0);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
+  useEffect(() => () => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (successTimerRef.current) clearTimeout(successTimerRef.current);
+  }, []);
 
   function toggleTimer() {
     if (timerRunning) {
@@ -90,7 +95,7 @@ export default function LogWorkoutScreen() {
       Animated.spring(successScale, { toValue: 1, useNativeDriver: true, tension: 100, friction: 8 }),
       Animated.timing(successOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
     ]).start(() => {
-      setTimeout(() => {
+      successTimerRef.current = setTimeout(() => {
         Animated.timing(successOpacity, { toValue: 0, duration: 300, useNativeDriver: true }).start(() => {
           navigation.goBack();
         });
