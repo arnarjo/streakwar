@@ -56,10 +56,10 @@
         "android.permission.VIBRATE",
         "android.permission.POST_NOTIFICATIONS",
         "android.permission.FOREGROUND_SERVICE",
-        "android.health.connect.permission.READ_EXERCISE",
-        "android.health.connect.permission.READ_STEPS",
-        "android.health.connect.permission.READ_DISTANCE",
-        "android.health.connect.permission.READ_ACTIVE_CALORIES_BURNED",
+        "android.permission.health.READ_EXERCISE",
+        "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_DISTANCE",
+        "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.WAKE_LOCK",
         "com.google.android.gms.permission.AD_ID"
       ]
