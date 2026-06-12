@@ -23,15 +23,12 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
+import type { AppNavigationProp } from '../navigation/types';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
@@ -44,6 +41,7 @@ export default function HomeScreen() {
   })();
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
+  const [milestonesError, setMilestonesError] = React.useState(false);
 
   const streakGlowOpacity = useSharedValue(0.06);
   useEffect(() => {
@@ -62,22 +60,25 @@ export default function HomeScreen() {
 
   const fetchMilestones = useCallback(async () => {
     if (!profile?.id) return;
-    const { data: parts } = await supabase
+    const { data: parts, error: partsError } = await supabase
       .from('challenge_participants')
       .select('challenge_id')
       .eq('user_id', profile.id);
+    if (partsError) { setMilestonesError(true); return; }
+    setMilestonesError(false);
     if (!parts || parts.length === 0) return;
 
-    const { data: peers } = await supabase
+    const { data: peers, error: peersError } = await supabase
       .from('challenge_participants')
       .select('user_id')
       .in('challenge_id', parts.map(p => p.challenge_id))
       .neq('user_id', profile.id);
 
+    if (peersError) { setMilestonesError(true); return; }
     if (!peers || peers.length === 0) return;
     const peerIds = [...new Set(peers.map(p => p.user_id))];
 
-    const { data } = await supabase
+    const { data, error: milestonesFetchError } = await supabase
       .from('streak_milestones')
       .select('*, profile:profiles(id, username, full_name)')
       .in('user_id', peerIds)
@@ -85,6 +86,7 @@ export default function HomeScreen() {
       .order('achieved_at', { ascending: false })
       .limit(5);
 
+    if (milestonesFetchError) { setMilestonesError(true); return; }
     if (!data) return;
 
     const milestoneIds = data.map((m: any) => m.id);
@@ -136,7 +138,11 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile')}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
               {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
@@ -146,18 +152,18 @@ export default function HomeScreen() {
 
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.greeting}>
-            Hæ, {profile?.full_name?.split(' ')[0] ?? 'there'}!
+            Hey, {profile?.full_name?.split(' ')[0] ?? 'there'}!
           </Text>
           <Text style={s.subGreeting}>Ready to move today?</Text>
         </View>
 
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
-            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
+            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard')}>
               <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
@@ -223,7 +229,7 @@ export default function HomeScreen() {
               )}
 
               {leagueMembers.length > 0 && myRank !== null && (
-                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
                   <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
                     <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
                   </View>
@@ -236,7 +242,7 @@ export default function HomeScreen() {
               )}
 
               {rival && (
-                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
                   <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
                     <Text style={{ fontSize: 22 }}>🎯</Text>
                   </View>
@@ -265,6 +271,12 @@ export default function HomeScreen() {
                     />
                   ))}
                 </View>
+              )}
+
+              {milestonesError && (
+                <TouchableOpacity style={s.inlineError} onPress={fetchMilestones} accessibilityRole="button">
+                  <Text style={s.inlineErrorText}>Couldn't load streak milestones — tap to retry</Text>
+                </TouchableOpacity>
               )}
 
               {milestones.length > 0 && (
@@ -376,6 +388,8 @@ const s = StyleSheet.create({
   bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
+  inlineError: { backgroundColor: '#EF444412', borderWidth: 1, borderColor: '#EF444430', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center' },
+  inlineErrorText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },

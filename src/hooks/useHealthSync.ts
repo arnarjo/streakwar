@@ -132,17 +132,25 @@ export function useHealthSync(userId: string) {
     setSyncing(true);
 
     let count = 0;
+    let syncRan = false;
     if (Platform.OS === 'ios') {
       count = await syncRecentWorkouts(userId);
+      syncRan = true;
     } else if (Platform.OS === 'android') {
-      count = await pollHealthConnect(userId);
+      const result = await pollHealthConnect(userId);
+      count = result.synced;
+      // Skipped polls (permissions revoked) must not bump last_synced_at,
+      // or the staleness warning would never fire.
+      syncRan = result.ranWithPermissions;
     }
 
-    await supabase
-      .from('device_connections')
-      .update({ last_synced_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect');
+    if (syncRan) {
+      await supabase
+        .from('device_connections')
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect');
+    }
     await fetchConnections();
 
     setSyncing(false);

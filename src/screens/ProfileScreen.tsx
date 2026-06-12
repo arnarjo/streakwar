@@ -19,14 +19,8 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', green: '#22C55E', error: '#EF4444',
-};
-
-function seededRandom(seed: number) { let s = seed; return () => { s = (s * 1664525 + 1013904223) & 0xffffffff; return Math.abs(s) / 0x7fffffff; }; }
-function hashString(str: string) { let h = 0; for (let i = 0; i < str.length; i++) h = (Math.imul(31, h) + str.charCodeAt(i)) | 0; return Math.abs(h); }
+import { C } from '../theme';
+import type { AppNavigationProp } from '../navigation/types';
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
@@ -52,7 +46,7 @@ function useCountUp(target: number, duration = 900): number {
   return display;
 }
 
-function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData: Map<string, number> }) {
+function ActivityHeatmap({ heatmapData }: { heatmapData: Map<string, number> }) {
   const weeks = 13;
   const days = 7;
   const dayLabels = ['M', '', 'W', '', 'F', '', 'S'];
@@ -70,14 +64,7 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
       result.push(col);
     }
     return result;
-  }, [userId, heatmapData]);
-
-  const opacities = useMemo(() => {
-    const r = seededRandom(hashString(userId));
-    return Array.from({ length: weeks * days }, () => r() > 0.45 ? 1 : 0.15);
-  }, [userId]);
-
-  const useReal = heatmapData.size > 0;
+  }, [heatmapData]);
 
   return (
     <View style={heat.container}>
@@ -91,7 +78,7 @@ function ActivityHeatmap({ userId, heatmapData }: { userId: string; heatmapData:
           {Array.from({ length: weeks }).map((_, wi) => (
             <View key={wi} style={{ flex: 1, gap: 3 }}>
               {Array.from({ length: days }).map((_, di) => (
-                <View key={di} style={[heat.cell, { opacity: useReal ? (cols[wi]?.[di] ? 1 : 0.15) : opacities[wi * days + di] }]} />
+                <View key={di} style={[heat.cell, { opacity: cols[wi]?.[di] ? 1 : 0.15 }]} />
               ))}
             </View>
           ))}
@@ -119,7 +106,7 @@ const heat = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, showBatteryWarning, lastSynced } = useHealthSync(profile?.id ?? '');
@@ -136,30 +123,28 @@ export default function ProfileScreen() {
   const animStreak    = useCountUp(streak?.current_streak ?? 0);
   const [refreshing, setRefreshing] = useState(false);
   const [heatmapData, setHeatmapData] = useState<Map<string, number>>(new Map());
-  const [notifPrefs, setNotifPrefs] = useState({
-    streakReminder: true,
-    challengeUpdates: true,
-    reactions: true,
-    leagueAlerts: true,
-  });
+  const [statsError, setStatsError] = useState(false);
+  const [streakReminderOn, setStreakReminderOn] = useState(true);
 
   async function fetchStats() {
     if (!profile?.id) return;
-    const { count } = await supabase
+    const { count, error } = await supabase
       .from('workout_posts')
       .select('*', { count: 'exact', head: true })
       .eq('user_id', profile.id);
+    if (error) { setStatsError(true); return; }
     setTotalWorkouts(count ?? 0);
   }
 
   const fetchHeatmap = useCallback(async () => {
     if (!profile?.id) return;
     const since = format(subDays(new Date(), 90), 'yyyy-MM-dd');
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('workout_posts')
       .select('workout_date')
       .eq('user_id', profile.id)
       .gte('workout_date', since);
+    if (error) { setStatsError(true); return; }
     const map = new Map<string, number>();
     for (const { workout_date } of (data ?? [])) {
       const key = workout_date.slice(0, 10);
@@ -168,34 +153,38 @@ export default function ProfileScreen() {
     setHeatmapData(map);
   }, [profile?.id]);
 
+  function retryStats() {
+    setStatsError(false);
+    fetchStats();
+    fetchHeatmap();
+  }
+
   async function loadNotifPrefs() {
     if (!profile?.id) return;
     const stored = await AsyncStorage.getItem(`notif_prefs_${profile.id}`);
     if (stored) {
-      try { setNotifPrefs(p => ({ ...p, ...JSON.parse(stored) })); } catch {}
+      try { setStreakReminderOn(JSON.parse(stored).streakReminder ?? true); } catch {}
     }
   }
 
-  async function toggleNotifPref(key: keyof typeof notifPrefs) {
-    const updated = { ...notifPrefs, [key]: !notifPrefs[key] };
-    setNotifPrefs(updated);
-    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify(updated));
-    if (key === 'streakReminder') {
-      if (!updated.streakReminder) {
-        await cancelStreakReminders();
-      } else {
-        const { data: streakData } = await supabase
-          .from('user_streaks')
-          .select('current_streak, last_active_date')
-          .eq('user_id', profile!.id)
-          .single();
-        const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
-        scheduleStreakReminder(
-          streakData?.current_streak ?? 0,
-          streakData?.last_active_date,
-          firstName
-        ).catch(() => {});
-      }
+  async function toggleStreakReminder() {
+    const next = !streakReminderOn;
+    setStreakReminderOn(next);
+    await AsyncStorage.setItem(`notif_prefs_${profile!.id}`, JSON.stringify({ streakReminder: next }));
+    if (!next) {
+      await cancelStreakReminders();
+    } else {
+      const { data: streakData } = await supabase
+        .from('user_streaks')
+        .select('current_streak, last_active_date')
+        .eq('user_id', profile!.id)
+        .single();
+      const firstName = profile?.full_name?.split(' ')[0] ?? profile?.username;
+      scheduleStreakReminder(
+        streakData?.current_streak ?? 0,
+        streakData?.last_active_date,
+        firstName
+      ).catch(() => {});
     }
   }
 
@@ -203,6 +192,7 @@ export default function ProfileScreen() {
 
   async function onRefresh() {
     setRefreshing(true);
+    setStatsError(false);
     await Promise.all([fetchStats(), fetchHeatmap()]);
     setRefreshing(false);
   }
@@ -235,9 +225,6 @@ export default function ProfileScreen() {
 
       <View style={s.header}>
         <Text style={s.title}>Profile</Text>
-        <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={s.settingsBtn}>
-          <Text style={s.settingsIcon}>⚙️</Text>
-        </TouchableOpacity>
       </View>
 
       <ScrollView
@@ -250,7 +237,12 @@ export default function ProfileScreen() {
             <View style={s.avatar}>
               <Text style={s.avatarText}>{initials}</Text>
             </View>
-            <TouchableOpacity style={s.editAvatarBtn} onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}>
+            <TouchableOpacity
+              style={s.editAvatarBtn}
+              onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile photo"
+            >
               <Text style={{ fontSize: 14 }}>📷</Text>
             </TouchableOpacity>
           </View>
@@ -285,6 +277,11 @@ export default function ProfileScreen() {
         />
 
         <Text style={s.sectionLabel}>Stats</Text>
+        {statsError && (
+          <TouchableOpacity style={s.inlineError} onPress={retryStats} accessibilityRole="button">
+            <Text style={s.inlineErrorText}>Couldn't load your stats — tap to retry</Text>
+          </TouchableOpacity>
+        )}
         <View style={s.statsGrid}>
           {[
             { label: 'Total points',      value: animPoints.toLocaleString(),  icon: '⭐', color: C.primary },
@@ -301,7 +298,7 @@ export default function ProfileScreen() {
         </View>
 
         <Text style={s.sectionLabel}>Activity</Text>
-        <ActivityHeatmap userId={profile?.id ?? 'anon'} heatmapData={heatmapData} />
+        <ActivityHeatmap heatmapData={heatmapData} />
 
         {streak && streak.current_streak > 0 && (
           <>
@@ -442,28 +439,21 @@ export default function ProfileScreen() {
 
         <Text style={s.sectionLabel}>Notifications</Text>
         <View style={s.notifCard}>
-          {([
-            { key: 'streakReminder' as const, icon: '🔥', label: 'Streak reminder', desc: 'Daily reminder to keep your streak' },
-            { key: 'challengeUpdates' as const, icon: '🏆', label: 'Challenge updates', desc: 'When challenges start or end' },
-            { key: 'reactions' as const, icon: '💬', label: 'Reactions & comments', desc: 'When someone reacts to your workout' },
-            { key: 'leagueAlerts' as const, icon: '🏅', label: 'League alerts', desc: 'Rank changes and league events' },
-          ]).map(({ key, icon, label, desc }, i, arr) => (
-            <View key={key} style={[s.notifRow, i < arr.length - 1 && s.notifRowBorder]}>
-              <View style={s.notifIconBox}>
-                <Text style={{ fontSize: 18 }}>{icon}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={s.notifLabel}>{label}</Text>
-                <Text style={s.notifDesc}>{desc}</Text>
-              </View>
-              <Switch
-                value={notifPrefs[key]}
-                onValueChange={() => toggleNotifPref(key)}
-                trackColor={{ false: C.border, true: C.primary + '99' }}
-                thumbColor={notifPrefs[key] ? C.primary : C.muted}
-              />
+          <View style={s.notifRow}>
+            <View style={s.notifIconBox}>
+              <Text style={{ fontSize: 18 }}>🔥</Text>
             </View>
-          ))}
+            <View style={{ flex: 1 }}>
+              <Text style={s.notifLabel}>Streak reminder</Text>
+              <Text style={s.notifDesc}>Daily reminder to keep your streak</Text>
+            </View>
+            <Switch
+              value={streakReminderOn}
+              onValueChange={toggleStreakReminder}
+              trackColor={{ false: C.border, true: C.primary + '99' }}
+              thumbColor={streakReminderOn ? C.primary : C.muted}
+            />
+          </View>
         </View>
 
         <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
@@ -488,9 +478,9 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  settingsBtn: { padding: 4 },
-  settingsIcon: { fontSize: 22 },
   scroll: { paddingHorizontal: 20, paddingBottom: 100 },
+  inlineError: { backgroundColor: C.error + '12', borderWidth: 1, borderColor: C.error + '30', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center' },
+  inlineErrorText: { color: C.error, fontSize: 13, fontWeight: '600' },
 
   identitySection: { alignItems: 'center', paddingVertical: 24, gap: 6 },
   avatarWrap: { position: 'relative', marginBottom: 4 },
@@ -559,7 +549,6 @@ const s = StyleSheet.create({
 
   notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
   notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  notifRowBorder: { borderBottomWidth: 1, borderBottomColor: C.border },
   notifIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
   notifLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
   notifDesc: { fontSize: 12, color: C.muted },

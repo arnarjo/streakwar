@@ -7,16 +7,7 @@ import {
 import { ACTIVITY_LABELS, REACTIONS } from '../types/database';
 import type { WorkoutPost, WorkoutComment } from '../types/database';
 import { formatDistanceToNow } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-};
+import { C } from '../theme';
 
 type Props = {
   post: WorkoutPost;
@@ -140,7 +131,12 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
           )}
         </View>
         {isOwnPost && (
-          <TouchableOpacity onPress={showPostMenu} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+          <TouchableOpacity
+            onPress={showPostMenu}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Post options"
+          >
             <Text style={s.menuDots}>⋯</Text>
           </TouchableOpacity>
         )}
@@ -183,6 +179,8 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
                   style={[s.reactBtn, active && s.reactBtnActive]}
                   onPress={() => { animateReaction(emoji); onReact(post.id, emoji); }}
                   activeOpacity={0.7}
+                  accessibilityRole="button"
+                  accessibilityLabel={active ? `Remove ${emoji} reaction` : `React with ${emoji}`}
                 >
                   <Text style={s.reactEmoji}>{emoji}</Text>
                   {count > 0 && <Text style={[s.reactCount, active && { color: '#F97316' }]}>{count}</Text>}
@@ -191,7 +189,12 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
             );
           })}
         </View>
-        <TouchableOpacity style={s.commentBtn} onPress={openComments}>
+        <TouchableOpacity
+          style={s.commentBtn}
+          onPress={openComments}
+          accessibilityRole="button"
+          accessibilityLabel={`View comments (${post.comment_count ?? 0})`}
+        >
           <Text style={s.commentBtnText}>
             💬 {post.comment_count ?? 0}
           </Text>
@@ -205,7 +208,11 @@ export default function WorkoutPostCard({ post, currentUserId, onReact, onFetchC
         >
           <View style={s.commentsHeader}>
             <Text style={s.commentsTitle}>Comments</Text>
-            <TouchableOpacity onPress={() => { setCommentsOpen(false); setComments([]); }}>
+            <TouchableOpacity
+              onPress={() => { setCommentsOpen(false); setComments([]); }}
+              accessibilityRole="button"
+              accessibilityLabel="Close comments"
+            >
               <Text style={s.commentsClose}>✕</Text>
             </TouchableOpacity>
           </View>

@@ -32,6 +32,17 @@ async function hmacSha1Hex(secret: string, message: string): Promise<string> {
   return Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+/** Constant-time string comparison to prevent timing attacks. */
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
+
 // Garmin activity type string â†’ our ActivityType
 function garminTypeToActivity(type: string): string {
   const t = (type ?? '').toLowerCase();
@@ -52,12 +63,16 @@ serve(async (req) => {
 
   const body = await req.text();
 
-  // Verify Garmin signature (optional but recommended in production)
-  // Garmin includes x-garmin-signature header with HMAC-SHA1 of the body
-  const signature = req.headers.get('x-garmin-signature');
-  if (GARMIN_CONSUMER_SECRET && signature) {
+  // Verify Garmin signature — fail-closed: when the consumer secret is
+  // configured, a missing or mismatched signature is rejected.
+  // Garmin includes x-garmin-signature header with HMAC-SHA1 of the body.
+  if (GARMIN_CONSUMER_SECRET) {
+    const signature = req.headers.get('x-garmin-signature');
+    if (!signature) {
+      return new Response('Missing signature', { status: 401 });
+    }
     const expected = await hmacSha1Hex(GARMIN_CONSUMER_SECRET, body);
-    if (signature !== expected) {
+    if (!timingSafeEqual(signature, expected)) {
       return new Response('Invalid signature', { status: 401 });
     }
   }
@@ -72,6 +87,9 @@ serve(async (req) => {
   // Garmin payload structure: { activities: [...] }
   const activities = payload.activities ?? [];
 
+  // StreakWar user ids resolved from device_connections (NOT Garmin external ids)
+  const syncedUserIds = new Set<string>();
+
   for (const act of activities) {
     const garminUserId = act.userId ?? act.userAccessToken;
     if (!garminUserId) continue;
@@ -85,6 +103,8 @@ serve(async (req) => {
       .single();
 
     if (!conn) continue;
+
+    syncedUserIds.add(conn.user_id);
 
     const externalId = `garmin_${act.activityId}`;
     const { data: existing } = await supabase
@@ -129,11 +149,12 @@ serve(async (req) => {
     });
   }
 
-  await supabase.from('device_connections')
-    .update({ last_synced_at: new Date().toISOString() })
-    .in('user_id',
-      activities.map((a: any) => a.userId).filter(Boolean).map(String)
-    );
+  if (syncedUserIds.size > 0) {
+    await supabase.from('device_connections')
+      .update({ last_synced_at: new Date().toISOString() })
+      .eq('provider', 'garmin')
+      .in('user_id', [...syncedUserIds]);
+  }
 
   return new Response('OK', { status: 200 });
 });

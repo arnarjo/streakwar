@@ -17,6 +17,35 @@ const supabase = createClient(
 );
 
 const FITBIT_VERIFY_CODE = Deno.env.get('FITBIT_VERIFY_CODE') ?? '';
+const FITBIT_CLIENT_SECRET = Deno.env.get('FITBIT_CLIENT_SECRET') ?? '';
+
+/**
+ * Fitbit signs notifications with X-Fitbit-Signature:
+ * BASE64(HMAC-SHA1(body, client_secret + '&')).
+ * https://dev.fitbit.com/build/reference/web-api/developer-guide/best-practices/#Subscriber-Security
+ */
+async function fitbitSignature(body: string): Promise<string> {
+  const key = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(FITBIT_CLIENT_SECRET + '&'),
+    { name: 'HMAC', hash: 'SHA-1' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(body));
+  return btoa(String.fromCharCode(...new Uint8Array(sig)));
+}
+
+/** Constant-time string comparison to prevent timing attacks. */
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
 
 // Fitbit activity type id â†’ our ActivityType (best-effort mapping)
 function fitbitActivityToType(logId: number, activityName: string): string {
@@ -72,9 +101,24 @@ serve(async (req) => {
     return new Response('Method not allowed', { status: 405 });
   }
 
+  const body = await req.text();
+
+  // Verify X-Fitbit-Signature — fail-closed: when the client secret is
+  // configured, a missing or mismatched signature is rejected.
+  if (FITBIT_CLIENT_SECRET) {
+    const signature = req.headers.get('x-fitbit-signature');
+    if (!signature) {
+      return new Response('Missing signature', { status: 401 });
+    }
+    const expected = await fitbitSignature(body);
+    if (!timingSafeEqual(signature, expected)) {
+      return new Response('Invalid signature', { status: 401 });
+    }
+  }
+
   let notifications: any[];
   try {
-    notifications = await req.json();
+    notifications = JSON.parse(body);
   } catch {
     return new Response('Bad JSON', { status: 400 });
   }

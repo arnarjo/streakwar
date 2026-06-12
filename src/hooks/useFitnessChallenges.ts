@@ -58,7 +58,7 @@ export function useFitnessChallenges(userId: string) {
   async function getParticipants(challengeId: string): Promise<ChallengeParticipant[]> {
     const { data } = await supabase
       .from('challenge_participants')
-      .select('*, profile:profiles(*)')
+      .select('*, profile:profiles(id, username, full_name, avatar_url)')
       .eq('challenge_id', challengeId)
       .order('score', { ascending: false });
     return data ?? [];

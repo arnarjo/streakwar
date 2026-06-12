@@ -36,6 +36,29 @@ module.exports = function withHealthConnectManifest(config) {
       'androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE',
     ];
 
+    // Android 14+: Health Connect launches VIEW_PERMISSION_USAGE with the
+    // HEALTH_PERMISSIONS category to show the app's privacy rationale.
+    const VIEW_PERMISSION_USAGE = 'android.intent.action.VIEW_PERMISSION_USAGE';
+    const HEALTH_PERMISSIONS_CATEGORY = 'android.intent.category.HEALTH_PERMISSIONS';
+    const existingUsageFilter = mainActivity['intent-filter'].find((f) =>
+      f.action?.some((a) => a.$?.['android:name'] === VIEW_PERMISSION_USAGE)
+    );
+    if (existingUsageFilter) {
+      // Ensure HEALTH_PERMISSIONS category exists on the existing filter
+      if (!existingUsageFilter.category) existingUsageFilter.category = [];
+      const hasHealthCategory = existingUsageFilter.category.some(
+        (c) => c.$?.['android:name'] === HEALTH_PERMISSIONS_CATEGORY
+      );
+      if (!hasHealthCategory) {
+        existingUsageFilter.category.push({ $: { 'android:name': HEALTH_PERMISSIONS_CATEGORY } });
+      }
+    } else {
+      mainActivity['intent-filter'].push({
+        action: [{ $: { 'android:name': VIEW_PERMISSION_USAGE } }],
+        category: [{ $: { 'android:name': HEALTH_PERMISSIONS_CATEGORY } }],
+      });
+    }
+
     for (const actionName of HC_ACTIONS) {
       const existingFilter = mainActivity['intent-filter'].find((f) =>
         f.action?.some((a) => a.$?.['android:name'] === actionName)

@@ -5,10 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { C } from '../../theme';
+import type { RootStackParamList } from '../../navigation/types';
 
 const { width } = Dimensions.get('window');
-
-const C = { bg: '#0C1117', text: '#EEF4F8', muted: '#4A6070', primary: '#F97316' };
 
 const slides = [
   {
@@ -41,7 +41,7 @@ const slides = [
   },
 ];
 
-type Props = { navigation: NativeStackNavigationProp<any> };
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Onboarding'> };
 
 export default function OnboardingScreen({ navigation }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);

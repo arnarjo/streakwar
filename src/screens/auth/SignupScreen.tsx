@@ -7,13 +7,10 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuth } from '../../hooks/useAuth';
+import { C } from '../../theme';
+import type { RootStackParamList } from '../../navigation/types';
 
-const C = {
-  bg: '#0C1117', border: 'rgba(255,255,255,0.08)', text: '#EEF4F8',
-  muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316', error: '#EF4444', success: '#22C55E',
-};
-
-type Props = { navigation: NativeStackNavigationProp<any> };
+type Props = { navigation: NativeStackNavigationProp<RootStackParamList, 'Signup'> };
 type FormErrors = { fullName?: string; username?: string; email?: string; password?: string; confirm?: string };
 const USERNAME_REGEX = /^[a-zA-Z0-9_.]{3,20}$/;
 

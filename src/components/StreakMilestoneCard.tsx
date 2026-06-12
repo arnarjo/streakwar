@@ -2,11 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#1A1208', border: '#F97316',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
 
 const REACTIONS = ['🔥', '💪', '⚡', '👏', '🏆'];
 
@@ -114,6 +110,8 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
               onPress={() => { animateReaction(emoji); handleReact(emoji); }}
               activeOpacity={0.7}
               disabled={reacting}
+              accessibilityRole="button"
+              accessibilityLabel={active ? `Remove ${emoji} reaction` : `React with ${emoji}`}
             >
               <Animated.View style={{ transform: [{ scale: getReactionScale(emoji) }] }}>
                 <Text style={s.reactEmoji}>{emoji}</Text>

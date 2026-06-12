@@ -1,6 +1,6 @@
 import 'react-native-url-polyfill/auto';
 import './src/lib/backgroundSync';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
@@ -10,17 +10,25 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { supabase } from './src/lib/supabase';
 import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
 import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
-import { initHealthConnect } from './src/lib/healthConnect';
 import { Platform, Linking } from 'react-native';
-import type { Session } from '@supabase/supabase-js';
+import { AuthProvider, useAuth } from './src/contexts/AuthContext';
+import { C } from './src/theme';
 
 function AppInner() {
-  const [session, setSession] = useState<Session | null>(null);
+  // Session comes from the single auth subscription owned by AuthProvider.
+  const { session, loading } = useAuth();
+  const userId = session?.user?.id;
 
   // Handle deep links: password reset + OAuth callbacks
   useEffect(() => {
     const handleUrl = async (url: string) => {
       if (!url) return;
+      // Only process the app's own auth deep links (scheme "streakwar" per
+      // app.json — OAuth uses Linking.createURL('') → "streakwar://" and
+      // password reset uses "streakwar://reset-password"). Feeding arbitrary
+      // URLs into exchangeCodeForSession / setSession would let any deep link
+      // carrying an access_token fragment fixate a session.
+      if (!url.toLowerCase().startsWith('streakwar://')) return;
       // Let Supabase parse auth tokens or codes from the URL (handles both
       // PKCE ?code= and legacy #access_token= formats).
       try {
@@ -47,26 +55,19 @@ function AppInner() {
     return () => sub.remove();
   }, []);
 
+  // Health-sync lifecycle, driven by the AuthProvider's session: boot on
+  // login (and on app start with an existing session), tear down on logout.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      if (session?.user?.id) bootHealthSync(session.user.id);
-    });
+    if (loading) return; // wait until the auth state has resolved
+    if (userId) {
+      bootHealthSync(userId);
+    } else {
+      teardownHealthKit();
+      clearUserId().catch(() => {});
+    }
+  }, [userId, loading]);
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_e, s) => {
-      setSession(s);
-      if (s?.user?.id) {
-        await bootHealthSync(s.user.id);
-      } else {
-        teardownHealthKit();
-        await clearUserId();
-      }
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  usePushNotifications(session?.user?.id ?? '', navigationRef);
+  usePushNotifications(userId ?? '', navigationRef);
 
   return (
     <>
@@ -92,11 +93,13 @@ async function bootHealthSync(userId: string) {
 export default function App() {
   return (
     <ErrorBoundary>
-      <SafeAreaProvider>
-        <SafeAreaView style={{ flex: 1, backgroundColor: '#0C1117' }}>
-          <AppInner />
-        </SafeAreaView>
-      </SafeAreaProvider>
+      <AuthProvider>
+        <SafeAreaProvider>
+          <SafeAreaView style={{ flex: 1, backgroundColor: C.bg }}>
+            <AppInner />
+          </SafeAreaView>
+        </SafeAreaProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

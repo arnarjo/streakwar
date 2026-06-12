@@ -3,16 +3,7 @@ import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { differenceInDays, parseISO, isAfter, isBefore } from 'date-fns';
 import type { FitnessChallenge } from '../types/database';
 import { SCORING_MODE_LABELS } from '../types/database';
-
-const C = {
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
+import { C } from '../theme';
 
 type Props = {
   challenge: FitnessChallenge;

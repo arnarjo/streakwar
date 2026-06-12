@@ -128,7 +128,7 @@ export function useWorkoutFeed(userId: string) {
   async function fetchComments(postId: string): Promise<WorkoutComment[]> {
     const { data } = await supabase
       .from('workout_comments')
-      .select('*, profile:profiles(*)')
+      .select('*, profile:profiles(id, username, full_name, avatar_url)')
       .eq('post_id', postId)
       .order('created_at', { ascending: true });
     return data ?? [];
@@ -210,23 +210,61 @@ export function useWorkoutFeed(userId: string) {
     steps: number | null;
     caption: string;
     workout_date: string;
+    // null = remove media, http(s) URL = keep existing media unchanged,
+    // local URI = upload new media, undefined = leave media untouched
+    imageUri?: string | null;
   }): Promise<{ error: string | null }> {
+    const updates: Record<string, unknown> = {
+      activity_type: params.activity_type,
+      duration_minutes: params.duration_minutes,
+      distance_km: params.distance_km,
+      calories: params.calories,
+      steps: params.steps,
+      caption: params.caption || null,
+      workout_date: params.workout_date,
+    };
+
+    if (params.imageUri === null) {
+      updates.media_url = null;
+      updates.media_type = null;
+    } else if (params.imageUri && !/^https?:\/\//.test(params.imageUri)) {
+      // New locally-picked media — upload it, mirroring logWorkout
+      const ext = params.imageUri.split('.').pop()?.toLowerCase();
+      const isVideo = ext === 'mp4' || ext === 'mov';
+      const path = `${userId}/${Date.now()}.${ext ?? 'jpg'}`;
+      const videoContentType = ext === 'mov' ? 'video/quicktime' : 'video/mp4';
+      const mimeType = isVideo ? videoContentType : 'image/jpeg';
+
+      const formData = new FormData();
+      formData.append('file', { uri: params.imageUri, name: `upload.${ext ?? 'jpg'}`, type: mimeType } as any);
+
+      const { error: uploadError } = await supabase.storage
+        .from('workout-media')
+        .upload(path, formData, { contentType: mimeType });
+
+      if (!uploadError) {
+        const { data: urlData } = supabase.storage.from('workout-media').getPublicUrl(path);
+        updates.media_url = urlData.publicUrl;
+        updates.media_type = isVideo ? 'video' : 'photo';
+      }
+    }
+
     const { error } = await supabase
       .from('workout_posts')
-      .update({
-        activity_type: params.activity_type,
-        duration_minutes: params.duration_minutes,
-        distance_km: params.distance_km,
-        calories: params.calories,
-        steps: params.steps,
-        caption: params.caption || null,
-        workout_date: params.workout_date,
-      })
+      .update(updates)
       .eq('id', postId)
       .eq('user_id', userId);
     if (error) return { error: 'Could not update workout' };
+    const { imageUri: _imageUri, ...fields } = params;
     setFeed(prev => prev.map(p => p.id === postId
-      ? { ...p, ...params, caption: params.caption || null }
+      ? {
+          ...p,
+          ...fields,
+          caption: params.caption || null,
+          ...('media_url' in updates
+            ? { media_url: updates.media_url as string | null, media_type: updates.media_type as 'photo' | 'video' | null }
+            : {}),
+        }
       : p
     ));
     return { error: null };

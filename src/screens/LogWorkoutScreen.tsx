@@ -17,27 +17,18 @@ import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
 
+import { C } from '../theme';
+import type { RootStackNavigationProp, RootStackRouteProp } from '../navigation/types';
+
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  borderFocus: '#F97316',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
-
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const preselectedChallengeId = route.params?.challengeId as string | undefined;
-  const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RootStackRouteProp<'LogWorkout'>>();
+  const preselectedChallengeId = route.params?.challengeId;
+  const editWorkout = route.params?.editWorkout;
   const isEditMode = !!editWorkout;
 
   const { logWorkout, updateWorkout, pickMedia } = useWorkoutFeed(profile?.id ?? '');
@@ -57,7 +48,7 @@ export default function LogWorkoutScreen() {
     editWorkout?.workout_date ? new Date(editWorkout.workout_date) : new Date()
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaUri, setMediaUri] = useState<string | null>(editWorkout?.media_url ?? null);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const successScale = useRef(new Animated.Value(0)).current;
@@ -157,6 +148,7 @@ export default function LogWorkoutScreen() {
         steps: stepsVal,
         caption,
         workout_date: workoutDateStr,
+        imageUri: mediaUri,
       }));
     } else {
       ({ error } = await logWorkout({

@@ -162,15 +162,35 @@ export async function checkHealthConnectGranted(stabilize = false): Promise<bool
 
 let _pollInFlight = false;
 
+export interface HealthPollResult {
+  /** Number of new rows written to Supabase */
+  synced: number;
+  /**
+   * True only when the poll actually ran with granted permissions.
+   * False when skipped (permissions revoked, HC unavailable, poll already
+   * in flight, wrong platform) — callers must NOT bump last_synced_at then,
+   * otherwise the staleness warning can never fire after a revocation.
+   */
+  ranWithPermissions: boolean;
+}
+
+const SKIPPED: HealthPollResult = { synced: 0, ranWithPermissions: false };
+
+// Re-read this far behind the stored cursor. The cursor is wall-clock time at
+// poll end, but readRecords filters by record time — a watch workout that
+// syncs into HC 30 minutes after it ended would otherwise fall behind the
+// cursor forever. Dedupe by external_activity_id makes re-reads safe.
+const CURSOR_OVERLAP_MS = 48 * 60 * 60 * 1000;
+
 /** Poll Health Connect for activities since the last sync and write new ones to Supabase */
-export async function pollHealthConnect(userId: string): Promise<number> {
-  if (Platform.OS !== 'android' || !HealthConnect) return 0;
-  if (_pollInFlight) return 0;
+export async function pollHealthConnect(userId: string): Promise<HealthPollResult> {
+  if (Platform.OS !== 'android' || !HealthConnect) return SKIPPED;
+  if (_pollInFlight) return SKIPPED;
   _pollInFlight = true;
 
   const { initialize, readRecords } = HealthConnect;
   const available = await initialize().catch(() => false);
-  if (!available) { _pollInFlight = false; return 0; }
+  if (!available) { _pollInFlight = false; return SKIPPED; }
 
   // Check permissions before advancing the sync cursor — if permissions were
   // revoked we must not advance LAST_SYNC_KEY or we'll lose historical data.
@@ -180,11 +200,15 @@ export async function pollHealthConnect(userId: string): Promise<number> {
   if (!granted.some((g: any) => g.recordType === 'ExerciseSession')) {
     console.log('[HealthConnect] poll skipped — permissions not granted');
     _pollInFlight = false;
-    return 0;
+    return SKIPPED;
   }
 
   const lastSyncRaw = await AsyncStorage.getItem(LAST_SYNC_KEY);
-  const startTime = lastSyncRaw ?? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+  // Subtract the overlap from the stored cursor so late-arriving records
+  // (watch syncs, manual entries) are still picked up. First run: 7 days.
+  const startTime = lastSyncRaw
+    ? new Date(new Date(lastSyncRaw).getTime() - CURSOR_OVERLAP_MS).toISOString()
+    : new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const endTime = new Date().toISOString();
 
   let synced = 0;
@@ -216,11 +240,13 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       const existingSet = new Set(existing?.map((r: any) => r.external_activity_id) ?? []);
 
       const toInsert = sessionList
-        .filter((s: any) => s.metadata?.id && !existingSet.has(String(s.metadata.id)))
+        // Skip in-progress sessions (no endTime yet): inserting them now would
+        // store a null duration, and dedupe would then block the completed
+        // version. The 48h cursor lookback re-reads them once complete.
+        .filter((s: any) => s.metadata?.id && s.endTime && !existingSet.has(String(s.metadata.id)))
         .map((session: any) => {
-          // Guard against missing timestamps — HC can omit endTime on in-progress sessions
           const startMs = session.startTime ? new Date(session.startTime).getTime() : NaN;
-          const endMs   = session.endTime   ? new Date(session.endTime).getTime()   : NaN;
+          const endMs   = new Date(session.endTime).getTime();
           const durationMs  = endMs - startMs;
           const durationMin = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : null;
           return {
@@ -256,16 +282,27 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-      const rawSteps = await readRecords('Steps', {
-        timeRangeFilter: {
-          operator: 'between',
-          startTime: startOfDay.toISOString(),
-          endTime: endOfDay.toISOString(),
-        },
-      });
+      const dayRange = {
+        operator: 'between',
+        startTime: startOfDay.toISOString(),
+        endTime: endOfDay.toISOString(),
+      };
 
-      const stepRecords = Array.isArray(rawSteps) ? rawSteps : (rawSteps?.records ?? []);
-      const totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
+      // Prefer the aggregate API: aggregateRecord({ recordType: 'Steps', ... })
+      // returns { COUNT_TOTAL } deduplicated by source priority, so phone and
+      // watch recording the same steps are not counted twice. Fall back to
+      // summing raw records (may double-count) if aggregation throws.
+      let totalSteps = 0;
+      try {
+        const { aggregateRecord } = HealthConnect;
+        const agg = await aggregateRecord({ recordType: 'Steps', timeRangeFilter: dayRange });
+        totalSteps = Math.round(agg?.COUNT_TOTAL ?? 0);
+      } catch (aggErr) {
+        console.warn('[HealthConnect] steps aggregate failed, falling back to raw sum:', aggErr);
+        const rawSteps = await readRecords('Steps', { timeRangeFilter: dayRange });
+        const stepRecords = Array.isArray(rawSteps) ? rawSteps : (rawSteps?.records ?? []);
+        totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
+      }
 
       if (totalSteps > 0) {
         // Atomic insert — if the row already exists, update steps in place.
@@ -285,11 +322,13 @@ export async function pollHealthConnect(userId: string): Promise<number> {
             // Unique constraint hit — row was already created today. Update the step
             // count, and the challenge_id if one is active, so a challenge joined
             // mid-day still gets credit (never clobber an existing link with null).
+            // The unique index is (user_id, external_activity_id) WITHOUT source,
+            // so do not filter by source — the conflicting row may have been
+            // created by Apple Health before a platform switch.
             await supabase
               .from('workout_posts')
               .update({ steps: totalSteps, ...(challengeId ? { challenge_id: challengeId } : {}) })
               .eq('user_id', userId)
-              .eq('source', 'health_connect')
               .eq('external_activity_id', `steps_${localDate}`);
           } else {
             console.warn('[HealthConnect] steps insert failed:', insertErr);
@@ -311,5 +350,5 @@ export async function pollHealthConnect(userId: string): Promise<number> {
     _pollInFlight = false;
   }
 
-  return synced;
+  return { synced, ranWithPermissions: true };
 }

@@ -2,12 +2,13 @@
  * Apple HealthKit integration (iOS only)
  *
  * How it works:
- *  1. At app open, initHealthKit() requests permissions and registers
- *     background delivery observers on HKWorkoutType and step counts.
- *  2. iOS wakes the app in the background whenever a new workout sample
- *     is written to HealthKit (e.g. after Apple Watch syncs).
- *  3. The observer callback fires → we read the new workout → post to
- *     Supabase → points are awarded without the user ever opening the app.
+ *  1. At app open, initHealthKit() requests HealthKit read permissions.
+ *  2. react-native-health does NOT provide a workout observer API, so there
+ *     is no native background delivery. Instead, the expo-background-fetch
+ *     task in backgroundSync.ts runs periodically (iOS decides the cadence)
+ *     and calls syncRecentWorkouts()/syncTodaySteps().
+ *  3. New workouts found by those polls are posted to Supabase and points
+ *     are awarded — but only as often as iOS grants background fetch time.
  */
 
 import { Platform } from 'react-native';
@@ -43,63 +44,69 @@ const HEALTHKIT_PERMISSIONS = {
 
 /** Map Apple workout type codes to our activity types */
 function mapAppleWorkoutType(typeId: number): ActivityType {
-  // HKWorkoutActivityType constants
+  // HKWorkoutActivityType raw values — getSamples returns these as `activityId`
   switch (typeId) {
-    case 37: return 'run';   // Running
-    case 52: return 'walk';  // Walking
-    case 13: return 'cycle'; // Cycling
-    case 46: return 'swim';  // Swimming
-    case 20: return 'lift';  // TraditionalStrengthTraining
-    case 21: return 'lift';  // FunctionalStrengthTraining
-    case 57: return 'yoga';  // Yoga
-    case 39: return 'hiit';  // HighIntensityIntervalTraining
+    case 37: return 'run';   // HKWorkoutActivityTypeRunning
+    case 52: return 'walk';  // HKWorkoutActivityTypeWalking
+    case 24: return 'walk';  // HKWorkoutActivityTypeHiking
+    case 13: return 'cycle'; // HKWorkoutActivityTypeCycling
+    case 46: return 'swim';  // HKWorkoutActivityTypeSwimming
+    case 50: return 'lift';  // HKWorkoutActivityTypeTraditionalStrengthTraining
+    case 20: return 'lift';  // HKWorkoutActivityTypeFunctionalStrengthTraining
+    case 57: return 'yoga';  // HKWorkoutActivityTypeYoga
+    case 63: return 'hiit';  // HKWorkoutActivityTypeHighIntensityIntervalTraining
     default:  return 'other';
   }
 }
+
+const MILES_TO_KM = 1.60934;
 
 
 // Track which userId was initialized so re-auth with a different account
 // doesn't keep delivering workouts to the previous user.
 let _initializedUserId: string | null = null;
-let _initInProgress = false;
+let _initPromise: Promise<boolean> | null = null;
 
 export async function initHealthKit(userId: string): Promise<boolean> {
   if (Platform.OS !== 'ios' || !AppleHealthKit) return false;
   if (_initializedUserId === userId) return true;
-  if (_initInProgress) return false;
-  _initInProgress = true;
+  // Share the in-flight init so parallel callers (e.g. steps + workouts sync
+  // in the background task) don't race or get a spurious false.
+  if (_initPromise) return _initPromise;
 
-  return new Promise(resolve => {
+  _initPromise = new Promise<boolean>(resolve => {
     AppleHealthKit.initHealthKit(HEALTHKIT_PERMISSIONS, (err: any) => {
-      _initInProgress = false;
+      _initPromise = null;
       if (err) {
         console.warn('[HealthKit] init failed:', err);
         resolve(false);
         return;
       }
       _initializedUserId = userId;
-
-      // iOS wakes the app in background when new workouts arrive
-      AppleHealthKit.observeWorkouts({}, async (_err: any, results: any[]) => {
-        if (_err || !results?.length) return;
-        if (_initializedUserId !== userId) return;
-        await syncNewWorkouts(userId, results);
-      });
-
+      // No observer API exists in react-native-health — new workouts are
+      // picked up by the expo-background-fetch task (backgroundSync.ts) and
+      // by foreground syncs (useHealthSync.syncNow / connectNative).
       resolve(true);
     });
   });
+  return _initPromise;
 }
 
 /** Call on sign-out so the next sign-in re-initializes with the correct user. */
 export function teardownHealthKit() {
   _initializedUserId = null;
-  _initInProgress = false;
+  _initPromise = null;
 }
 
 /** Fetch workouts recorded in the last 7 days and sync any that are new */
 export async function syncRecentWorkouts(userId: string): Promise<number> {
-  if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return 0;
+  if (Platform.OS !== 'ios' || !AppleHealthKit) return 0;
+  // In a headless background-fetch launch initHealthKit() may never have run
+  // for this process — initialize first (no UI prompt when already authorized).
+  if (_initializedUserId !== userId) {
+    const ok = await initHealthKit(userId);
+    if (!ok) return 0;
+  }
 
   const sevenDaysAgo = new Date();
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
@@ -122,8 +129,10 @@ export async function syncRecentWorkouts(userId: string): Promise<number> {
 }
 
 async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number> {
+  // getSamples(type: 'Workout') items: { activityId, id, activityName, calories,
+  // distance (MILES), start, end (ISO strings) } — no duration field.
   const externalIds = workouts
-    .map(w => String(w.id ?? w.sourceId ?? w.startDate))
+    .map(w => String(w.id ?? w.start ?? ''))
     .filter(Boolean);
 
   if (!externalIds.length) return 0;
@@ -143,20 +152,31 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
 
   const toInsert = workouts
     .map(workout => {
-      const externalId = String(workout.id ?? workout.sourceId ?? workout.startDate);
+      const externalId = String(workout.id ?? workout.start ?? '');
       if (!externalId || existingSet.has(externalId)) return null;
+
+      // No duration field on getSamples results — derive it from start/end
+      const startMs = workout.start ? new Date(workout.start).getTime() : NaN;
+      const endMs   = workout.end   ? new Date(workout.end).getTime()   : NaN;
+      const durationMin = Number.isFinite(endMs - startMs)
+        ? Math.round((endMs - startMs) / 60000)
+        : null;
+
       return {
         user_id: userId,
         challenge_id: challengeId,
-        activity_type: mapAppleWorkoutType(workout.workoutActivityType ?? 0),
-        duration_minutes: workout.duration ? Math.round(workout.duration / 60) : null,
-        distance_km: workout.distance ? parseFloat((workout.distance / 1000).toFixed(2)) : null,
-        calories: workout.totalEnergyBurned ? Math.round(workout.totalEnergyBurned) : null,
+        activity_type: mapAppleWorkoutType(workout.activityId ?? 0),
+        duration_minutes: durationMin !== null && durationMin > 0 ? durationMin : null,
+        // getSamples returns distance in MILES — convert to km
+        distance_km: workout.distance
+          ? parseFloat((workout.distance * MILES_TO_KM).toFixed(2))
+          : null,
+        calories: workout.calories ? Math.round(workout.calories) : null,
         source: 'apple_health',
         external_activity_id: externalId,
         // Use local date to avoid UTC midnight off-by-one on users outside UTC
-        workout_date: workout.startDate
-          ? toLocalDate(workout.startDate)
+        workout_date: workout.start
+          ? toLocalDate(workout.start)
           : toLocalDate(new Date()),
       };
     })
@@ -175,7 +195,12 @@ async function syncNewWorkouts(userId: string, workouts: any[]): Promise<number>
 
 /** Sync step counts for the current day */
 export async function syncTodaySteps(userId: string): Promise<void> {
-  if (Platform.OS !== 'ios' || !AppleHealthKit || _initializedUserId !== userId) return;
+  if (Platform.OS !== 'ios' || !AppleHealthKit) return;
+  // Headless background-fetch launch — initialize HealthKit first if needed
+  if (_initializedUserId !== userId) {
+    const ok = await initHealthKit(userId);
+    if (!ok) return;
+  }
 
   // Use local date — new Date().toISOString() returns UTC which can be yesterday
   const localDate = toLocalDate(new Date());
@@ -200,12 +225,14 @@ export async function syncTodaySteps(userId: string): Promise<void> {
 
         if (insertErr) {
           if (insertErr.code === '23505') {
-            // Unique constraint hit — row already exists, just update step count
+            // Unique constraint hit — row already exists, just update step count.
+            // The unique index is (user_id, external_activity_id) WITHOUT source,
+            // so do not filter by source here — the conflicting row may have been
+            // created on the other platform (e.g. Health Connect before a switch).
             await supabase
               .from('workout_posts')
               .update({ steps: result.value })
               .eq('user_id', userId)
-              .eq('source', 'apple_health')
               .eq('external_activity_id', `steps_${localDate}`);
           } else {
             console.warn('[HealthKit] steps insert failed:', insertErr);

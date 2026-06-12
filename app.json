@@ -92,6 +92,7 @@
       "expo-secure-store",
       "@react-native-community/datetimepicker",
       "expo-web-browser",
+      "react-native-health",
       [
         "react-native-health-connect",
         {

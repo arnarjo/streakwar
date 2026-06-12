@@ -15,18 +15,9 @@ import {
   SCORING_MODE_LABELS, TIE_BREAK_LABELS,
 } from '../types/database';
 import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
+import { format, addDays } from 'date-fns';
+import { C } from '../theme';
+import type { RootStackNavigationProp } from '../navigation/types';
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 
@@ -59,7 +50,7 @@ type Step = 1 | 2 | 3 | 4;
 
 export default function CreateChallengeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const { createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore } = usePremium(profile?.id ?? '');
 
@@ -404,14 +395,6 @@ export default function CreateChallengeScreen() {
                   disabled={!isPro}
                 />
               </TouchableOpacity>
-              <UpgradeModal
-                visible={upgradeVisible}
-                onClose={() => setUpgradeVisible(false)}
-                offering={offering}
-                onPurchase={purchase}
-                onRestore={restore}
-                reason="Photo proof requires a Pro subscription."
-              />
 
               <View style={s.switchRow}>
                 <View>
@@ -571,6 +554,15 @@ export default function CreateChallengeScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <UpgradeModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        offering={offering}
+        onPurchase={purchase}
+        onRestore={restore}
+        reason="This feature requires a Pro subscription."
+      />
     </SafeAreaView>
   );
 }

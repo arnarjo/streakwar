@@ -16,7 +16,7 @@ const supabase = createClient(
   Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
 );
 
-const STRAVA_VERIFY_TOKEN = Deno.env.get('STRAVA_VERIFY_TOKEN') ?? 'streakwar_strava';
+const STRAVA_VERIFY_TOKEN = Deno.env.get('STRAVA_VERIFY_TOKEN') ?? '';
 
 // Strava activity type → our ActivityType
 const STRAVA_TYPE_MAP: Record<string, string> = {
@@ -37,7 +37,7 @@ serve(async (req) => {
     const token = url.searchParams.get('hub.verify_token');
     const challenge = url.searchParams.get('hub.challenge');
 
-    if (mode === 'subscribe' && token === STRAVA_VERIFY_TOKEN && challenge) {
+    if (mode === 'subscribe' && STRAVA_VERIFY_TOKEN && token === STRAVA_VERIFY_TOKEN && challenge) {
       return Response.json({ 'hub.challenge': challenge });
     }
     return new Response('Forbidden', { status: 403 });

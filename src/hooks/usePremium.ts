@@ -85,10 +85,8 @@ export function usePremium(userId: string) {
       const entitlement = customerInfo.entitlements.active[ENTITLEMENT_PRO];
       const pro = !!entitlement;
       if (pro) {
-        await supabase
-          .from('profiles')
-          .update({ is_pro: true, pro_expires_at: entitlement?.expirationDate ?? null })
-          .eq('id', userId);
+        // profiles.is_pro is written by the revenuecat-webhook edge function
+        // (service role) — clients cannot and should not write it directly.
         setIsPro(true);
       }
       return pro;
@@ -106,12 +104,7 @@ export function usePremium(userId: string) {
       const info = await Purchases.restorePurchases();
       const entitlement = info.entitlements.active[ENTITLEMENT_PRO];
       const pro = !!entitlement;
-      if (pro) {
-        await supabase
-          .from('profiles')
-          .update({ is_pro: true, pro_expires_at: entitlement?.expirationDate ?? null })
-          .eq('id', userId);
-      }
+      // Pro status in the DB is synced by the revenuecat-webhook edge function.
       setIsPro(pro);
       Alert.alert(pro ? 'Restored!' : 'Nothing to restore', pro ? 'Pro is active.' : 'No active subscription found.');
       return pro;
