@@ -246,51 +246,60 @@ export async function pollHealthConnect(userId: string): Promise<number> {
       }
     }
 
-    // Sync today's steps using local date so the day boundary matches the user's clock
-    const now = new Date();
-    const localDate = toLocalDate(now);
-    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
+    // Sync today's steps using local date so the day boundary matches the user's clock.
+    // Wrapped in its own try/catch: the LAST_SYNC_KEY cursor only governs the
+    // ExerciseSession window (steps are always re-read for the whole day), so a
+    // steps failure (e.g. Steps permission denied) must not block the cursor advance.
+    try {
+      const now = new Date();
+      const localDate = toLocalDate(now);
+      const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999);
 
-    const rawSteps = await readRecords('Steps', {
-      timeRangeFilter: {
-        operator: 'between',
-        startTime: startOfDay.toISOString(),
-        endTime: endOfDay.toISOString(),
-      },
-    });
-
-    const stepRecords = Array.isArray(rawSteps) ? rawSteps : (rawSteps?.records ?? []);
-    const totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
-
-    if (totalSteps > 0) {
-      // Atomic insert — if the row already exists, update steps in place.
-      // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
-      const { error: insertErr } = await supabase.from('workout_posts').insert({
-        user_id: userId,
-        challenge_id: challengeId,
-        activity_type: 'walk',
-        steps: totalSteps,
-        source: 'health_connect',
-        external_activity_id: `steps_${localDate}`,
-        workout_date: localDate,
+      const rawSteps = await readRecords('Steps', {
+        timeRangeFilter: {
+          operator: 'between',
+          startTime: startOfDay.toISOString(),
+          endTime: endOfDay.toISOString(),
+        },
       });
 
-      if (insertErr) {
-        if (insertErr.code === '23505') {
-          // Unique constraint hit — row was already created today, just update step count
-          await supabase
-            .from('workout_posts')
-            .update({ steps: totalSteps })
-            .eq('user_id', userId)
-            .eq('source', 'health_connect')
-            .eq('external_activity_id', `steps_${localDate}`);
+      const stepRecords = Array.isArray(rawSteps) ? rawSteps : (rawSteps?.records ?? []);
+      const totalSteps = stepRecords.reduce((sum: number, r: any) => sum + (r.count ?? 0), 0);
+
+      if (totalSteps > 0) {
+        // Atomic insert — if the row already exists, update steps in place.
+        // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
+        const { error: insertErr } = await supabase.from('workout_posts').insert({
+          user_id: userId,
+          challenge_id: challengeId,
+          activity_type: 'walk',
+          steps: totalSteps,
+          source: 'health_connect',
+          external_activity_id: `steps_${localDate}`,
+          workout_date: localDate,
+        });
+
+        if (insertErr) {
+          if (insertErr.code === '23505') {
+            // Unique constraint hit — row was already created today. Update the step
+            // count, and the challenge_id if one is active, so a challenge joined
+            // mid-day still gets credit (never clobber an existing link with null).
+            await supabase
+              .from('workout_posts')
+              .update({ steps: totalSteps, ...(challengeId ? { challenge_id: challengeId } : {}) })
+              .eq('user_id', userId)
+              .eq('source', 'health_connect')
+              .eq('external_activity_id', `steps_${localDate}`);
+          } else {
+            console.warn('[HealthConnect] steps insert failed:', insertErr);
+          }
         } else {
-          console.warn('[HealthConnect] steps insert failed:', insertErr);
+          synced++;
         }
-      } else {
-        synced++;
       }
+    } catch (e) {
+      console.warn('[HealthConnect] steps sync failed:', e);
     }
     if (!insertFailed) {
       await AsyncStorage.setItem(LAST_SYNC_KEY, endTime);
