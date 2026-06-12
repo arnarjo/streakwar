@@ -37,6 +37,7 @@ export default function ChallengeDetailScreen() {
   const challengeId = route.params?.challengeId as string;
 
   const [challenge, setChallenge] = useState<FitnessChallenge | null>(null);
+  const [loadError, setLoadError] = useState(false);
   const [participants, setParticipants] = useState<ChallengeParticipant[]>([]);
   const [tab, setTab] = useState<Tab>('leaderboard');
   const [refreshing, setRefreshing] = useState(false);
@@ -47,18 +48,20 @@ export default function ChallengeDetailScreen() {
   const { messages: banterMessages, sendMessage, fetch: fetchBanter } = useChallengeMessages(challengeId, profile?.id ?? '');
 
   const loadChallenge = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('fitness_challenges')
-      .select('*, creator:profiles!fitness_challenges_created_by_fkey(*)')
+      .select('*, creator:profiles!fitness_challenges_created_by_fkey(id, username, full_name, avatar_url)')
       .eq('id', challengeId)
       .single();
-    if (data) setChallenge(data);
+    if (error || !data) { setLoadError(true); return; }
+    setLoadError(false);
+    setChallenge(data);
   }, [challengeId]);
 
   const loadParticipants = useCallback(async () => {
     const { data } = await supabase
       .from('challenge_participants')
-      .select('*, profile:profiles(*)')
+      .select('*, profile:profiles(id, username, full_name, avatar_url)')
       .eq('challenge_id', challengeId)
       .order('score', { ascending: false });
     if (data) setParticipants(data);
@@ -117,8 +120,29 @@ export default function ChallengeDetailScreen() {
   }
 
   if (!challenge) return (
-    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' }}>
-      <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+    <View style={{ flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 16, paddingHorizontal: 32 }}>
+      {loadError ? (
+        <>
+          <Text style={{ fontSize: 15, color: C.text, fontWeight: '700', textAlign: 'center' }}>
+            Couldn't load this challenge
+          </Text>
+          <Text style={{ fontSize: 13, color: C.muted, textAlign: 'center' }}>
+            Check your connection and try again.
+          </Text>
+          <TouchableOpacity
+            style={{ backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12 }}
+            onPress={() => { setLoadError(false); loadChallenge(); loadParticipants(); fetchFeed(challengeId); }}
+            accessibilityRole="button"
+          >
+            <Text style={{ color: '#000', fontWeight: '800', fontSize: 14 }}>Retry</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => navigation.goBack()} accessibilityRole="button">
+            <Text style={{ color: C.muted, fontSize: 13, fontWeight: '600' }}>Go back</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <ActivityIndicator color={C.green ?? '#22C55E'} size="large" />
+      )}
     </View>
   );
 
@@ -139,7 +163,12 @@ export default function ChallengeDetailScreen() {
 
       {/* Nav bar */}
       <View style={s.navBar}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={s.backBtn}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={s.backBtn}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
           <Text style={s.backText}>←</Text>
         </TouchableOpacity>
         <Text style={s.navTitle} numberOfLines={1}>{challenge.name}</Text>

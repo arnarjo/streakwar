@@ -44,6 +44,7 @@ export default function HomeScreen() {
   })();
   const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
+  const [milestonesError, setMilestonesError] = React.useState(false);
 
   const streakGlowOpacity = useSharedValue(0.06);
   useEffect(() => {
@@ -62,22 +63,25 @@ export default function HomeScreen() {
 
   const fetchMilestones = useCallback(async () => {
     if (!profile?.id) return;
-    const { data: parts } = await supabase
+    const { data: parts, error: partsError } = await supabase
       .from('challenge_participants')
       .select('challenge_id')
       .eq('user_id', profile.id);
+    if (partsError) { setMilestonesError(true); return; }
+    setMilestonesError(false);
     if (!parts || parts.length === 0) return;
 
-    const { data: peers } = await supabase
+    const { data: peers, error: peersError } = await supabase
       .from('challenge_participants')
       .select('user_id')
       .in('challenge_id', parts.map(p => p.challenge_id))
       .neq('user_id', profile.id);
 
+    if (peersError) { setMilestonesError(true); return; }
     if (!peers || peers.length === 0) return;
     const peerIds = [...new Set(peers.map(p => p.user_id))];
 
-    const { data } = await supabase
+    const { data, error: milestonesFetchError } = await supabase
       .from('streak_milestones')
       .select('*, profile:profiles(id, username, full_name)')
       .in('user_id', peerIds)
@@ -85,6 +89,7 @@ export default function HomeScreen() {
       .order('achieved_at', { ascending: false })
       .limit(5);
 
+    if (milestonesFetchError) { setMilestonesError(true); return; }
     if (!data) return;
 
     const milestoneIds = data.map((m: any) => m.id);
@@ -136,7 +141,11 @@ export default function HomeScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <TouchableOpacity onPress={() => navigation.navigate('Profile' as never)}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Profile' as never)}
+          accessibilityRole="button"
+          accessibilityLabel="Open profile"
+        >
           <View style={s.headerAvatar}>
             <Text style={s.headerAvatarText}>
               {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
@@ -146,7 +155,7 @@ export default function HomeScreen() {
 
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={s.greeting}>
-            Hæ, {profile?.full_name?.split(' ')[0] ?? 'there'}!
+            Hey, {profile?.full_name?.split(' ')[0] ?? 'there'}!
           </Text>
           <Text style={s.subGreeting}>Ready to move today?</Text>
         </View>
@@ -267,6 +276,12 @@ export default function HomeScreen() {
                 </View>
               )}
 
+              {milestonesError && (
+                <TouchableOpacity style={s.inlineError} onPress={fetchMilestones} accessibilityRole="button">
+                  <Text style={s.inlineErrorText}>Couldn't load streak milestones — tap to retry</Text>
+                </TouchableOpacity>
+              )}
+
               {milestones.length > 0 && (
                 <View style={s.section}>
                   <Text style={s.sectionLabel}>Streak milestones</Text>
@@ -376,6 +391,8 @@ const s = StyleSheet.create({
   bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
   bannerChev: { fontSize: 22, color: C.muted },
   section: { marginBottom: 8 },
+  inlineError: { backgroundColor: '#EF444412', borderWidth: 1, borderColor: '#EF444430', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center' },
+  inlineErrorText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
   sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
   sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
   seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },

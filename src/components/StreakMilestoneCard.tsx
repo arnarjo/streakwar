@@ -114,6 +114,8 @@ export default function StreakMilestoneCard({ item, currentUserId }: Props) {
               onPress={() => { animateReaction(emoji); handleReact(emoji); }}
               activeOpacity={0.7}
               disabled={reacting}
+              accessibilityRole="button"
+              accessibilityLabel={active ? `Remove ${emoji} reaction` : `React with ${emoji}`}
             >
               <Animated.View style={{ transform: [{ scale: getReactionScale(emoji) }] }}>
                 <Text style={s.reactEmoji}>{emoji}</Text>

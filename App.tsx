@@ -10,7 +10,6 @@ import { navigationRef } from './src/navigation/navigationRef';
 import { supabase } from './src/lib/supabase';
 import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
 import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
-import { initHealthConnect } from './src/lib/healthConnect';
 import { Platform, Linking } from 'react-native';
 import type { Session } from '@supabase/supabase-js';
 
@@ -21,6 +20,12 @@ function AppInner() {
   useEffect(() => {
     const handleUrl = async (url: string) => {
       if (!url) return;
+      // Only process the app's own auth deep links (scheme "streakwar" per
+      // app.json — OAuth uses Linking.createURL('') → "streakwar://" and
+      // password reset uses "streakwar://reset-password"). Feeding arbitrary
+      // URLs into exchangeCodeForSession / setSession would let any deep link
+      // carrying an access_token fragment fixate a session.
+      if (!url.toLowerCase().startsWith('streakwar://')) return;
       // Let Supabase parse auth tokens or codes from the URL (handles both
       // PKCE ?code= and legacy #access_token= formats).
       try {

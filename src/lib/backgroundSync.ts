@@ -5,9 +5,10 @@
  * (the minimum Android allows for background work).
  *
  * On Android  → polls Health Connect for new activities
- * On iOS      → HealthKit background delivery handles this natively via
- *               observeWorkouts() registered in healthKit.ts; we still
- *               run a secondary fetch task as a safety net for steps.
+ * On iOS      → this task IS the background sync. react-native-health has no
+ *               workout observer / background delivery API, so workouts and
+ *               steps are only synced when iOS grants this fetch task time
+ *               (or when the user foregrounds the app).
  *
  * Register this task before the NavigationContainer mounts (in App.tsx).
  */
@@ -48,24 +49,34 @@ TaskManager.defineTask(BACKGROUND_SYNC_TASK, async () => {
     if (!session) return BackgroundFetch.BackgroundFetchResult.Failed;
 
     let synced = 0;
+    let syncRan = false;
 
     if (Platform.OS === 'android') {
-      synced += await pollHealthConnect(userId);
+      const result = await pollHealthConnect(userId);
+      synced += result.synced;
+      // If the poll was skipped (permissions revoked, HC unavailable) we must
+      // NOT bump last_synced_at — the staleness warning relies on it going stale.
+      syncRan = result.ranWithPermissions;
     } else if (Platform.OS === 'ios') {
-      // Steps and recent workouts are independent — run in parallel
+      // Steps and recent workouts are independent — run in parallel.
+      // Both initialize HealthKit themselves in this headless launch.
       const [, workoutsSynced] = await Promise.all([
         syncTodaySteps(userId),
         syncRecentWorkouts(userId),
       ]);
       synced += workoutsSynced;
+      syncRan = true;
     }
 
-    // Always update last_synced_at to reflect that sync ran (even if 0 new workouts)
-    await supabase
-      .from('device_connections')
-      .update({ last_synced_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .in('provider', Platform.OS === 'ios' ? ['apple_health'] : ['health_connect']);
+    // Update last_synced_at only when a sync actually ran with permissions
+    // (even if it found 0 new workouts).
+    if (syncRan) {
+      await supabase
+        .from('device_connections')
+        .update({ last_synced_at: new Date().toISOString() })
+        .eq('user_id', userId)
+        .in('provider', Platform.OS === 'ios' ? ['apple_health'] : ['health_connect']);
+    }
 
     return synced > 0
       ? BackgroundFetch.BackgroundFetchResult.NewData

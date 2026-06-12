@@ -161,7 +161,7 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
                     {modeEmoji} {modes.map(m => SCORING_MODE_LABELS[m]).join(' · ')}
                   </Text>
                   <Text style={[s.cardMeta, { marginTop: 2 }]}>
-                    👥 {item.participant_count ?? 0} þátttakendur · {daysLeftLabel(item.end_date)}
+                    👥 {item.participant_count ?? 0} participants · {daysLeftLabel(item.end_date)}
                   </Text>
                 </View>
                 <JoinButton item={item} />

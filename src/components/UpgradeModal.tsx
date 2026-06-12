@@ -150,7 +150,12 @@ export default function UpgradeModal({ visible, onClose, offering, onPurchase, o
           )}
         </ScrollView>
 
-        <TouchableOpacity style={s.closeBtn} onPress={onClose}>
+        <TouchableOpacity
+          style={s.closeBtn}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Close"
+        >
           <Text style={s.closeBtnText}>✕</Text>
         </TouchableOpacity>
       </View>

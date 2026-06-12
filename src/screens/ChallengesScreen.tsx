@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl, TouchableOpacity,
   StatusBar, TextInput, Alert, Modal, KeyboardAvoidingView, Platform, Share,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -27,6 +28,7 @@ export default function ChallengesScreen() {
   const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore, FREE_MAX_CHALLENGES } = usePremium(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');
+  const [refreshing, setRefreshing] = useState(false);
   const [joinModalOpen, setJoinModalOpen] = useState(false);
   const [code, setCode] = useState('');
   const [joiningCode, setJoiningCode] = useState(false);
@@ -51,6 +53,12 @@ export default function ChallengesScreen() {
   }
 
   const filtered = tab === 'discover' ? [] : myChallenges.filter(c => c.status === tab);
+
+  async function onRefresh() {
+    setRefreshing(true);
+    await refresh();
+    setRefreshing(false);
+  }
 
   async function handleJoinByCode() {
     if (!code.trim()) return;
@@ -135,7 +143,13 @@ export default function ChallengesScreen() {
 
       <View style={s.tabs}>
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
+          <TouchableOpacity
+            key={t}
+            style={[s.tab, tab === t && s.tabActive]}
+            onPress={() => setTab(t)}
+            accessibilityRole="button"
+            {...(t === 'discover' ? { accessibilityLabel: 'Discover challenges' } : {})}
+          >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>{TAB_LABELS[t]}</Text>
           </TouchableOpacity>
         ))}
@@ -147,7 +161,7 @@ export default function ChallengesScreen() {
           keyExtractor={c => c.id}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={refresh} tintColor={C.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={({ item }) => (
             <ChallengeCard
               challenge={item}
@@ -167,7 +181,9 @@ export default function ChallengesScreen() {
                   </TouchableOpacity>
                 )}
               </View>
-            ) : null
+            ) : (
+              <ActivityIndicator style={{ marginTop: 64 }} color={C.primary} />
+            )
           }
         />
       ) : (

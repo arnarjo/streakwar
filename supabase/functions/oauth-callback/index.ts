@@ -56,9 +56,69 @@ async function exchangeFitbit(code: string): Promise<TokenResponse> {
   return res.json();
 }
 
+const OAUTH_STATE_SECRET = Deno.env.get('OAUTH_STATE_SECRET') ?? '';
+const STATE_MAX_AGE_MS = 10 * 60 * 1000;
+
+function b64urlDecode(s: string): string {
+  return atob(s.replace(/-/g, '+').replace(/_/g, '/'));
+}
+
+/** Constant-time string comparison to prevent timing attacks. */
+function timingSafeEqual(a: string, b: string): boolean {
+  const enc = new TextEncoder();
+  const aBytes = enc.encode(a);
+  const bBytes = enc.encode(b);
+  if (aBytes.length !== bBytes.length) return false;
+  let diff = 0;
+  for (let i = 0; i < aBytes.length; i++) diff |= aBytes[i] ^ bBytes[i];
+  return diff === 0;
+}
+
+/**
+ * Verify the HMAC-signed state issued by oauth-init
+ * (base64url(payload).base64url(HMAC-SHA256(payload, OAUTH_STATE_SECRET))).
+ * Returns the parsed payload, or null when the signature is invalid/expired —
+ * an unsigned/forged state can no longer bind a provider account to an
+ * arbitrary victim userId (account-linking CSRF).
+ */
+async function verifyState(stateRaw: string): Promise<{ provider: string; userId: string; ts: number } | null> {
+  if (!OAUTH_STATE_SECRET) return null;
+  const dot = stateRaw.indexOf('.');
+  if (dot < 0) return null;
+  try {
+    const payload = b64urlDecode(stateRaw.slice(0, dot));
+    const sig = b64urlDecode(stateRaw.slice(dot + 1));
+    const enc = new TextEncoder();
+    const key = await crypto.subtle.importKey(
+      'raw', enc.encode(OAUTH_STATE_SECRET),
+      { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+    );
+    const expected = String.fromCharCode(
+      ...new Uint8Array(await crypto.subtle.sign('HMAC', key, enc.encode(payload))),
+    );
+    if (!timingSafeEqual(sig, expected)) return null;
+    const state = JSON.parse(payload);
+    if (!state.userId || !state.ts || Date.now() - state.ts > STATE_MAX_AGE_MS) return null;
+    return state;
+  } catch {
+    return null;
+  }
+}
+
 serve(async (req) => {
   const url = new URL(req.url);
   const provider = url.searchParams.get('provider') ?? '';
+
+  // Garmin uses OAuth 1.0a — no code/state; binding is enforced by matching
+  // the one-time request token stored for this user_id by oauth-init.
+  if (provider === 'garmin') {
+    const garminUserId = url.searchParams.get('user_id') ?? '';
+    if (!garminUserId) {
+      return Response.redirect('streakwar://oauth-error?reason=missing_user', 302);
+    }
+    return handleGarminCallback(req, garminUserId);
+  }
+
   const code = url.searchParams.get('code') ?? '';
   const stateRaw = url.searchParams.get('state') ?? '';
 
@@ -66,22 +126,15 @@ serve(async (req) => {
     return Response.redirect('streakwar://oauth-error?reason=missing_code', 302);
   }
 
-  let userId: string;
-  try {
-    const state = JSON.parse(atob(stateRaw));
-    userId = state.userId;
-  } catch {
+  const state = await verifyState(stateRaw);
+  if (!state) {
     return Response.redirect('streakwar://oauth-error?reason=bad_state', 302);
   }
+  const userId = state.userId;
 
   let tokens: TokenResponse;
   let externalUserId: string | null = null;
   let expiresAt: Date | null = null;
-
-  // Garmin uses OAuth 1.0a â€” different flow entirely
-  if (provider === 'garmin') {
-    return handleGarminCallback(req, userId);
-  }
 
   try {
     if (provider === 'strava') {
@@ -192,7 +245,7 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
   // Retrieve the request token secret stored by oauth-init
   const { data: conn } = await supabase
     .from('device_connections')
-    .select('refresh_token')
+    .select('access_token, refresh_token')
     .eq('user_id', userId)
     .eq('provider', 'garmin')
     .eq('is_active', false)
@@ -201,6 +254,12 @@ async function handleGarminCallback(req: Request, userId: string): Promise<Respo
   const requestTokenSecret = conn?.refresh_token ?? '';
   if (!requestTokenSecret) {
     return Response.redirect('streakwar://oauth-error?reason=missing_request_secret', 302);
+  }
+
+  // The callback's oauth_token must match the one-time request token stored
+  // for this user by oauth-init — binds the callback to the initiating user.
+  if (conn?.access_token !== oauthToken) {
+    return Response.redirect('streakwar://oauth-error?reason=token_mismatch', 302);
   }
 
   const consumerKey = Deno.env.get('GARMIN_CONSUMER_KEY') ?? '';
@@ -275,7 +334,7 @@ async function ensureStravaWebhookSubscription() {
       client_id: Deno.env.get('STRAVA_CLIENT_ID'),
       client_secret: Deno.env.get('STRAVA_CLIENT_SECRET'),
       callback_url: callbackUrl,
-      verify_token: Deno.env.get('STRAVA_VERIFY_TOKEN') ?? 'streakwar_strava',
+      verify_token: Deno.env.get('STRAVA_VERIFY_TOKEN') ?? '',
     }),
   });
 }

@@ -15,7 +15,7 @@ import {
   SCORING_MODE_LABELS, TIE_BREAK_LABELS,
 } from '../types/database';
 import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
-import { format, addDays, addWeeks, addMonths } from 'date-fns';
+import { format, addDays } from 'date-fns';
 
 const C = {
   bg: '#0C1117',
@@ -404,14 +404,6 @@ export default function CreateChallengeScreen() {
                   disabled={!isPro}
                 />
               </TouchableOpacity>
-              <UpgradeModal
-                visible={upgradeVisible}
-                onClose={() => setUpgradeVisible(false)}
-                offering={offering}
-                onPurchase={purchase}
-                onRestore={restore}
-                reason="Photo proof requires a Pro subscription."
-              />
 
               <View style={s.switchRow}>
                 <View>
@@ -571,6 +563,15 @@ export default function CreateChallengeScreen() {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <UpgradeModal
+        visible={upgradeVisible}
+        onClose={() => setUpgradeVisible(false)}
+        offering={offering}
+        onPurchase={purchase}
+        onRestore={restore}
+        reason="This feature requires a Pro subscription."
+      />
     </SafeAreaView>
   );
 }

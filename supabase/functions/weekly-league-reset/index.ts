@@ -44,6 +44,22 @@ Deno.serve(async () => {
     const lastWeek = getLastMonday();
     const thisWeek = getCurrentMonday();
 
+    // ── Idempotency guard ──────────────────────────────────────────
+    // If groups already exist for this week the reset has already run.
+    // Re-running would re-apply promotions and re-send push notifications.
+    const { data: existingGroups, error: existingError } = await supabase
+      .from('league_groups')
+      .select('id')
+      .eq('week_start', thisWeek)
+      .limit(1);
+
+    if (existingError) throw new Error(`Idempotency check failed: ${existingError.message}`);
+    if (existingGroups && existingGroups.length > 0) {
+      return new Response(JSON.stringify({ ok: true, week: thisWeek, skipped: 'already_ran' }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
     // ── Step 1: Finalise last week's groups ───────────────────────
     const { data: lastGroups, error: lastGroupsError } = await supabase
       .from('league_groups')
@@ -180,20 +196,26 @@ Deno.serve(async () => {
         const chunk = users.slice(i, i + 20);
         if (chunk.length === 0) continue;
 
-        // Create group
+        // Create group — group_index satisfies the unique
+        // (tier, week_start, group_index) constraint from migration 019,
+        // so a concurrent/duplicate run conflicts instead of duplicating.
         const { data: group, error: createGroupError } = await supabase
           .from('league_groups')
-          .insert({ tier, week_start: thisWeek })
+          .insert({ tier, week_start: thisWeek, group_index: i / 20 + 1 })
           .select()
           .single();
 
         if (createGroupError) throw new Error(`Failed to create group for tier ${tier}: ${createGroupError.message}`);
         if (!group) continue;
 
-        // Add members
-        const { error: addMembersError } = await supabase.from('league_memberships').insert(
-          chunk.map(user_id => ({ user_id, group_id: group.id, week_start: thisWeek }))
-        );
+        // Add members — ignore duplicates so a partially-failed previous run
+        // can be safely retried without aborting mid-way.
+        const { error: addMembersError } = await supabase
+          .from('league_memberships')
+          .upsert(
+            chunk.map(user_id => ({ user_id, group_id: group.id, week_start: thisWeek })),
+            { onConflict: 'user_id,week_start', ignoreDuplicates: true },
+          );
 
         if (addMembersError) throw new Error(`Failed to add members to group ${group.id}: ${addMembersError.message}`);
       }

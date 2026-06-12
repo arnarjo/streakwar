@@ -58,6 +58,12 @@ export interface Profile {
   is_admin: boolean;
   push_token?: string | null;
   total_points: number;
+  /** Pro streak-freeze credits (migration 013, int not null default 0). */
+  streak_freeze_credits: number;
+  /** Premium flag (migration 009, boolean not null default false). Optional: not selected in every query. */
+  is_pro?: boolean;
+  /** Premium expiry (migration 009, timestamptz, nullable). Optional: not selected in every query. */
+  pro_expires_at?: string | null;
   created_at: string;
 }
 

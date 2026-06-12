@@ -1,11 +1,16 @@
-﻿/**
+/**
  * renew-challenges
  *
  * Runs daily (via Supabase cron or external scheduler).
- * 1. Updates challenge statuses based on current date.
- * 2. Creates the next instance of every recurring challenge that just ended.
+ * Delegates entirely to the process_recurring_challenges() SQL function
+ * (migration 018), which refreshes challenge statuses and creates the next
+ * instance of every completed recurring challenge that has no child yet.
  *
- * Schedule in Supabase Dashboard â†’ Edge Functions â†’ Cron:
+ * The renewal logic used to be duplicated here in TypeScript and had already
+ * diverged from the SQL (it kept the 2-day window bug that 018 fixed) — the
+ * single source of truth is now the database function.
+ *
+ * Schedule in Supabase Dashboard → Edge Functions → Cron:
  *   0 1 * * *   (daily at 01:00 UTC)
  *
  * Or invoke manually:
@@ -21,121 +26,19 @@ const supabase = createClient(
 );
 
 serve(async (req) => {
-  // Allow manual POST trigger with optional auth header
   if (req.method !== 'POST' && req.method !== 'GET') {
     return new Response('Method not allowed', { status: 405 });
   }
 
   try {
-    // Step 1 â€” refresh all challenge statuses
-    await supabase.rpc('refresh_challenge_statuses');
-
-    // Step 2 â€” find recurring challenges that just completed
-    const today = new Date().toISOString().slice(0, 10);
-
-    const { data: expired, error: fetchErr } = await supabase
-      .from('fitness_challenges')
-      .select('*')
-      .neq('renewal_type', 'none')
-      .eq('status', 'completed')
-      .gte('end_date', new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)) // only recently ended
-      .lte('end_date', today);
-
-    if (fetchErr) {
-      console.error('Failed to fetch expired recurring challenges:', fetchErr);
-      return Response.json({ ok: false, error: fetchErr.message }, { status: 500 });
+    const { error } = await supabase.rpc('process_recurring_challenges');
+    if (error) {
+      console.error('process_recurring_challenges failed:', error);
+      return Response.json({ ok: false, error: error.message }, { status: 500 });
     }
-
-    const renewed: string[] = [];
-
-    for (const challenge of (expired ?? [])) {
-      // Check if a next instance already exists (avoid double-renewal)
-      const { data: alreadyRenewed } = await supabase
-        .from('fitness_challenges')
-        .select('id')
-        .eq('parent_challenge_id', challenge.id)
-        .maybeSingle();
-
-      if (alreadyRenewed) continue;
-
-      // Calculate next start/end dates
-      const { startDate, endDate } = nextDateRange(
-        challenge.renewal_type as 'weekly' | 'monthly',
-        challenge.end_date,
-      );
-
-      const { error: insertErr } = await supabase.from('fitness_challenges').insert({
-        name:                  nextName(challenge.name, challenge.renewal_type),
-        description:           challenge.description,
-        cover_image_url:       challenge.cover_image_url,
-        created_by:            challenge.created_by,
-        start_date:            startDate,
-        end_date:              endDate,
-        status:                startDate <= today ? 'active' : 'upcoming',
-        scoring_modes:         challenge.scoring_modes,
-        points_per_workout:    challenge.points_per_workout,
-        points_per_1000_steps: challenge.points_per_1000_steps,
-        points_per_km:         challenge.points_per_km,
-        points_per_30min:      challenge.points_per_30min,
-        backlog_days_allowed:  challenge.backlog_days_allowed,
-        require_photo_proof:   challenge.require_photo_proof,
-        is_teams_mode:         challenge.is_teams_mode,
-        tie_break_rule:        challenge.tie_break_rule,
-        is_public:             challenge.is_public,
-        is_global:             challenge.is_global,
-        renewal_type:          challenge.renewal_type,
-        parent_challenge_id:   challenge.id,
-        max_participants:      challenge.max_participants,
-      });
-
-      if (insertErr) {
-        console.error(`Failed to renew challenge ${challenge.id}:`, insertErr);
-      } else {
-        renewed.push(challenge.id);
-        console.log(`Renewed challenge "${challenge.name}" â†’ ${startDate} to ${endDate}`);
-      }
-    }
-
-    return Response.json({
-      ok: true,
-      renewed: renewed.length,
-      ids: renewed,
-    });
+    return Response.json({ ok: true });
   } catch (err) {
     console.error('renew-challenges error:', err);
     return Response.json({ ok: false, error: String(err) }, { status: 500 });
   }
 });
-
-/** Calculate start/end for the next renewal period */
-function nextDateRange(
-  type: 'weekly' | 'monthly',
-  previousEndDate: string,
-): { startDate: string; endDate: string } {
-  const prev = new Date(previousEndDate + 'T12:00:00Z'); // noon to avoid DST issues
-
-  if (type === 'weekly') {
-    const start = new Date(prev);
-    start.setDate(start.getDate() + 1);
-    const end = new Date(start);
-    end.setDate(end.getDate() + 6);
-    return {
-      startDate: start.toISOString().slice(0, 10),
-      endDate: end.toISOString().slice(0, 10),
-    };
-  }
-
-  // Monthly: 1st to last day of next calendar month
-  const start = new Date(prev.getFullYear(), prev.getMonth() + 1, 1);
-  const end = new Date(prev.getFullYear(), prev.getMonth() + 2, 0); // day 0 = last day of prev month
-  return {
-    startDate: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-01`,
-    endDate: end.toISOString().slice(0, 10),
-  };
-}
-
-/** Strip trailing " ðŸ”¥" / " ðŸ†" variants and return a clean recurring name */
-function nextName(name: string, renewalType: string): string {
-  // Keep the base name unchanged â€” the UI appends "Vika X" labels dynamically
-  return name;
-}

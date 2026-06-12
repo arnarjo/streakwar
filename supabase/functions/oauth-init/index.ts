@@ -21,6 +21,24 @@ const supabase = createClient(
 );
 
 const CALLBACK_BASE = Deno.env.get('SUPABASE_URL') + '/functions/v1/oauth-callback';
+const OAUTH_STATE_SECRET = Deno.env.get('OAUTH_STATE_SECRET') ?? '';
+
+/**
+ * Sign the OAuth state so the callback can verify it was issued by us.
+ * Format: base64url(payload).base64url(HMAC-SHA256(payload, OAUTH_STATE_SECRET))
+ * Prevents account-linking CSRF: without the secret an attacker cannot forge
+ * a state binding their provider account to a victim's userId.
+ */
+async function signState(payload: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw', enc.encode(OAUTH_STATE_SECRET),
+    { name: 'HMAC', hash: 'SHA-256' }, false, ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, enc.encode(payload));
+  const b64url = (s: string) => btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  return `${b64url(payload)}.${b64url(String.fromCharCode(...new Uint8Array(sig)))}`;
+}
 
 // â”€â”€â”€ OAuth 2.0 providers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
@@ -162,6 +180,10 @@ serve(async (req) => {
     return new Response('Missing provider or user_id', { status: 400 });
   }
 
+  if (!OAUTH_STATE_SECRET) {
+    return new Response('OAUTH_STATE_SECRET not configured', { status: 503 });
+  }
+
   // Garmin uses OAuth 1.0a â€” special handling
   if (provider === 'garmin') {
     return handleGarminInit(userId);
@@ -172,7 +194,7 @@ serve(async (req) => {
     return new Response(`Unknown provider: ${provider}`, { status: 400 });
   }
 
-  const state = btoa(JSON.stringify({ provider, userId, ts: Date.now() }));
+  const state = await signState(JSON.stringify({ provider, userId, ts: Date.now() }));
   const redirectUri = `${CALLBACK_BASE}?provider=${provider}`;
 
   const params = new URLSearchParams({

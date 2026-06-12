@@ -55,6 +55,7 @@ export default function LeaderboardScreen() {
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
 
   const [tab, setTab] = useState<Tab>('league');
+  const [refreshing, setRefreshing] = useState(false);
   const [nudgeTarget, setNudgeTarget] = useState<{ id: string; name: string } | null>(null);
   const [nudgeSending, setNudgeSending] = useState(false);
   const [nudgedToday, setNudgedToday] = useState<Set<string>>(new Set());
@@ -83,6 +84,8 @@ export default function LeaderboardScreen() {
         Alert.alert('Already sent', 'You have already nudged this person today.');
       } else if (json.success) {
         setNudgedToday(prev => new Set(prev).add(receiverId));
+      } else {
+        Alert.alert('Could not send nudge', json.error ?? 'Something went wrong. Please try again.');
       }
     } catch {
       Alert.alert('Error', 'Could not send nudge.');
@@ -97,11 +100,17 @@ export default function LeaderboardScreen() {
     fetchFriends();
   }, []);
 
-  const onRefresh = useCallback(() => {
-    fetchWeekly();
-    fetchGlobal();
-    fetchFriends();
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await Promise.all([fetchWeekly(), fetchGlobal(), fetchFriends()]);
+    setRefreshing(false);
   }, [fetchWeekly, fetchGlobal, fetchFriends]);
+
+  const onRefreshLeague = useCallback(async () => {
+    setRefreshing(true);
+    await refreshLeague();
+    setRefreshing(false);
+  }, [refreshLeague]);
 
   async function handleShare() {
     const rank  = tab === 'week' ? myWeeklyRank : myGlobalRank;
@@ -158,6 +167,8 @@ export default function LeaderboardScreen() {
             style={[s.followBtn, isFollowing && s.followingBtn]}
             onPress={() => isFollowing ? unfollow(item.id) : follow(item.id)}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={isFollowing ? `Unfollow ${item.username}` : `Follow ${item.username}`}
           >
             <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
               {isFollowing ? '✓' : '+'}
@@ -169,6 +180,8 @@ export default function LeaderboardScreen() {
             style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
             onPress={() => setNudgeTarget({ id: item.id, name: item.full_name ?? item.username })}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Nudge ${item.full_name ?? item.username}`}
           >
             <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
           </TouchableOpacity>
@@ -241,7 +254,7 @@ export default function LeaderboardScreen() {
           keyExtractor={m => m.user_id}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={leagueLoading} onRefresh={refreshLeague} tintColor={C.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefreshLeague} tintColor={C.primary} />}
           ListHeaderComponent={
             <View style={{ paddingBottom: 8 }}>
               <Text style={[{ fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 }, { color: tierMeta?.color ?? '#B45309' }]}>
@@ -256,6 +269,9 @@ export default function LeaderboardScreen() {
                   </Text>
                 );
               })()}
+              {leagueMembers.length === 0 && leagueLoading && (
+                <ActivityIndicator style={{ paddingVertical: 24 }} color={C.primary} />
+              )}
               {leagueMembers.length === 0 && !leagueLoading && (
                 <View style={{ paddingVertical: 24, alignItems: 'center' }}>
                   <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 }}>
@@ -298,6 +314,8 @@ export default function LeaderboardScreen() {
                   <TouchableOpacity
                     style={[s.nudgeBtn, nudgedToday.has(item.user_id) && s.nudgeBtnDone]}
                     onPress={() => setNudgeTarget({ id: item.user_id, name: item.full_name ?? item.username })}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Nudge ${name}`}
                   >
                     <Text style={s.nudgeBtnText}>{nudgedToday.has(item.user_id) ? '✓' : '💪'}</Text>
                   </TouchableOpacity>
@@ -320,6 +338,8 @@ export default function LeaderboardScreen() {
                   style={s.nudgeEmojiBtn}
                   onPress={() => sendNudge(nudgeTarget!.id, emoji)}
                   disabled={nudgeSending}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Send ${emoji} nudge`}
                 >
                   <Text style={s.nudgeEmoji}>{emoji}</Text>
                 </TouchableOpacity>
@@ -345,7 +365,7 @@ export default function LeaderboardScreen() {
           keyExtractor={item => item.id}
           contentContainerStyle={s.list}
           showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
           renderItem={renderRow}
           ListFooterComponent={(() => {
             const userInData = data.some(item => item.id === userId);
@@ -390,7 +410,9 @@ export default function LeaderboardScreen() {
                     : 'Log your first workout to appear here'}
                 </Text>
               </View>
-            ) : null
+            ) : (
+              <ActivityIndicator style={{ marginTop: 48 }} color={C.primary} />
+            )
           }
         />
       )}

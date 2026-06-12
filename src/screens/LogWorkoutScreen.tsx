@@ -57,7 +57,7 @@ export default function LogWorkoutScreen() {
     editWorkout?.workout_date ? new Date(editWorkout.workout_date) : new Date()
   );
   const [showDatePicker, setShowDatePicker] = useState(false);
-  const [mediaUri, setMediaUri] = useState<string | null>(null);
+  const [mediaUri, setMediaUri] = useState<string | null>(editWorkout?.media_url ?? null);
   const [saving, setSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const successScale = useRef(new Animated.Value(0)).current;
@@ -157,6 +157,7 @@ export default function LogWorkoutScreen() {
         steps: stepsVal,
         caption,
         workout_date: workoutDateStr,
+        imageUri: mediaUri,
       }));
     } else {
       ({ error } = await logWorkout({
