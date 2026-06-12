@@ -13,18 +13,15 @@ import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 import UpgradeModal from '../components/UpgradeModal';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#4A6070', dimmed: '#1E2A35', primary: '#F97316',
-};
+import { C } from '../theme';
+import type { AppNavigationProp } from '../navigation/types';
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
 const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
 
 export default function ChallengesScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const { myChallenges, loading, refresh, joinByCode, joinPublic, createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore, FREE_MAX_CHALLENGES } = usePremium(profile?.id ?? '');
   const [tab, setTab] = useState<Tab>('active');

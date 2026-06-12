@@ -16,24 +16,15 @@ import ShareCard from '../components/ShareCard';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  secondary: '#FBBF24',
-  green: '#22C55E',
-};
+import { C } from '../theme';
+import type { RootStackNavigationProp, RootStackRouteProp } from '../navigation/types';
 
 type Tab = 'leaderboard' | 'feed' | 'banter' | 'info';
 
 export default function ChallengeDetailScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RootStackRouteProp<'ChallengeDetail'>>();
   const challengeId = route.params?.challengeId as string;
 
   const [challenge, setChallenge] = useState<FitnessChallenge | null>(null);

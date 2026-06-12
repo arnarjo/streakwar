@@ -12,18 +12,10 @@ import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
+import { C } from '../theme';
+import type { RootStackNavigationProp } from '../navigation/types';
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  primary: '#F97316',
-  green: '#22C55E',
-  error: '#EF4444',
-};
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
 
 const OAUTH_PROVIDERS: ProviderKey[] = ['strava'];
 const COMING_SOON_PROVIDERS: ProviderKey[] = [];
@@ -31,7 +23,7 @@ const COMING_SOON_PROVIDERS: ProviderKey[] = [];
 
 export default function ConnectDevicesScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const {
     connections, syncing, isConnected, connectNative,
     confirmHealthConnectConnection, syncNow, disconnect,

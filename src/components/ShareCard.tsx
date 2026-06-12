@@ -63,6 +63,8 @@ const ShareCard = forwardRef<View, Props>(
   }
 );
 
+ShareCard.displayName = 'ShareCard';
+
 export default ShareCard;
 
 const s = StyleSheet.create({

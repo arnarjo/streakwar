@@ -11,12 +11,7 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeaderboardEntry, LeagueTier } from '../types/database';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-  gold: '#F59E0B', silver: '#9CA3AF', bronze: '#B45309',
-};
+import { C } from '../theme';
 
 type Tab = 'league' | 'week' | 'world' | 'friends';
 

@@ -19,11 +19,8 @@ import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays, startOfWeek } from 'date-fns';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', green: '#22C55E', error: '#EF4444',
-};
+import { C } from '../theme';
+import type { AppNavigationProp } from '../navigation/types';
 
 function useCountUp(target: number, duration = 900): number {
   const [display, setDisplay] = React.useState(0);
@@ -109,7 +106,7 @@ const heat = StyleSheet.create({
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const { streak, freezeCredits, frozenToday, freezeStreak } = useStreaks(profile?.id ?? '');
   const { myChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { connections, syncing, syncNow, showBatteryWarning, lastSynced } = useHealthSync(profile?.id ?? '');

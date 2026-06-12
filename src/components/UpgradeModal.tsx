@@ -5,11 +5,7 @@ import {
 } from 'react-native';
 import type { PurchasesPackage } from 'react-native-purchases';
 import type { PremiumOffering } from '../hooks/usePremium';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.08)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316', gold: '#FBBF24',
-};
+import { C } from '../theme';
 
 const PRO_FEATURES = [
   { icon: '🛡️', text: 'Streak freeze — protect 1 day per month' },
@@ -167,7 +163,7 @@ const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: C.border, alignSelf: 'center', marginTop: 12 },
   scroll: { paddingHorizontal: 24, paddingTop: 16, paddingBottom: 60 },
-  badge: { alignSelf: 'center', backgroundColor: C.gold + '20', borderWidth: 1, borderColor: C.gold + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, fontSize: 11, fontWeight: '800', color: C.gold, letterSpacing: 1.5, marginBottom: 16 },
+  badge: { alignSelf: 'center', backgroundColor: C.secondary + '20', borderWidth: 1, borderColor: C.secondary + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, fontSize: 11, fontWeight: '800', color: C.secondary, letterSpacing: 1.5, marginBottom: 16 },
   headline: { fontSize: 32, fontWeight: '900', color: C.text, textAlign: 'center', lineHeight: 38, marginBottom: 8 },
   reason: { fontSize: 14, color: C.muted, textAlign: 'center', marginBottom: 20, lineHeight: 20 },
   socialProof: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E30', borderRadius: 10, paddingHorizontal: 16, paddingVertical: 8, alignSelf: 'center', marginBottom: 20 },

@@ -16,17 +16,8 @@ import {
 } from '../types/database';
 import type { ScoringMode, TieBreakRule, RenewalType } from '../types/database';
 import { format, addDays } from 'date-fns';
-
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8',
-  muted: '#4A6070',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
+import { C } from '../theme';
+import type { RootStackNavigationProp } from '../navigation/types';
 
 const ALL_SCORING_MODES: ScoringMode[] = ['workouts', 'days_active', 'steps', 'distance_km', 'duration_min', 'calories', 'custom'];
 
@@ -59,7 +50,7 @@ type Step = 1 | 2 | 3 | 4;
 
 export default function CreateChallengeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<RootStackNavigationProp>();
   const { createChallenge } = useFitnessChallenges(profile?.id ?? '');
   const { isPro, offering, purchase, restore } = usePremium(profile?.id ?? '');
 

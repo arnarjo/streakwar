@@ -23,15 +23,12 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
+import type { AppNavigationProp } from '../navigation/types';
 
 export default function HomeScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<AppNavigationProp>();
   const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
@@ -142,7 +139,7 @@ export default function HomeScreen() {
 
       <View style={s.header}>
         <TouchableOpacity
-          onPress={() => navigation.navigate('Profile' as never)}
+          onPress={() => navigation.navigate('Profile')}
           accessibilityRole="button"
           accessibilityLabel="Open profile"
         >
@@ -162,11 +159,11 @@ export default function HomeScreen() {
 
         <View style={s.headerRight}>
           {(profile?.total_points ?? 0) > 0 && (
-            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard' as never)}>
+            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard')}>
               <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout' as never)}>
+          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
             <Text style={s.logBtnText}>+ Log</Text>
           </TouchableOpacity>
         </View>
@@ -232,7 +229,7 @@ export default function HomeScreen() {
               )}
 
               {leagueMembers.length > 0 && myRank !== null && (
-                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
                   <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
                     <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
                   </View>
@@ -245,7 +242,7 @@ export default function HomeScreen() {
               )}
 
               {rival && (
-                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard' as never)} activeOpacity={0.85}>
+                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
                   <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
                     <Text style={{ fontSize: 22 }}>🎯</Text>
                   </View>

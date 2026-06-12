@@ -2,11 +2,7 @@ import React, { useState, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
 import { formatDistanceToNow } from 'date-fns';
 import { supabase } from '../lib/supabase';
-
-const C = {
-  bg: '#0C1117', card: '#1A1208', border: '#F97316',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
 
 const REACTIONS = ['🔥', '💪', '⚡', '👏', '🏆'];
 

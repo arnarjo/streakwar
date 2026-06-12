@@ -12,11 +12,8 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
-
-const C = {
-  bg: '#0C1117', card: '#151C24', border: 'rgba(255,255,255,0.07)',
-  text: '#EEF4F8', muted: '#637C8F', primary: '#F97316',
-};
+import { C } from '../theme';
+import type { RootStackNavigationProp, RootStackRouteProp } from '../navigation/types';
 
 function getLastMonday(): string {
   const d = new Date();
@@ -34,8 +31,8 @@ function getCurrentMonday(): string {
 
 export default function WeeklyRecapScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RootStackRouteProp<'WeeklyRecap'>>();
   const isCurrentWeek = route.params?.week === 'current';
 
   const weekStart = isCurrentWeek ? getCurrentMonday() : getLastMonday();

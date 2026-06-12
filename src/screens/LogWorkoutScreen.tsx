@@ -17,27 +17,18 @@ import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
 import { format } from 'date-fns';
 
+import { C } from '../theme';
+import type { RootStackNavigationProp, RootStackRouteProp } from '../navigation/types';
+
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
 
-const C = {
-  bg: '#0C1117',
-  card: '#151C24',
-  border: 'rgba(255,255,255,0.07)',
-  borderFocus: '#F97316',
-  text: '#EEF4F8',
-  muted: '#637C8F',
-  dimmed: '#1E2A35',
-  primary: '#F97316',
-  error: '#EF4444',
-};
-
 export default function LogWorkoutScreen() {
   const { profile } = useAuth();
-  const navigation = useNavigation<any>();
-  const route = useRoute<any>();
-  const preselectedChallengeId = route.params?.challengeId as string | undefined;
-  const editWorkout = route.params?.editWorkout as WorkoutPost | undefined;
+  const navigation = useNavigation<RootStackNavigationProp>();
+  const route = useRoute<RootStackRouteProp<'LogWorkout'>>();
+  const preselectedChallengeId = route.params?.challengeId;
+  const editWorkout = route.params?.editWorkout;
   const isEditMode = !!editWorkout;
 
   const { logWorkout, updateWorkout, pickMedia } = useWorkoutFeed(profile?.id ?? '');
