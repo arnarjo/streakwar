@@ -9,10 +9,34 @@
 
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { toLocalDate } from './dateUtils';
 
 const MORNING_ID = 'streakwar-morning-reminder';
 const EVENING_BASE_ID = 'streakwar-evening-reminder-';
+
+// Bump this whenever notification copy changes in a way that should invalidate
+// any reminders already sitting in the OS queue from an older build.
+const NOTIF_SCHEMA_VERSION = '2-en';
+const NOTIF_FLUSH_KEY = 'streakwar_notif_flush_version';
+
+/**
+ * Clear stale scheduled notifications left in the OS queue by an older build,
+ * exactly once per schema version. Local notifications persist across app
+ * updates, so reminders scheduled by a previous (e.g. localized) version keep
+ * firing until cancelled — this flushes them so only the current English
+ * reminders, re-created by scheduleStreakReminder(), remain.
+ */
+export async function flushStaleNotificationsOnce(): Promise<void> {
+  try {
+    const done = await AsyncStorage.getItem(NOTIF_FLUSH_KEY);
+    if (done === NOTIF_SCHEMA_VERSION) return;
+    await Notifications.cancelAllScheduledNotificationsAsync();
+    await AsyncStorage.setItem(NOTIF_FLUSH_KEY, NOTIF_SCHEMA_VERSION);
+  } catch {
+    // non-critical — worst case the current scheduler still overwrites by id
+  }
+}
 
 /**
  * Schedule (or refresh) daily reminders.
