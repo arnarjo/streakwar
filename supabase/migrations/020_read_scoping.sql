@@ -24,10 +24,17 @@
 -- NULL components contribute 0, matching the original per-field guards.
 -- ════════════════════════════════════════════════════════════════════════════
 
+-- Params are numeric so calls resolve whether a column is integer or numeric
+-- (steps is integer, distance_km/duration_minutes are numeric); integer→numeric
+-- is an implicit cast, numeric→integer is not. Drop the earlier integer-typed
+-- signature first so this replaces it rather than creating an overload.
+drop function if exists workout_points(integer, numeric, integer);
+drop function if exists workout_points(integer, numeric, numeric);
+
 create or replace function workout_points(
-  p_steps        integer,
+  p_steps        numeric,
   p_distance_km  numeric,
-  p_duration_min integer
+  p_duration_min numeric
 ) returns integer language sql immutable as $$
   select 1
     + coalesce(floor(p_steps        / 1000.0)::integer, 0)
