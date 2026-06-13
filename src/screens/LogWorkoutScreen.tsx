@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, Image, ActivityIndicator, Platform,
+  TextInput, Alert, ActivityIndicator, Platform,
   KeyboardAvoidingView, StatusBar, Animated, Easing,
 } from 'react-native';
 
@@ -11,7 +11,6 @@ import DateTimePicker from '@react-native-community/datetimepicker';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
-import { ACTIVITY_LABELS, ACTIVITY_OPTIONS } from '../types/database';
 import type { ActivityType, WorkoutPost } from '../types/database';
 import { scheduleStreakReminder } from '../lib/streakNotification';
 import { useStreaks } from '../hooks/useStreaks';
@@ -19,6 +18,10 @@ import { format } from 'date-fns';
 
 import { C } from '../theme';
 import type { RootStackNavigationProp, RootStackRouteProp } from '../navigation/types';
+import ActivityTypePicker from '../components/logWorkout/ActivityTypePicker';
+import StatsInputs from '../components/logWorkout/StatsInputs';
+import MediaPicker from '../components/logWorkout/MediaPicker';
+import SuccessOverlay from '../components/logWorkout/SuccessOverlay';
 
 let HapticsModule: any = null;
 try { HapticsModule = require('expo-haptics'); } catch {}
@@ -211,26 +214,7 @@ export default function LogWorkoutScreen() {
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
 
           {/* Activity type picker */}
-          <Text style={s.sectionLabel}>ACTIVITY TYPE</Text>
-          <View style={s.activityGrid}>
-            {ACTIVITY_OPTIONS.map(type => {
-              const label = ACTIVITY_LABELS[type];
-              const emoji = label.split(' ')[0];
-              const name = label.split(' ').slice(1).join(' ');
-              const active = activityType === type;
-              return (
-                <TouchableOpacity
-                  key={type}
-                  style={[s.activityBtn, active && s.activityBtnActive]}
-                  onPress={() => setActivityType(type)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={s.activityEmoji}>{emoji}</Text>
-                  <Text style={[s.activityName, active && { color: C.primary }]}>{name}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
+          <ActivityTypePicker activityType={activityType} setActivityType={setActivityType} />
 
           {/* Timer */}
           {!isEditMode && (
@@ -261,65 +245,16 @@ export default function LogWorkoutScreen() {
           )}
 
           {/* Stats */}
-          <Text style={s.sectionLabel}>STATS (optional)</Text>
-          <View style={s.statsGrid}>
-            <View style={s.statCard}>
-              <View style={s.statCardHeader}>
-                <Text style={s.statCardEmoji}>⏱</Text>
-                <Text style={s.statCardLabel}>Duration (min)</Text>
-              </View>
-              <TextInput
-                style={s.statCardField}
-                placeholder="45"
-                placeholderTextColor={C.dimmed}
-                value={duration}
-                onChangeText={setDuration}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={s.statCard}>
-              <View style={s.statCardHeader}>
-                <Text style={s.statCardEmoji}>📍</Text>
-                <Text style={s.statCardLabel}>Distance (km)</Text>
-              </View>
-              <TextInput
-                style={s.statCardField}
-                placeholder="5.0"
-                placeholderTextColor={C.dimmed}
-                value={distance}
-                onChangeText={setDistance}
-                keyboardType="decimal-pad"
-              />
-            </View>
-            <View style={s.statCard}>
-              <View style={s.statCardHeader}>
-                <Text style={s.statCardEmoji}>🔥</Text>
-                <Text style={s.statCardLabel}>Calories</Text>
-              </View>
-              <TextInput
-                style={s.statCardField}
-                placeholder="300"
-                placeholderTextColor={C.dimmed}
-                value={calories}
-                onChangeText={setCalories}
-                keyboardType="number-pad"
-              />
-            </View>
-            <View style={s.statCard}>
-              <View style={s.statCardHeader}>
-                <Text style={s.statCardEmoji}>👟</Text>
-                <Text style={s.statCardLabel}>Steps</Text>
-              </View>
-              <TextInput
-                style={s.statCardField}
-                placeholder="8000"
-                placeholderTextColor={C.dimmed}
-                value={steps}
-                onChangeText={setSteps}
-                keyboardType="number-pad"
-              />
-            </View>
-          </View>
+          <StatsInputs
+            duration={duration}
+            setDuration={setDuration}
+            distance={distance}
+            setDistance={setDistance}
+            calories={calories}
+            setCalories={setCalories}
+            steps={steps}
+            setSteps={setSteps}
+          />
 
           {/* Date */}
           <Text style={s.sectionLabel}>DATE</Text>
@@ -401,22 +336,11 @@ export default function LogWorkoutScreen() {
           )}
 
           {/* Photo */}
-          <Text style={s.sectionLabel}>PHOTO (optional)</Text>
-          <TouchableOpacity style={s.mediaPicker} onPress={handlePickMedia} activeOpacity={0.8}>
-            {mediaUri ? (
-              <Image source={{ uri: mediaUri }} style={s.mediaPreview} resizeMode="cover" />
-            ) : (
-              <View style={s.mediaPlaceholder}>
-                <Text style={s.mediaIcon}>📷</Text>
-                <Text style={s.mediaText}>Add a photo</Text>
-              </View>
-            )}
-          </TouchableOpacity>
-          {mediaUri && (
-            <TouchableOpacity style={s.removeMedia} onPress={() => setMediaUri(null)}>
-              <Text style={s.removeMediaText}>Remove photo</Text>
-            </TouchableOpacity>
-          )}
+          <MediaPicker
+            mediaUri={mediaUri}
+            onPickMedia={handlePickMedia}
+            onRemoveMedia={() => setMediaUri(null)}
+          />
 
           {/* Caption */}
           <Text style={s.sectionLabel}>CAPTION (optional)</Text>
@@ -447,15 +371,7 @@ export default function LogWorkoutScreen() {
       </KeyboardAvoidingView>
 
       {showSuccess && (
-        <Animated.View style={[s.successOverlay, { opacity: successOpacity }]}>
-          <Animated.View style={[s.successCard, { transform: [{ scale: successScale }] }]}>
-            <View style={s.successIconCircle}>
-              <Text style={s.successIconText}>✓</Text>
-            </View>
-            <Text style={s.successTitle}>Workout logged! 💪</Text>
-            <Text style={s.successSub}>Keep that streak going!</Text>
-          </Animated.View>
-        </Animated.View>
+        <SuccessOverlay successOpacity={successOpacity} successScale={successScale} />
       )}
     </SafeAreaView>
   );
@@ -494,54 +410,6 @@ const s = StyleSheet.create({
     marginTop: 20,
   },
 
-  activityGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  activityBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.border,
-    borderRadius: 12,
-    paddingHorizontal: 13,
-    paddingVertical: 9,
-    minHeight: 42,
-  },
-  activityBtnActive: {
-    borderColor: C.primary + '50',
-    backgroundColor: C.primary + '15',
-  },
-  activityEmoji: { fontSize: 16 },
-  activityName: { fontSize: 13, fontWeight: '600', color: C.muted },
-
-  statsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
-  statCard: {
-    width: '48%',
-    backgroundColor: C.card,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: C.border,
-    paddingVertical: 11,
-    paddingHorizontal: 13,
-  },
-  statCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
-  statCardEmoji: { fontSize: 13 },
-  statCardLabel: { fontSize: 11.5, fontWeight: '600', color: C.muted },
-  statCardField: {
-    color: C.text,
-    fontSize: 24,
-    fontWeight: '700',
-    padding: 0,
-  },
-
   dateChipRow: { flexDirection: 'row', gap: 8 },
   dateChip: {
     backgroundColor: C.card,
@@ -576,26 +444,6 @@ const s = StyleSheet.create({
     backgroundColor: C.primary + '15',
   },
   challengeChipText: { color: C.muted, fontSize: 13, fontWeight: '600' },
-
-  mediaPicker: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: C.border,
-    minHeight: 140,
-  },
-  mediaPreview: { width: '100%', height: 200 },
-  mediaPlaceholder: {
-    height: 140,
-    backgroundColor: C.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  mediaIcon: { fontSize: 32 },
-  mediaText: { color: C.muted, fontSize: 14, fontWeight: '600' },
-  removeMedia: { alignItems: 'center', marginTop: 6 },
-  removeMediaText: { color: C.error, fontSize: 13, fontWeight: '600' },
 
   captionInput: {
     backgroundColor: C.card,
@@ -637,36 +485,4 @@ const s = StyleSheet.create({
     marginTop: 24,
   },
   saveBigBtnText: { color: '#000', fontSize: 16, fontWeight: '800', letterSpacing: 0.2 },
-
-  successOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.75)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 100,
-  },
-  successCard: {
-    backgroundColor: '#151C24',
-    borderRadius: 24,
-    padding: 36,
-    alignItems: 'center',
-    gap: 8,
-    borderWidth: 1.5,
-    borderColor: '#22C55E40',
-    width: 260,
-  },
-  successIconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#22C55E20',
-    borderWidth: 2,
-    borderColor: '#22C55E60',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 8,
-  },
-  successIconText: { fontSize: 36, color: '#22C55E', fontWeight: '900', lineHeight: 40 },
-  successTitle: { fontSize: 20, fontWeight: '900', color: '#EEF4F8' },
-  successSub: { fontSize: 14, color: '#637C8F' },
 });

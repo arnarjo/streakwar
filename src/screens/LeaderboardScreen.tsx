@@ -12,27 +12,9 @@ import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeaderboardEntry, LeagueTier } from '../types/database';
 import { C } from '../theme';
+import { medalOrRank, rankColor, initials } from '../lib/leaderboardFormat';
 
 type Tab = 'league' | 'week' | 'world' | 'friends';
-
-function medalOrRank(rank: number) {
-  if (rank === 1) return '🥇';
-  if (rank === 2) return '🥈';
-  if (rank === 3) return '🥉';
-  return `#${rank}`;
-}
-
-function rankColor(rank: number) {
-  if (rank === 1) return C.gold;
-  if (rank === 2) return C.silver;
-  if (rank === 3) return C.bronze;
-  return C.muted;
-}
-
-function initials(entry: LeaderboardEntry) {
-  const name = entry.full_name ?? entry.username;
-  return name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase();
-}
 
 export default function LeaderboardScreen() {
   const { profile } = useAuth();

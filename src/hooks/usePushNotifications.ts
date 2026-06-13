@@ -5,7 +5,7 @@ import * as Device from 'expo-device';
 import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { scheduleStreakReminder } from '../lib/streakNotification';
+import { scheduleStreakReminder, flushStaleNotificationsOnce } from '../lib/streakNotification';
 import type { NavigationContainerRef } from '@react-navigation/native';
 import type { RootStackParamList } from '../navigation/types';
 
@@ -32,6 +32,9 @@ export function usePushNotifications(
 
   const refreshReminders = useCallback(async () => {
     if (!userId) return;
+    // Drop any reminders left in the OS queue by an older build before
+    // re-scheduling the current English ones.
+    await flushStaleNotificationsOnce();
     const [{ data: streakData }, { data: profile }] = await Promise.all([
       supabase
         .from('user_streaks')

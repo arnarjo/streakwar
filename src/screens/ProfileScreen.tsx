@@ -15,12 +15,13 @@ import { useAchievements } from '../hooks/useAchievements';
 import { usePremium } from '../hooks/usePremium';
 import { useLeague } from '../hooks/useLeague';
 import UpgradeModal from '../components/UpgradeModal';
-import { ACHIEVEMENT_META, LEAGUE_TIER_META } from '../types/database';
+import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays } from 'date-fns';
 import { C } from '../theme';
 import ActivityHeatmap from '../components/profile/ActivityHeatmap';
+import AchievementsGrid from '../components/profile/AchievementsGrid';
 import type { AppNavigationProp } from '../navigation/types';
 
 function useCountUp(target: number, duration = 900): number {
@@ -363,24 +364,7 @@ export default function ProfileScreen() {
           </>
         )}
 
-        {achievements.length > 0 && (
-          <>
-            <Text style={s.sectionLabel}>Achievements</Text>
-            <View style={s.achievementsGrid}>
-              {achievements.map(a => {
-                const meta = ACHIEVEMENT_META[a.achievement];
-                if (!meta) return null;
-                return (
-                  <View key={a.id} style={s.achievementCard}>
-                    <Text style={s.achievementIcon}>{meta.icon}</Text>
-                    <Text style={s.achievementTitle}>{meta.title}</Text>
-                    <Text style={s.achievementDesc}>{meta.desc}</Text>
-                  </View>
-                );
-              })}
-            </View>
-          </>
-        )}
+        <AchievementsGrid achievements={achievements} />
 
         <Text style={s.sectionLabel}>Notifications</Text>
         <View style={s.notifCard}>
@@ -486,11 +470,6 @@ const s = StyleSheet.create({
   challengeMeta: { fontSize: 12, color: C.muted },
   challengeScore: { fontSize: 16, fontWeight: '800', color: C.primary },
 
-  achievementsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
-  achievementCard: { width: '47%', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 14, padding: 14, alignItems: 'center', gap: 4 },
-  achievementIcon: { fontSize: 28 },
-  achievementTitle: { fontSize: 13, fontWeight: '800', color: C.text, textAlign: 'center' },
-  achievementDesc: { fontSize: 11, color: C.muted, textAlign: 'center', lineHeight: 15 },
 
   notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
   notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
