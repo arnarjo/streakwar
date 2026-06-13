@@ -58,8 +58,8 @@ INSERT INTO fitness_challenges (
   tie_break_rule
 ) VALUES (
   '00000000-0000-0000-0001-000000000001',
-  'Viku Challenge 🔥',
-  'Opið fyrir alla! Þvingaðu þig í þessari viku-samkeppni. Flest stig á 7 dögum vinnur.',
+  'Weekly Challenge 🔥',
+  'Open to everyone! Jump into this week''s showdown — most points over 7 days wins.',
   NULL,
   date_trunc('week', current_date)::date,
   (date_trunc('week', current_date) + interval '6 days')::date,
@@ -98,8 +98,8 @@ INSERT INTO fitness_challenges (
   tie_break_rule
 ) VALUES (
   '00000000-0000-0000-0002-000000000001',
-  'Mánaðar Challenge 🏆',
-  'Stærsta samkeppnin! Berðu þig saman við alla notendur í allan mánuðinn. Skref, kílómetrar og æfingar telja.',
+  'Monthly Challenge 🏆',
+  'The big one! Go head-to-head with every user all month long. Steps, kilometres and workouts all count.',
   NULL,
   date_trunc('month', current_date)::date,
   (date_trunc('month', current_date) + interval '1 month - 1 day')::date,
