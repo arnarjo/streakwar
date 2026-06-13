@@ -16,7 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
 import { toLocalDate } from './dateUtils';
-import type { ActivityType } from '../types/database';
+import { mapHCExerciseType } from './healthMapping';
 
 let HealthConnect: any = null;
 
@@ -40,30 +40,7 @@ const HC_RECORD_TYPES = [
   'Steps',
 ] as const;
 
-/**
- * Map Health Connect exercise type numeric codes to our activity types.
- * HC returns integer constants (ExerciseSessionRecord.EXERCISE_TYPE_*), not strings.
- * Reference: https://developer.android.com/reference/kotlin/androidx/health/connect/client/records/ExerciseSessionRecord
- */
-function mapHCExerciseType(typeCode: number): ActivityType {
-  // Key numeric constants from ExerciseSessionRecord
-  const map: Record<number, ActivityType> = {
-    56: 'run',   // EXERCISE_TYPE_RUNNING
-    57: 'run',   // EXERCISE_TYPE_RUNNING_TREADMILL
-    79: 'walk',  // EXERCISE_TYPE_WALKING
-    37: 'walk',  // EXERCISE_TYPE_HIKING
-    8:  'cycle', // EXERCISE_TYPE_BIKING
-    9:  'cycle', // EXERCISE_TYPE_BIKING_STATIONARY
-    74: 'swim',  // EXERCISE_TYPE_SWIMMING_OPEN_WATER
-    75: 'swim',  // EXERCISE_TYPE_SWIMMING_POOL
-    62: 'lift',  // EXERCISE_TYPE_STRENGTH_TRAINING
-    44: 'lift',  // EXERCISE_TYPE_WEIGHTLIFTING
-    83: 'yoga',  // EXERCISE_TYPE_YOGA
-    27: 'hiit',  // EXERCISE_TYPE_HIGH_INTENSITY_INTERVAL_TRAINING
-    38: 'hiit',  // EXERCISE_TYPE_INTERVAL_TRAINING
-  };
-  return map[typeCode] ?? 'other';
-}
+
 
 
 /**

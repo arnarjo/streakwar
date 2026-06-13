@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  StatusBar, RefreshControl, Share, Image, Alert, ActivityIndicator,
+  StatusBar, RefreshControl, Share, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -13,6 +13,8 @@ import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useChallengeMessages, TRASH_TALK_MESSAGES } from '../hooks/useChallengeMessages';
 import WorkoutPostCard from '../components/WorkoutPostCard';
 import ShareCard from '../components/ShareCard';
+import Podium from '../components/challengeDetail/Podium';
+import LeaderboardRow from '../components/challengeDetail/LeaderboardRow';
 import type { FitnessChallenge, ChallengeParticipant, WorkoutComment } from '../types/database';
 import { SCORING_MODE_LABELS, TIE_BREAK_LABELS } from '../types/database';
 import { format, parseISO } from 'date-fns';
@@ -218,58 +220,16 @@ export default function ChallengeDetailScreen() {
               )}
 
               {/* Podium */}
-              {podium.length > 0 && (
-                <View style={s.podium}>
-                  {[podium[1], podium[0], podium[2]].map((p, visualIdx) => {
-                    if (!p) return <View key={visualIdx} style={{ flex: 1 }} />;
-                    const rank = visualIdx === 1 ? 1 : visualIdx === 0 ? 2 : 3;
-                    const heights = [70, 90, 60];
-                    const colors = ['#C0C0C0', '#FFD700', '#CD7F32'];
-                    const initials = (p.profile?.full_name ?? p.profile?.username ?? '?')
-                      .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-                    return (
-                      <View key={p.id} style={[s.podiumSlot, { flex: 1 }]}>
-                        <Text style={s.podiumScore}>{p.score}</Text>
-                        <View style={[s.podiumAvatar, { borderColor: colors[rank - 1] }]}>
-                          {p.profile?.avatar_url
-                            ? <Image source={{ uri: p.profile.avatar_url }} style={s.podiumAvatarImg} />
-                            : <Text style={[s.podiumAvatarText, { color: colors[rank - 1] }]}>{initials}</Text>
-                          }
-                        </View>
-                        <View style={[s.podiumBar, { height: heights[rank - 1], backgroundColor: colors[rank - 1] + '30', borderColor: colors[rank - 1] + '60' }]}>
-                          <Text style={[s.podiumRankNum, { color: colors[rank - 1] }]}>#{rank}</Text>
-                        </View>
-                        <Text style={s.podiumName} numberOfLines={1}>{p.profile?.username}</Text>
-                      </View>
-                    );
-                  })}
-                </View>
-              )}
+              <Podium podium={podium} />
 
               {rest.length > 0 && (
                 <Text style={s.restLabel}>Full leaderboard</Text>
               )}
             </>
           }
-          renderItem={({ item, index }) => {
-            const rank = index + 4;
-            const initials = (item.profile?.full_name ?? item.profile?.username ?? '?')
-              .split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase();
-            const isMe = item.user_id === profile?.id;
-            return (
-              <View style={[s.rankRow, isMe && s.rankRowMe]}>
-                <Text style={s.rankNum}>#{rank}</Text>
-                <View style={[s.rankAvatar, isMe && { borderColor: C.primary }]}>
-                  <Text style={[s.rankAvatarText, isMe && { color: C.primary }]}>{initials}</Text>
-                </View>
-                <Text style={[s.rankName, isMe && { color: C.primary }]} numberOfLines={1}>
-                  {item.profile?.username}
-                  {isMe ? ' (you)' : ''}
-                </Text>
-                <Text style={s.rankScore}>{item.score} pts</Text>
-              </View>
-            );
-          }}
+          renderItem={({ item, index }) => (
+            <LeaderboardRow item={item} rank={index + 4} isMe={item.user_id === profile?.id} />
+          )}
         />
       )}
 
@@ -451,6 +411,7 @@ const s = StyleSheet.create({
   tabTextActive: { color: C.primary },
 
   list: { paddingHorizontal: 16, paddingBottom: 100 },
+  restLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
   empty: { alignItems: 'center', paddingTop: 48 },
   emptyText: { color: C.muted, fontSize: 14 },
 
@@ -475,69 +436,6 @@ const s = StyleSheet.create({
   },
   logWorkoutBtnText: { color: '#000', fontWeight: '800', fontSize: 12 },
 
-  podium: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginBottom: 16,
-    paddingHorizontal: 8,
-    gap: 4,
-  },
-  podiumSlot: { alignItems: 'center', gap: 4 },
-  podiumScore: { fontSize: 11, color: C.muted, fontWeight: '600' },
-  podiumAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    backgroundColor: C.card,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  podiumAvatarImg: { width: 44, height: 44, borderRadius: 22 },
-  podiumAvatarText: { fontSize: 16, fontWeight: '800' },
-  podiumBar: {
-    width: '100%',
-    borderWidth: 1,
-    borderRadius: 8,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderTopLeftRadius: 8,
-    borderTopRightRadius: 8,
-    borderBottomLeftRadius: 0,
-    borderBottomRightRadius: 0,
-  },
-  podiumRankNum: { fontSize: 16, fontWeight: '900', paddingVertical: 4 },
-  podiumName: { fontSize: 11, color: C.muted, fontWeight: '600', textAlign: 'center' },
-  restLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 0.5, marginBottom: 8, marginTop: 4 },
-
-  rankRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: C.card,
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 6,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  rankRowMe: { borderColor: C.primary + '40', backgroundColor: C.primary + '08' },
-  rankNum: { fontSize: 14, fontWeight: '700', color: C.muted, width: 28 },
-  rankAvatar: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: C.border,
-  },
-  rankAvatarText: { fontSize: 13, fontWeight: '700', color: C.muted },
-  rankName: { flex: 1, fontSize: 14, fontWeight: '600', color: C.text },
-  rankScore: { fontSize: 14, fontWeight: '800', color: C.text },
 
   infoCard: {
     backgroundColor: C.card,
