@@ -15,7 +15,7 @@ import { Platform } from 'react-native';
 import { supabase } from './supabase';
 import { getActiveChallengeId } from './db';
 import { toLocalDate } from './dateUtils';
-import type { ActivityType } from '../types/database';
+import { mapAppleWorkoutType, MILES_TO_KM } from './healthMapping';
 
 let AppleHealthKit: any = null;
 
@@ -43,23 +43,6 @@ const HEALTHKIT_PERMISSIONS = {
 };
 
 /** Map Apple workout type codes to our activity types */
-function mapAppleWorkoutType(typeId: number): ActivityType {
-  // HKWorkoutActivityType raw values — getSamples returns these as `activityId`
-  switch (typeId) {
-    case 37: return 'run';   // HKWorkoutActivityTypeRunning
-    case 52: return 'walk';  // HKWorkoutActivityTypeWalking
-    case 24: return 'walk';  // HKWorkoutActivityTypeHiking
-    case 13: return 'cycle'; // HKWorkoutActivityTypeCycling
-    case 46: return 'swim';  // HKWorkoutActivityTypeSwimming
-    case 50: return 'lift';  // HKWorkoutActivityTypeTraditionalStrengthTraining
-    case 20: return 'lift';  // HKWorkoutActivityTypeFunctionalStrengthTraining
-    case 57: return 'yoga';  // HKWorkoutActivityTypeYoga
-    case 63: return 'hiit';  // HKWorkoutActivityTypeHighIntensityIntervalTraining
-    default:  return 'other';
-  }
-}
-
-const MILES_TO_KM = 1.60934;
 
 
 // Track which userId was initialized so re-auth with a different account
