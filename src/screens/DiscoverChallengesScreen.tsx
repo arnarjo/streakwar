@@ -26,10 +26,17 @@ const FILTERS: Array<{ key: Filter; label: string }> = [
   { key: 'distance_km', label: '📍 Distance' },
 ];
 
-const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: string }> = {
-  weekly:  { border: C.primary, badge: '#F9731620', emoji: '🔥' },
-  monthly: { border: C.gold,    badge: '#F59E0B20', emoji: '🏆' },
+const GLOBAL_COLORS: Record<string, { border: string; badge: string; emoji: string; label: string }> = {
+  weekly:  { border: C.primary, badge: '#F9731620', emoji: '🔥', label: 'WEEKLY' },
+  monthly: { border: C.gold,    badge: '#F59E0B20', emoji: '🏆', label: 'MONTHLY' },
+  fun:     { border: C.purple,  badge: '#8B5CF620', emoji: '🎉', label: 'FUN' },
 };
+
+// The "fun extra" global challenges use the 0003 seed-id family (migration 021).
+const FUN_CHALLENGE_ID_PREFIX = '00000000-0000-0000-0003';
+function globalStyleKey(item: { id: string; renewal_type: string }): string {
+  return item.id.startsWith(FUN_CHALLENGE_ID_PREFIX) ? 'fun' : item.renewal_type;
+}
 
 export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onRefreshMyChallenges }: Props) {
   const navigation = useNavigation<AppNavigationProp>();
@@ -141,14 +148,14 @@ export default function DiscoverChallengesScreen({ myChallenges, joinPublic, onR
           <Text style={s.sectionTitle}>🌍 Global Challenges</Text>
           <Text style={s.sectionSub}>Open to everyone — resets automatically</Text>
           {globalChallenges.map(item => {
-            const style = GLOBAL_COLORS[item.renewal_type] ?? GLOBAL_COLORS.weekly;
+            const style = GLOBAL_COLORS[globalStyleKey(item)] ?? GLOBAL_COLORS.weekly;
             const modes = item.scoring_modes ?? [];
             const modeEmoji = SCORING_MODE_LABELS[modes[0]]?.split(' ')[0] ?? '💪';
             return (
               <View key={item.id} style={[s.globalCard, { borderColor: style.border + '80' }]}>
                 <View style={[s.globalBadge, { backgroundColor: style.badge }]}>
                   <Text style={[s.globalBadgeText, { color: style.border }]}>
-                    {style.emoji} {item.renewal_type === 'weekly' ? 'WEEKLY' : 'MONTHLY'}
+                    {style.emoji} {style.label}
                   </Text>
                 </View>
                 <View style={s.cardContent}>
