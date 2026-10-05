@@ -1,7 +1,32 @@
 # Before the first updated Android phone build
 
-Current code snapshot: 2fd19dec38170889694cba09f46cbfe05f046713.
-Nothing has been pushed or submitted. Old phone installs cannot test this code.
+## Current checkpoint — 2026-10-05
+
+Accepted source: local 82be9fcc1f93240825ec649c3a3e51fdc9210f06;
+published equivalent 39b722babadcc84d1e7ed15846036b76215b4027 on
+codex/streakwar-baseline. Exact tree: 72d0cb1f81e3d57b0d1d3619f4c3797320be1677.
+382 mocked tests /17 suites, typecheck and Android JS export pass. No updated
+APK, installation or runtime evidence exists for this source checkpoint.
+C02-R2 is the consolidated source-review gate, not release acceptance.
+
+Before installation/testing:
+1. Triage C02-R2 findings, fixing confirmed blockers with regression tests.
+2. Choose a safe backend/test-account plan. Preview/store-testing/production
+   still share the live project. Do not infer isolation from a build profile.
+   Live security fixes authorized separately do not authorize health fixtures,
+   destructive migration resets or test-data publication into competitions.
+3. Build from an exact accepted commit, record artifact/version/signature and
+   confirm target configuration without publishing credentials or health data.
+   Paid EAS jobs and Play uploads require owner authorization.
+4. Run the scenario matrix below, initially with synthetic data; record failures
+   and missing evidence explicitly. Old installs cannot validate new source.
+
+Source-review completion cannot replace phone/background/permission evidence.
+
+## Historical preparation — 2026-10-01
+
+The following preparation was recorded against 2fd19dec38170889694cba09f46cbfe05f046713.
+GitHub publication and subsequent source fixes are recorded above and in STATUS.
 
 ## Can continue without a physical phone
 
