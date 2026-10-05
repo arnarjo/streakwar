@@ -3,7 +3,19 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
-Latest accepted checkpoint: HC-CONSENT01 (C02-R2 F1). Foreground Android import
+Latest accepted source checkpoint: AUTH-REFRESH01 (C02-R2 F3). Same-user resolved
+profile refresh preserves the mounted navigation gate and current profile on
+transient failure. Codex reproduced 8 baseline failures, then all 420 tests /18
+suites passed with the fix; typecheck and targeted lint pass. See
+handoffs/AUTH-REFRESH01-integration.md. No updated APK or phone evidence yet.
+
+Isolated hosted project StreakWar-test (vqizpuqmsykmhlyihyry) created by owner:
+Healthy/Free/nano; empty and not configured in the app. See
+database/HOSTED-TEST-ENVIRONMENT.md. Fitbet project permanently deleted with
+explicit owner approval; shared StreakWar and organization retained. Next:
+review isolated baseline, verify RLS with synthetic data, then exact Android build.
+
+Previous accepted checkpoint: HC-CONSENT01 (C02-R2 F1). Foreground Android import
 requires a fresh active connection lookup and a subsequent current-scope check.
 Missing/inactive/offline lookup cannot reach native polling. Successful disconnect
 reconciles the affected hook's provider before cleanup, retaining cleanup errors.

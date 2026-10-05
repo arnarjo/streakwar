@@ -128,8 +128,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const profileRevision = useRef(0);
   // User whose password-recovery session is pending; reset UI is tied to it.
   const recoveryUserRef = useRef<string | null>(null);
+  // User whose profile result (row or authoritative absence) is currently applied.
+  // Same-user events with a resolved profile refresh quietly: no loading flip, so
+  // the authenticated navigation tree is not unmounted by token refreshes.
+  const resolvedUserRef = useRef<string | null>(null);
 
-  const fetchProfile = useCallback(async (userId: string, revision: number) => {
+  const fetchProfile = useCallback(async (userId: string, revision: number, quiet: boolean) => {
     const isLatest = () => revision === profileRevision.current;
     try {
       const { data, error } = await supabase
@@ -140,16 +144,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isLatest()) return;
 
       if (!error && data) {
+        resolvedUserRef.current = userId;
         setProfile(data);
         setProfileMissing(false);
+      } else if (quiet && error?.code !== 'PGRST116') {
+        // Transient failure of a background refresh: keep the valid current profile.
       } else {
+        // Authoritative absence (or a failed first load): nothing valid to keep.
+        resolvedUserRef.current = error?.code === 'PGRST116' ? userId : null;
         setProfile(null);
         setProfileMissing(error?.code !== 'PGRST116'); // only flag missing if it's truly not found
       }
     } catch {
       if (!isLatest()) return;
-      setProfile(null);
-      setProfileMissing(false);
+      if (!quiet) {
+        resolvedUserRef.current = null;
+        setProfile(null);
+        setProfileMissing(false);
+      }
     } finally {
       if (isLatest()) setLoading(false);
     }
@@ -175,6 +187,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // local health state. The same user (or nobody) is left untouched.
         if (identityRef.current !== null && identityRef.current !== nextUserId) {
           identityRef.current = null;
+          resolvedUserRef.current = null;
           profileRevision.current++;
           setSession(null);
           setProfile(null);
@@ -194,10 +207,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setNeedsPasswordReset(false);
       }
 
+      // Same identity whose profile is already resolved: refresh in the background.
+      const quietRefresh = nextUserId !== null
+        && nextUserId === identityRef.current
+        && resolvedUserRef.current === nextUserId;
+
       if (nextUserId !== identityRef.current) {
         // Account changed (including A -> B without a null): drop the old
         // profile immediately and ignore any response still in flight.
         identityRef.current = nextUserId;
+        resolvedUserRef.current = null;
         profileRevision.current++;
         setProfile(null);
         setProfileMissing(false);
@@ -212,8 +231,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
           configurePurchases(session.user.id);
         }
-        setLoading(true);
-        fetchProfile(session.user.id, ++profileRevision.current);
+        if (!quietRefresh) setLoading(true);
+        fetchProfile(session.user.id, ++profileRevision.current, quietRefresh);
       } else {
         logOutPurchases();
         cancelStreakReminders().catch(() => {});
@@ -226,9 +245,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const revision = profileRevision;
     const identity = identityRef;
+    const resolved = resolvedUserRef;
     return () => {
       revision.current++;
       identity.current = null;
+      resolved.current = null;
       subscription.unsubscribe();
     };
   }, [fetchProfile]);
