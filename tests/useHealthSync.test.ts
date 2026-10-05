@@ -11,9 +11,12 @@ import {
   __resetHealthSyncLifecycleForTests, requestHealthSyncOwner, whenHealthSyncSettled,
 } from '../src/lib/healthSyncLifecycle';
 import { getHealthConnectBackgroundState, requestHealthConnectBackground } from '../src/lib/healthConnectBackground';
+import { hasActiveHealthConnectConnection } from '../src/lib/healthConnectionConsent';
 
 jest.mock('react-native', () => ({ Platform: { OS: 'android' }, AppState: { addEventListener: jest.fn(() => ({ remove: jest.fn() })) } }));
 jest.mock('../src/lib/healthConnectBackground', () => ({ getHealthConnectBackgroundState: jest.fn(), requestHealthConnectBackground: jest.fn() }));
+// Fresh server-side consent lookup (the real helper is unchanged and covered in healthConnectionConsent.test.ts).
+jest.mock('../src/lib/healthConnectionConsent', () => ({ hasActiveHealthConnectConnection: jest.fn() }));
 jest.mock('../src/lib/supabase', () => ({ supabase: { auth: { getSession: jest.fn() }, from: jest.fn() } }));
 jest.mock('../src/lib/healthConnect', () => ({
   pollHealthConnect: jest.fn(), initHealthConnect: jest.fn(), checkHealthConnectGranted: jest.fn(),
@@ -75,6 +78,7 @@ beforeEach(async () => {
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-a' } } }, error: null });
   jest.mocked(pollHealthConnect).mockResolvedValue({ synced: 0, ranWithPermissions: true, completed: true, ...outcomes() });
   jest.mocked(initHealthConnect).mockResolvedValue(true);
+  jest.mocked(hasActiveHealthConnectConnection).mockResolvedValue(true);
   jest.mocked(checkHealthConnectGranted).mockResolvedValue(true);
   local.id = null; local.registered = false; gates.clear();
   jest.mocked(persistUserId).mockImplementation(async id => { await pass('persist'); local.id = id; });
@@ -529,5 +533,232 @@ describe('truthful foreground feedback contract', () => {
     jest.mocked(pollHealthConnect).mockResolvedValue(partial('failed', 2, 'ok'));
     await act(async () => { await expect(current.confirmHealthConnectConnection()).resolves.toBe(true); });
     expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe('foreground consent preflight (C02-R2 F1)', () => {
+  it.each(['inactive', 'missing', 'offline'] as const)(
+    'real consent helper with a %s query result prevents native polling', async kind => {
+      const real = jest.requireActual<typeof import('../src/lib/healthConnectionConsent')>('../src/lib/healthConnectionConsent');
+      jest.mocked(hasActiveHealthConnectConnection).mockImplementation(real.hasActiveHealthConnectConnection);
+      const query = { eq: jest.fn(), maybeSingle: jest.fn().mockResolvedValue({
+        data: kind === 'inactive' ? { is_active: false } : null,
+        error: kind === 'offline' ? new Error('Offline synthetic lookup') : null,
+      }) };
+      query.eq.mockReturnValue(query);
+      const select = jest.fn().mockReturnValue(query);
+      (supabase.from as jest.Mock).mockReturnValue({ select, update, upsert });
+      expect(current.isConnected('health_connect')).toBe(true);
+      await act(async () => { await expect(current.syncNow()).rejects.toThrow(); });
+      expect(select).toHaveBeenCalledWith('is_active');
+      expect(query.eq).toHaveBeenCalledWith('user_id', 'user-a');
+      expect(query.eq).toHaveBeenCalledWith('provider', 'health_connect');
+      expect(query.maybeSingle).toHaveBeenCalledTimes(1);
+      expect(pollHealthConnect).not.toHaveBeenCalled();
+      expect(update).not.toHaveBeenCalled();
+      expect(upsert).not.toHaveBeenCalled();
+      expect(current.isConnected('health_connect')).toBe(kind === 'offline');
+    },
+  );
+
+  const row = (provider: string, is_active = true) => ({ provider, is_active, last_synced_at: null });
+  const loadConnections = async (rows: unknown[]) => {
+    (supabase.from as jest.Mock).mockReturnValue({
+      select: jest.fn().mockReturnValue({ eq: jest.fn().mockResolvedValue({ data: rows, error: null }) }),
+      update, upsert,
+    });
+    await act(async () => { await current.refresh(); });
+  };
+  const deferredLookup = () => {
+    let resolve!: (value: boolean) => void;
+    let reject!: (reason: unknown) => void;
+    const lookup = new Promise<boolean>((res, rej) => { resolve = res; reject = rej; });
+    const reached = new Promise<void>(res => {
+      jest.mocked(hasActiveHealthConnectConnection).mockImplementationOnce(() => { res(); return lookup; });
+    });
+    return { resolve, reject, reached };
+  };
+  const rejection = async (promise: Promise<unknown>) => { try { await promise; } catch (e) { return e as Error; } return undefined; };
+  const remount = async () => { await act(async () => { root = renderer.create(createElement(Harness)); }); };
+  const expectNoImportOrStatusWrite = () => {
+    expect(pollHealthConnect).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+    expect(upsert).not.toHaveBeenCalled();
+  };
+
+  it('cached active connection but inactive/missing server row: no native poll, no status write, only Health Connect reconciled', async () => {
+    await loadConnections([row('health_connect'), row('strava')]);
+    expect(current.isConnected('health_connect')).toBe(true);
+    jest.mocked(hasActiveHealthConnectConnection).mockResolvedValue(false);   // inactive or missing row
+    let error: Error | undefined;
+    await act(async () => { error = await rejection(current.syncNow()); });
+    expect(error).toBeInstanceOf(Error);
+    expect(error).not.toBeInstanceOf(HealthSyncIncompleteError);
+    expectNoImportOrStatusWrite();
+    expect(current.isConnected('health_connect')).toBe(false);
+    expect(current.isConnected('strava')).toBe(true);                         // other providers untouched
+    expect(current.connections.find(c => c.provider === 'health_connect')?.is_active).toBe(false);
+    expect(current.syncing).toBe(false);
+    expect(current.lastSynced).toBeNull();
+  });
+
+  it('after reconciliation a further tap is rejected by the cached guard without another lookup', async () => {
+    jest.mocked(hasActiveHealthConnectConnection).mockResolvedValue(false);
+    await act(async () => { await rejection(current.syncNow()); });
+    jest.mocked(hasActiveHealthConnectConnection).mockClear();
+    await act(async () => { await expect(current.syncNow()).rejects.toThrow('Connect a health source'); });
+    expect(hasActiveHealthConnectConnection).not.toHaveBeenCalled();
+    expect(pollHealthConnect).not.toHaveBeenCalled();
+  });
+
+  it('a lookup that throws (offline) fails closed: no poll, no status write, state not guessed', async () => {
+    jest.mocked(hasActiveHealthConnectConnection).mockRejectedValue(new Error('Offline'));
+    let error: Error | undefined;
+    await act(async () => { error = await rejection(current.syncNow()); });
+    expect(error?.message).toBe('Offline');
+    expectNoImportOrStatusWrite();
+    expect(current.isConnected('health_connect')).toBe(true);                 // unknown is not reconciled to inactive
+    expect(current.syncing).toBe(false);
+  });
+
+  it('an undefined lookup result is unknown, never treated as active (and not as confirmed inactive)', async () => {
+    jest.mocked(hasActiveHealthConnectConnection).mockResolvedValue(undefined as never);
+    await act(async () => { await expect(current.syncNow()).rejects.toThrow(); });
+    expectNoImportOrStatusWrite();
+    expect(current.isConnected('health_connect')).toBe(true);
+  });
+
+  it('active server row: exactly one lookup, before the poll, and the existing count/timestamp contract holds', async () => {
+    jest.mocked(pollHealthConnect).mockResolvedValue({ synced: 3, ranWithPermissions: true, completed: true, ...outcomes(2, 1) });
+    await act(async () => { await expect(current.syncNow()).resolves.toBe(2); });
+    expect(hasActiveHealthConnectConnection).toHaveBeenCalledTimes(1);
+    expect(hasActiveHealthConnectConnection).toHaveBeenCalledWith('user-a');
+    expect(jest.mocked(hasActiveHealthConnectConnection).mock.invocationCallOrder[0])
+      .toBeLessThan(jest.mocked(pollHealthConnect).mock.invocationCallOrder[0]);
+    expect(update).toHaveBeenCalledTimes(1);
+    expect(current.lastSynced).toBeInstanceOf(Date);
+  });
+
+  it('typed partial results are unchanged when the connection is active', async () => {
+    jest.mocked(pollHealthConnect).mockResolvedValue({
+      synced: 2, ranWithPermissions: true, completed: false, missingPermissions: ['Steps'],
+      exercise: { status: 'ok', written: 2, cursorAdvanced: true }, steps: { status: 'skipped', written: 0, updated: false },
+    });
+    let error: unknown;
+    await act(async () => { error = await rejection(current.syncNow()); });
+    expect(error).toBeInstanceOf(HealthSyncIncompleteError);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it('account switch during the lookup: the stale result never reaches the poll', async () => {
+    const lookup = deferredLookup();
+    let pending!: Promise<Error | undefined>;
+    await act(async () => { pending = rejection(current.syncNow()); await lookup.reached; });
+    await act(async () => { root.update(createElement(Harness, { userId: 'user-b' })); });
+    await act(async () => { lookup.resolve(true); await pending; });
+    expect((await pending)?.message).toMatch(/account changed|screen closed/);
+    expectNoImportOrStatusWrite();
+  });
+
+  it('A -> B -> A during the lookup is still stale (new scope each time)', async () => {
+    const lookup = deferredLookup();
+    let pending!: Promise<Error | undefined>;
+    await act(async () => { pending = rejection(current.syncNow()); await lookup.reached; });
+    await act(async () => { root.update(createElement(Harness, { userId: 'user-b' })); });
+    await act(async () => { root.update(createElement(Harness, { userId: 'user-a' })); });
+    await act(async () => { lookup.resolve(true); await pending; });
+    expect((await pending)?.message).toMatch(/account changed|screen closed/);
+    expectNoImportOrStatusWrite();
+  });
+
+  it('a confirmed-inactive result arriving after an account switch does not change the new account\'s state', async () => {
+    const lookup = deferredLookup();
+    let pending!: Promise<Error | undefined>;
+    await act(async () => { pending = rejection(current.syncNow()); await lookup.reached; });
+    await act(async () => { root.update(createElement(Harness, { userId: 'user-b' })); });
+    await act(async () => { lookup.resolve(false); await pending; });
+    expect((await pending)?.message).toMatch(/account changed|screen closed/);
+    expect(current.connections.map(c => c.provider)).toEqual(['health_connect']);
+    expect(current.isConnected('health_connect')).toBe(true);                 // B's own fetched state, not A's reconciliation
+  });
+
+  it('unmount during the lookup: no poll and no state update', async () => {
+    const lookup = deferredLookup();
+    let pending!: Promise<Error | undefined>;
+    await act(async () => { pending = rejection(current.syncNow()); await lookup.reached; });
+    await act(async () => { root.unmount(); });
+    await act(async () => { lookup.resolve(true); await pending; });
+    expect((await pending)?.message).toMatch(/account changed|screen closed/);
+    expectNoImportOrStatusWrite();
+    await remount();                                                            // keep afterEach symmetrical
+  });
+
+  it.each(['connectNative', 'confirmHealthConnectConnection'] as const)(
+    '%s still runs its initial sync after the successful upsert (lookup follows the save)', async method => {
+      await act(async () => { await current[method](); });
+      expect(upsert).toHaveBeenCalledTimes(1);
+      expect(hasActiveHealthConnectConnection).toHaveBeenCalledTimes(1);
+      expect(pollHealthConnect).toHaveBeenCalledTimes(1);
+      const order = (m: jest.Mock) => m.mock.invocationCallOrder[0];
+      expect(order(upsert)).toBeLessThan(order(hasActiveHealthConnectConnection as jest.Mock));
+      expect(order(hasActiveHealthConnectConnection as jest.Mock)).toBeLessThan(order(pollHealthConnect as jest.Mock));
+      expect(current.lastSynced).toBeInstanceOf(Date);
+    },
+  );
+
+  it('connect: an inactive lookup after the upsert keeps success:true (connection saved) without polling or a timestamp', async () => {
+    jest.mocked(hasActiveHealthConnectConnection).mockResolvedValue(false);
+    let outcome: { success: boolean; message: string } | undefined;
+    await act(async () => { outcome = await current.connectNative(); });
+    expect(outcome).toEqual({ success: true, message: 'Connected, but the first sync did not complete. Please try Sync now.' });
+    expect(pollHealthConnect).not.toHaveBeenCalled();
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  describe('disconnect reconciliation', () => {
+    it('background cleanup failure after the DB update: this hook is no longer connected and the cleanup error is preserved', async () => {
+      jest.mocked(unregisterBackgroundSync).mockResolvedValue(false);
+      let error: Error | undefined;
+      await act(async () => { error = await rejection(current.disconnect('health_connect')); });
+      expect(error?.message).toContain('unregister');
+      expect(current.isConnected('health_connect')).toBe(false);            // the default refetch mock would say active
+      expect(current.connections.find(c => c.provider === 'health_connect')?.is_active).toBe(false);
+    });
+
+    it('a thrown identity-clear failure is preserved too, not replaced by a refresh error', async () => {
+      jest.mocked(clearUserId).mockRejectedValueOnce(new Error('Storage unavailable'));
+      (supabase.from as jest.Mock).mockReturnValue({
+        select: jest.fn().mockReturnValue({ eq: jest.fn().mockRejectedValue(new Error('Refresh failed')) }),
+        update, upsert,
+      });
+      let error: Error | undefined;
+      await act(async () => { error = await rejection(current.disconnect('health_connect')); });
+      expect(error?.message).toBe('Storage unavailable');
+      expect(current.isConnected('health_connect')).toBe(false);
+    });
+
+    it('only the disconnected provider is reconciled', async () => {
+      await loadConnections([row('health_connect'), row('strava')]);
+      jest.mocked(unregisterBackgroundSync).mockResolvedValue(false);
+      await act(async () => { await rejection(current.disconnect('health_connect')); });
+      expect(current.isConnected('strava')).toBe(true);
+    });
+
+    it('a cleanup failure that settles after an account switch does not touch the new account\'s state', async () => {
+      const clearing = gate('clear');
+      let pending!: Promise<Error | undefined>;
+      await act(async () => { pending = rejection(current.disconnect('health_connect')); await clearing.reached; });
+      await act(async () => { root.update(createElement(Harness, { userId: 'user-b' })); });
+      (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-b' } } }, error: null });
+      await act(async () => { clearing.release(); await pending; });
+      expect(await pending).toBeInstanceOf(Error);
+      expect(current.isConnected('health_connect')).toBe(true);             // B's fetched row, not A's reconciliation
+    });
+
+    it('a successful disconnect still refreshes from the server', async () => {
+      await act(async () => { await current.disconnect('health_connect'); });
+      expect(unregisterBackgroundSync).toHaveBeenCalledTimes(1);
+      expect(current.connections).toEqual([row('health_connect')]);          // default mock row, i.e. refetched
+    });
   });
 });

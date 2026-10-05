@@ -3,7 +3,16 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
-Latest accepted checkpoint: HC-ALERT01 manual-sync Alert isolation. Both screens
+Latest accepted checkpoint: HC-CONSENT01 (C02-R2 F1). Foreground Android import
+requires a fresh active connection lookup and a subsequent current-scope check.
+Missing/inactive/offline lookup cannot reach native polling. Successful disconnect
+reconciles the affected hook's provider before cleanup, retaining cleanup errors.
+403 tests /17 suites, typecheck and Android JS export PASS; targeted lint 0 errors
+/1 existing warning. See handoffs/HC-CONSENT01-integration.md. In-flight revocation
+is not atomic; no live RLS/device evidence. Next: C02-R2 F3 same-user auth refresh
+regression/navigation check, then exact safe device-test checkpoint.
+
+Previous accepted checkpoint: HC-ALERT01 manual-sync Alert isolation. Both screens
 suppress stale success/error feedback after account change (including A-B-A) or
 unmount. Local checks: 382 tests / 17 suites and typecheck PASS; targeted lint
 0 errors / 4 existing warnings. See handoffs/HC-ALERT01-integration.md.

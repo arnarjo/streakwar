@@ -2,6 +2,7 @@ import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } fr
 import { AppState, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
 import { assertHealthSyncUser } from '../lib/healthSyncIdentity';
+import { hasActiveHealthConnectConnection } from '../lib/healthConnectionConsent';
 import { initHealthKit, syncRecentWorkouts } from '../lib/healthKit';
 import { initHealthConnect, checkHealthConnectGranted, pollHealthConnect } from '../lib/healthConnect';
 import { registerHealthSyncBackground, disconnectHealthSyncBackground } from '../lib/healthSyncLifecycle';
@@ -64,6 +65,17 @@ export function useHealthSync(userId: string) {
     await assertHealthSyncUser(userId);
     if (activeScope.current !== scope) throw new Error('Health sync account changed or screen closed.');
   }, [scope, userId]);
+
+  /**
+   * Reconcile ONE provider as inactive in this hook only (no broadcast to other
+   * hook instances). Only for the still-current scope; supersedes any older
+   * in-flight fetch so it cannot resurrect the stale active row.
+   */
+  const markInactive = useCallback((provider: ProviderKey) => {
+    if (activeScope.current !== scope) return;
+    ++fetchRevision.current;
+    setConnections(prev => prev.map(c => (c.provider === provider ? { ...c, is_active: false } : c)));
+  }, [scope]);
 
   const fetchConnections = useCallback(async () => {
     if (!userId) return;
@@ -135,6 +147,16 @@ export function useHealthSync(userId: string) {
     await assertCurrent();
     let count = 0;
     if (Platform.OS === 'android') {
+      // Consent is read fresh from the server: cached `connections` can be stale
+      // (another hook instance may have disconnected). A failed/offline lookup
+      // throws and nothing is polled; unknown is never treated as active. This
+      // does not cancel an import that already started elsewhere.
+      const active = await hasActiveHealthConnectConnection(userId);
+      await assertCurrent();
+      if (active !== true) {
+        if (active === false) markInactive('health_connect');
+        throw new Error('Health Connect is not connected. Reconnect it to sync.');
+      }
       const result = await pollHealthConnect(userId);
       await assertCurrent();
       const missing = result.missingPermissions ?? [];
@@ -170,7 +192,7 @@ export function useHealthSync(userId: string) {
     await assertCurrent();
     setLastSynced(finishedAt);
     return count;
-  }, [userId, assertCurrent]);
+  }, [userId, assertCurrent, markInactive]);
 
   /** Connect a native health source (HealthKit on iOS / Health Connect on Android). */
   const connectNative = useCallback(async (): Promise<{ success: boolean; message: string }> => {
@@ -294,6 +316,10 @@ export function useHealthSync(userId: string) {
       .eq('provider', provider);
     if (error) throw error;
     await assertCurrent();
+    // The server row is now inactive: reflect that in this hook before the local
+    // cleanup, so a cleanup failure cannot leave it showing "connected". The
+    // cleanup error below is still thrown to the caller, not replaced by a refresh.
+    markInactive(provider);
 
     const nativeProv: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
     if (provider === nativeProv) {
@@ -305,7 +331,7 @@ export function useHealthSync(userId: string) {
     }
 
     await fetchConnections();
-  }, [userId, fetchConnections, assertCurrent]);
+  }, [userId, fetchConnections, assertCurrent, markInactive]);
 
   function isConnected(provider: ProviderKey): boolean {
     return connections.some(c => c.provider === provider && c.is_active);
