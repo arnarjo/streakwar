@@ -1,0 +1,2460 @@
+{
+  "project_ref": "uzstenhkngldkrwnsmku",
+  "captured_on": "2026-10-05",
+  "query": "begin read only;\nselect jsonb_build_object(\n 'tables',(select jsonb_agg(jsonb_build_object('name',c.relname,'rls',c.relrowsecurity)) from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='r'),\n 'columns',(select jsonb_agg(to_jsonb(x)) from (select table_name,column_name,data_type,is_nullable,column_default from information_schema.columns where table_schema='public' order by table_name,ordinal_position)x),\n 'policies',(select jsonb_agg(to_jsonb(x)) from (select tablename,policyname,roles,cmd,qual,with_check from pg_policies where schemaname='public' order by tablename,policyname)x),\n 'indexes',(select jsonb_agg(to_jsonb(x)) from (select tablename,indexname,indexdef from pg_indexes where schemaname='public' order by tablename,indexname)x),\n 'triggers',(select jsonb_agg(jsonb_build_object('table',c.relname,'name',t.tgname,'definition',pg_get_triggerdef(t.oid))) from pg_trigger t join pg_class c on c.oid=t.tgrelid join pg_namespace n on n.oid=c.relnamespace where not t.tgisinternal and (n.nspname='public' or (n.nspname='auth' and c.relname='users'))),\n 'functions',(select jsonb_agg(jsonb_build_object('name',p.proname,'args',pg_get_function_identity_arguments(p.oid),'definer',p.prosecdef,'config',p.proconfig,'acl',p.proacl,'definition_md5',md5(pg_get_functiondef(p.oid)))) from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public' and p.prokind='f' and not exists(select 1 from pg_depend d where d.classid='pg_proc'::regclass and d.objid=p.oid and d.deptype='e'))\n) as schema_metadata;\nrollback;",
+  "metadata": {
+    "tables": [
+      {
+        "rls": true,
+        "name": "challenge_teams"
+      },
+      {
+        "rls": true,
+        "name": "profiles"
+      },
+      {
+        "rls": true,
+        "name": "fitness_challenges"
+      },
+      {
+        "rls": true,
+        "name": "friendships"
+      },
+      {
+        "rls": true,
+        "name": "notifications"
+      },
+      {
+        "rls": true,
+        "name": "device_connections"
+      },
+      {
+        "rls": true,
+        "name": "user_achievements"
+      },
+      {
+        "rls": true,
+        "name": "league_groups"
+      },
+      {
+        "rls": true,
+        "name": "user_league_tier"
+      },
+      {
+        "rls": true,
+        "name": "league_memberships"
+      },
+      {
+        "rls": true,
+        "name": "challenge_messages"
+      },
+      {
+        "rls": true,
+        "name": "challenge_participants"
+      },
+      {
+        "rls": true,
+        "name": "workout_reactions"
+      },
+      {
+        "rls": true,
+        "name": "workout_posts"
+      },
+      {
+        "rls": true,
+        "name": "workout_comments"
+      },
+      {
+        "rls": true,
+        "name": "user_streaks"
+      },
+      {
+        "rls": true,
+        "name": "streak_freeze_uses"
+      },
+      {
+        "rls": true,
+        "name": "nudges"
+      },
+      {
+        "rls": true,
+        "name": "streak_milestones"
+      },
+      {
+        "rls": true,
+        "name": "milestone_reactions"
+      },
+      {
+        "rls": true,
+        "name": "daily_mission_templates"
+      },
+      {
+        "rls": true,
+        "name": "user_device_tokens"
+      }
+    ],
+    "columns": [
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_messages",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_messages",
+        "column_name": "challenge_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_messages",
+        "column_name": "sender_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "challenge_messages",
+        "column_name": "message_key",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "challenge_messages",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_participants",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_participants",
+        "column_name": "challenge_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_participants",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_participants",
+        "column_name": "team_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "challenge_participants",
+        "column_name": "score",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "challenge_participants",
+        "column_name": "rank",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "challenge_participants",
+        "column_name": "joined_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_teams",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "challenge_teams",
+        "column_name": "challenge_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "challenge_teams",
+        "column_name": "name",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "challenge_teams",
+        "column_name": "score",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "daily_mission_templates",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "nextval('daily_mission_templates_id_seq'::regclass)"
+      },
+      {
+        "data_type": "text",
+        "table_name": "daily_mission_templates",
+        "column_name": "name",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "daily_mission_templates",
+        "column_name": "description",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "ARRAY",
+        "table_name": "daily_mission_templates",
+        "column_name": "scoring_modes",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "daily_mission_templates",
+        "column_name": "goal_label",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "daily_mission_templates",
+        "column_name": "sort_order",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "daily_mission_templates",
+        "column_name": "is_active",
+        "is_nullable": "NO",
+        "column_default": "true"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "device_connections",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "device_connections",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "device_connections",
+        "column_name": "provider",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "device_connections",
+        "column_name": "is_active",
+        "is_nullable": "YES",
+        "column_default": "true"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "device_connections",
+        "column_name": "token_expires_at",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "device_connections",
+        "column_name": "external_user_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "device_connections",
+        "column_name": "last_synced_at",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "device_connections",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "bytea",
+        "table_name": "device_connections",
+        "column_name": "access_token",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "bytea",
+        "table_name": "device_connections",
+        "column_name": "refresh_token",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "device_connections",
+        "column_name": "external_token_ref",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "fitness_challenges",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "name",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "description",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "cover_image_url",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "fitness_challenges",
+        "column_name": "created_by",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "fitness_challenges",
+        "column_name": "start_date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "fitness_challenges",
+        "column_name": "end_date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "status",
+        "is_nullable": "YES",
+        "column_default": "'upcoming'::text"
+      },
+      {
+        "data_type": "ARRAY",
+        "table_name": "fitness_challenges",
+        "column_name": "scoring_modes",
+        "is_nullable": "NO",
+        "column_default": "'{workouts}'::text[]"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "fitness_challenges",
+        "column_name": "points_per_workout",
+        "is_nullable": "YES",
+        "column_default": "1"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "fitness_challenges",
+        "column_name": "points_per_1000_steps",
+        "is_nullable": "YES",
+        "column_default": "1"
+      },
+      {
+        "data_type": "numeric",
+        "table_name": "fitness_challenges",
+        "column_name": "points_per_km",
+        "is_nullable": "YES",
+        "column_default": "1"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "fitness_challenges",
+        "column_name": "points_per_30min",
+        "is_nullable": "YES",
+        "column_default": "1"
+      },
+      {
+        "data_type": "jsonb",
+        "table_name": "fitness_challenges",
+        "column_name": "custom_scoring",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "fitness_challenges",
+        "column_name": "backlog_days_allowed",
+        "is_nullable": "YES",
+        "column_default": "7"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "fitness_challenges",
+        "column_name": "require_photo_proof",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "fitness_challenges",
+        "column_name": "is_teams_mode",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "tie_break_rule",
+        "is_nullable": "NO",
+        "column_default": "'most_recent_activity'::text"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "fitness_challenges",
+        "column_name": "is_public",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "invite_code",
+        "is_nullable": "YES",
+        "column_default": "upper(substr(md5((random())::text), 1, 8))"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "fitness_challenges",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "fitness_challenges",
+        "column_name": "max_participants",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "fitness_challenges",
+        "column_name": "renewal_type",
+        "is_nullable": "NO",
+        "column_default": "'none'::text"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "fitness_challenges",
+        "column_name": "parent_challenge_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "fitness_challenges",
+        "column_name": "is_global",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "friendships",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "friendships",
+        "column_name": "follower_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "friendships",
+        "column_name": "following_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "friendships",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "league_groups",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "USER-DEFINED",
+        "table_name": "league_groups",
+        "column_name": "tier",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "league_groups",
+        "column_name": "week_start",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "league_groups",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "league_groups",
+        "column_name": "group_index",
+        "is_nullable": "NO",
+        "column_default": "1"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "league_memberships",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "league_memberships",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "league_memberships",
+        "column_name": "group_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "league_memberships",
+        "column_name": "week_start",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "league_memberships",
+        "column_name": "final_rank",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "league_memberships",
+        "column_name": "promoted",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "league_memberships",
+        "column_name": "relegated",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "milestone_reactions",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "milestone_reactions",
+        "column_name": "milestone_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "milestone_reactions",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "milestone_reactions",
+        "column_name": "reaction",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "milestone_reactions",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "notifications",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "notifications",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "notifications",
+        "column_name": "type",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "notifications",
+        "column_name": "title",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "notifications",
+        "column_name": "body",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "jsonb",
+        "table_name": "notifications",
+        "column_name": "data",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "notifications",
+        "column_name": "read",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "notifications",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "nudges",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "nudges",
+        "column_name": "sender_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "nudges",
+        "column_name": "receiver_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "nudges",
+        "column_name": "message",
+        "is_nullable": "NO",
+        "column_default": "'Get moving! 💪'::text"
+      },
+      {
+        "data_type": "text",
+        "table_name": "nudges",
+        "column_name": "emoji",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "nudges",
+        "column_name": "nudge_date",
+        "is_nullable": "NO",
+        "column_default": "CURRENT_DATE"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "nudges",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "nudges",
+        "column_name": "seen",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "profiles",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "profiles",
+        "column_name": "username",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "profiles",
+        "column_name": "full_name",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "profiles",
+        "column_name": "avatar_url",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "profiles",
+        "column_name": "bio",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "profiles",
+        "column_name": "is_admin",
+        "is_nullable": "YES",
+        "column_default": "false"
+      },
+      {
+        "data_type": "text",
+        "table_name": "profiles",
+        "column_name": "push_token",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "profiles",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "profiles",
+        "column_name": "total_points",
+        "is_nullable": "NO",
+        "column_default": "0"
+      },
+      {
+        "data_type": "boolean",
+        "table_name": "profiles",
+        "column_name": "is_pro",
+        "is_nullable": "NO",
+        "column_default": "false"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "profiles",
+        "column_name": "pro_expires_at",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "profiles",
+        "column_name": "streak_freeze_credits",
+        "is_nullable": "NO",
+        "column_default": "0"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "streak_freeze_uses",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "streak_freeze_uses",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "date",
+        "table_name": "streak_freeze_uses",
+        "column_name": "freeze_date",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "streak_freeze_uses",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "streak_milestones",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "gen_random_uuid()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "streak_milestones",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "streak_milestones",
+        "column_name": "streak_count",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "streak_milestones",
+        "column_name": "achieved_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "user_achievements",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "user_achievements",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "user_achievements",
+        "column_name": "achievement",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "user_achievements",
+        "column_name": "earned_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "user_device_tokens",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "user_device_tokens",
+        "column_name": "push_token",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "user_device_tokens",
+        "column_name": "platform",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "user_device_tokens",
+        "column_name": "updated_at",
+        "is_nullable": "NO",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "user_league_tier",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "USER-DEFINED",
+        "table_name": "user_league_tier",
+        "column_name": "tier",
+        "is_nullable": "NO",
+        "column_default": "'bronze'::league_tier"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "user_league_tier",
+        "column_name": "updated_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "user_streaks",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "user_streaks",
+        "column_name": "current_streak",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "user_streaks",
+        "column_name": "longest_streak",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "data_type": "date",
+        "table_name": "user_streaks",
+        "column_name": "last_active_date",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "user_streaks",
+        "column_name": "updated_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_comments",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_comments",
+        "column_name": "post_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_comments",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_comments",
+        "column_name": "content",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "workout_comments",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_posts",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_posts",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_posts",
+        "column_name": "challenge_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "activity_type",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "numeric",
+        "table_name": "workout_posts",
+        "column_name": "duration_minutes",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "numeric",
+        "table_name": "workout_posts",
+        "column_name": "distance_km",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "workout_posts",
+        "column_name": "calories",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "workout_posts",
+        "column_name": "steps",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "source",
+        "is_nullable": "YES",
+        "column_default": "'manual'::text"
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "external_activity_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "caption",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "media_url",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_posts",
+        "column_name": "media_type",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "workout_posts",
+        "column_name": "points_awarded",
+        "is_nullable": "YES",
+        "column_default": "0"
+      },
+      {
+        "data_type": "date",
+        "table_name": "workout_posts",
+        "column_name": "workout_date",
+        "is_nullable": "NO",
+        "column_default": "CURRENT_DATE"
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "workout_posts",
+        "column_name": "posted_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      },
+      {
+        "data_type": "integer",
+        "table_name": "workout_posts",
+        "column_name": "heart_rate_avg",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "integer",
+        "table_name": "workout_posts",
+        "column_name": "heart_rate_max",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_posts",
+        "column_name": "parent_workout_id",
+        "is_nullable": "YES",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_reactions",
+        "column_name": "id",
+        "is_nullable": "NO",
+        "column_default": "uuid_generate_v4()"
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_reactions",
+        "column_name": "post_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "uuid",
+        "table_name": "workout_reactions",
+        "column_name": "user_id",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "text",
+        "table_name": "workout_reactions",
+        "column_name": "reaction",
+        "is_nullable": "NO",
+        "column_default": null
+      },
+      {
+        "data_type": "timestamp with time zone",
+        "table_name": "workout_reactions",
+        "column_name": "created_at",
+        "is_nullable": "YES",
+        "column_default": "now()"
+      }
+    ],
+    "indexes": [
+      {
+        "indexdef": "CREATE UNIQUE INDEX challenge_messages_pkey ON public.challenge_messages USING btree (id)",
+        "indexname": "challenge_messages_pkey",
+        "tablename": "challenge_messages"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenge_messages_challenge ON public.challenge_messages USING btree (challenge_id, created_at DESC)",
+        "indexname": "idx_challenge_messages_challenge",
+        "tablename": "challenge_messages"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX challenge_participants_challenge_id_user_id_key ON public.challenge_participants USING btree (challenge_id, user_id)",
+        "indexname": "challenge_participants_challenge_id_user_id_key",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX challenge_participants_pkey ON public.challenge_participants USING btree (id)",
+        "indexname": "challenge_participants_pkey",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenge_participants_challenge_id ON public.challenge_participants USING btree (challenge_id)",
+        "indexname": "idx_challenge_participants_challenge_id",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenge_participants_challenge_score ON public.challenge_participants USING btree (challenge_id, score DESC NULLS LAST)",
+        "indexname": "idx_challenge_participants_challenge_score",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenge_participants_challenge_user ON public.challenge_participants USING btree (challenge_id, user_id)",
+        "indexname": "idx_challenge_participants_challenge_user",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenge_participants_user_id ON public.challenge_participants USING btree (user_id)",
+        "indexname": "idx_challenge_participants_user_id",
+        "tablename": "challenge_participants"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX challenge_teams_pkey ON public.challenge_teams USING btree (id)",
+        "indexname": "challenge_teams_pkey",
+        "tablename": "challenge_teams"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX daily_mission_templates_pkey ON public.daily_mission_templates USING btree (id)",
+        "indexname": "daily_mission_templates_pkey",
+        "tablename": "daily_mission_templates"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX daily_mission_templates_sort_order_key ON public.daily_mission_templates USING btree (sort_order)",
+        "indexname": "daily_mission_templates_sort_order_key",
+        "tablename": "daily_mission_templates"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX device_connections_pkey ON public.device_connections USING btree (id)",
+        "indexname": "device_connections_pkey",
+        "tablename": "device_connections"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX device_connections_user_id_provider_key ON public.device_connections USING btree (user_id, provider)",
+        "indexname": "device_connections_user_id_provider_key",
+        "tablename": "device_connections"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_device_connections_external_id ON public.device_connections USING btree (provider, external_user_id) WHERE (is_active = true)",
+        "indexname": "idx_device_connections_external_id",
+        "tablename": "device_connections"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_device_connections_external_token_ref ON public.device_connections USING btree (external_token_ref) WHERE (external_token_ref IS NOT NULL)",
+        "indexname": "idx_device_connections_external_token_ref",
+        "tablename": "device_connections"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX fitness_challenges_invite_code_key ON public.fitness_challenges USING btree (invite_code)",
+        "indexname": "fitness_challenges_invite_code_key",
+        "tablename": "fitness_challenges"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX fitness_challenges_pkey ON public.fitness_challenges USING btree (id)",
+        "indexname": "fitness_challenges_pkey",
+        "tablename": "fitness_challenges"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_challenges_renewal ON public.fitness_challenges USING btree (renewal_type, end_date, status) WHERE (renewal_type <> 'none'::text)",
+        "indexname": "idx_challenges_renewal",
+        "tablename": "fitness_challenges"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_fitness_challenges_is_public ON public.fitness_challenges USING btree (is_public) WHERE (is_public = true)",
+        "indexname": "idx_fitness_challenges_is_public",
+        "tablename": "fitness_challenges"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX friendships_follower_id_following_id_key ON public.friendships USING btree (follower_id, following_id)",
+        "indexname": "friendships_follower_id_following_id_key",
+        "tablename": "friendships"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX friendships_pkey ON public.friendships USING btree (id)",
+        "indexname": "friendships_pkey",
+        "tablename": "friendships"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_friendships_follower ON public.friendships USING btree (follower_id)",
+        "indexname": "idx_friendships_follower",
+        "tablename": "friendships"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_friendships_following ON public.friendships USING btree (following_id)",
+        "indexname": "idx_friendships_following",
+        "tablename": "friendships"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX league_groups_pkey ON public.league_groups USING btree (id)",
+        "indexname": "league_groups_pkey",
+        "tablename": "league_groups"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX uq_league_groups_tier_week_index ON public.league_groups USING btree (tier, week_start, group_index)",
+        "indexname": "uq_league_groups_tier_week_index",
+        "tablename": "league_groups"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_memberships_group ON public.league_memberships USING btree (group_id, week_start)",
+        "indexname": "idx_memberships_group",
+        "tablename": "league_memberships"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_memberships_user_week ON public.league_memberships USING btree (user_id, week_start)",
+        "indexname": "idx_memberships_user_week",
+        "tablename": "league_memberships"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX league_memberships_pkey ON public.league_memberships USING btree (id)",
+        "indexname": "league_memberships_pkey",
+        "tablename": "league_memberships"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX league_memberships_user_id_week_start_key ON public.league_memberships USING btree (user_id, week_start)",
+        "indexname": "league_memberships_user_id_week_start_key",
+        "tablename": "league_memberships"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX milestone_reactions_milestone_id_user_id_key ON public.milestone_reactions USING btree (milestone_id, user_id)",
+        "indexname": "milestone_reactions_milestone_id_user_id_key",
+        "tablename": "milestone_reactions"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX milestone_reactions_pkey ON public.milestone_reactions USING btree (id)",
+        "indexname": "milestone_reactions_pkey",
+        "tablename": "milestone_reactions"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_notifications_user_id ON public.notifications USING btree (user_id)",
+        "indexname": "idx_notifications_user_id",
+        "tablename": "notifications"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX notifications_pkey ON public.notifications USING btree (id)",
+        "indexname": "notifications_pkey",
+        "tablename": "notifications"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX nudges_pkey ON public.nudges USING btree (id)",
+        "indexname": "nudges_pkey",
+        "tablename": "nudges"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX nudges_sender_id_receiver_id_nudge_date_key ON public.nudges USING btree (sender_id, receiver_id, nudge_date)",
+        "indexname": "nudges_sender_id_receiver_id_nudge_date_key",
+        "tablename": "nudges"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_profiles_total_points ON public.profiles USING btree (total_points DESC)",
+        "indexname": "idx_profiles_total_points",
+        "tablename": "profiles"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX profiles_pkey ON public.profiles USING btree (id)",
+        "indexname": "profiles_pkey",
+        "tablename": "profiles"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX profiles_username_key ON public.profiles USING btree (username)",
+        "indexname": "profiles_username_key",
+        "tablename": "profiles"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX streak_freeze_uses_pkey ON public.streak_freeze_uses USING btree (id)",
+        "indexname": "streak_freeze_uses_pkey",
+        "tablename": "streak_freeze_uses"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX streak_freeze_uses_user_id_freeze_date_key ON public.streak_freeze_uses USING btree (user_id, freeze_date)",
+        "indexname": "streak_freeze_uses_user_id_freeze_date_key",
+        "tablename": "streak_freeze_uses"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX streak_milestones_pkey ON public.streak_milestones USING btree (id)",
+        "indexname": "streak_milestones_pkey",
+        "tablename": "streak_milestones"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX streak_milestones_user_id_streak_count_key ON public.streak_milestones USING btree (user_id, streak_count)",
+        "indexname": "streak_milestones_user_id_streak_count_key",
+        "tablename": "streak_milestones"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_user_achievements_user ON public.user_achievements USING btree (user_id)",
+        "indexname": "idx_user_achievements_user",
+        "tablename": "user_achievements"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX user_achievements_pkey ON public.user_achievements USING btree (id)",
+        "indexname": "user_achievements_pkey",
+        "tablename": "user_achievements"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX user_achievements_user_id_achievement_key ON public.user_achievements USING btree (user_id, achievement)",
+        "indexname": "user_achievements_user_id_achievement_key",
+        "tablename": "user_achievements"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_user_device_tokens_user_id ON public.user_device_tokens USING btree (user_id)",
+        "indexname": "idx_user_device_tokens_user_id",
+        "tablename": "user_device_tokens"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX user_device_tokens_pkey ON public.user_device_tokens USING btree (user_id)",
+        "indexname": "user_device_tokens_pkey",
+        "tablename": "user_device_tokens"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX user_league_tier_pkey ON public.user_league_tier USING btree (user_id)",
+        "indexname": "user_league_tier_pkey",
+        "tablename": "user_league_tier"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX user_streaks_pkey ON public.user_streaks USING btree (user_id)",
+        "indexname": "user_streaks_pkey",
+        "tablename": "user_streaks"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_comments_pkey ON public.workout_comments USING btree (id)",
+        "indexname": "workout_comments_pkey",
+        "tablename": "workout_comments"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_workout_posts_challenge_id ON public.workout_posts USING btree (challenge_id)",
+        "indexname": "idx_workout_posts_challenge_id",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_workout_posts_parent_workout ON public.workout_posts USING btree (parent_workout_id) WHERE (parent_workout_id IS NOT NULL)",
+        "indexname": "idx_workout_posts_parent_workout",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_workout_posts_posted_at ON public.workout_posts USING btree (posted_at DESC)",
+        "indexname": "idx_workout_posts_posted_at",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_workout_posts_user_id ON public.workout_posts USING btree (user_id)",
+        "indexname": "idx_workout_posts_user_id",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE INDEX idx_workout_posts_workout_date ON public.workout_posts USING btree (user_id, workout_date DESC)",
+        "indexname": "idx_workout_posts_workout_date",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_posts_dedup ON public.workout_posts USING btree (user_id, challenge_id, source, external_activity_id) WHERE ((external_activity_id IS NOT NULL) AND (challenge_id IS NOT NULL))",
+        "indexname": "workout_posts_dedup",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_posts_dedup_no_challenge ON public.workout_posts USING btree (user_id, source, external_activity_id) WHERE ((external_activity_id IS NOT NULL) AND (challenge_id IS NULL))",
+        "indexname": "workout_posts_dedup_no_challenge",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_posts_pkey ON public.workout_posts USING btree (id)",
+        "indexname": "workout_posts_pkey",
+        "tablename": "workout_posts"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_reactions_pkey ON public.workout_reactions USING btree (id)",
+        "indexname": "workout_reactions_pkey",
+        "tablename": "workout_reactions"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX workout_reactions_post_id_user_id_reaction_key ON public.workout_reactions USING btree (post_id, user_id, reaction)",
+        "indexname": "workout_reactions_post_id_user_id_reaction_key",
+        "tablename": "workout_reactions"
+      }
+    ],
+    "policies": [
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_messages",
+        "policyname": "Challenge messages insertable by participants",
+        "with_check": "((auth.uid() = sender_id) AND (EXISTS ( SELECT 1\n FROM challenge_participants\n WHERE ((challenge_participants.challenge_id = challenge_messages.challenge_id) AND (challenge_participants.user_id = auth.uid())))))"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(EXISTS ( SELECT 1\n FROM challenge_participants\n WHERE ((challenge_participants.challenge_id = challenge_messages.challenge_id) AND (challenge_participants.user_id = auth.uid()))))",
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_messages",
+        "policyname": "Challenge messages readable by participants",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "challenge_participants",
+        "policyname": "Participants readable",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_participants",
+        "policyname": "Users join challenges",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.role() = 'authenticated'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Authenticated users can delete challenge teams",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Authenticated users can insert challenge teams",
+        "with_check": "(auth.role() = 'authenticated'::text)"
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.role() = 'authenticated'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Authenticated users can update challenge teams",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(auth.role() = 'authenticated'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Authenticated users can view challenge teams",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Teams readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "challenge_teams",
+        "policyname": "Teams writable by service",
+        "with_check": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)"
+      },
+      {
+        "cmd": "ALL",
+        "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "device_connections",
+        "policyname": "Service role full access",
+        "with_check": null
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "device_connections",
+        "policyname": "Users delete own connections",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "device_connections",
+        "policyname": "Users insert own connections",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "device_connections",
+        "policyname": "Users read own connections",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "device_connections",
+        "policyname": "Users update own connections",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "fitness_challenges",
+        "policyname": "Authenticated users create challenges",
+        "with_check": "((auth.uid() = created_by) AND (is_public = false) AND (is_global = false))"
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "((auth.uid() = created_by) AND (is_global = false))",
+        "roles": [
+          "public"
+        ],
+        "tablename": "fitness_challenges",
+        "policyname": "Creator updates challenge",
+        "with_check": "((auth.uid() = created_by) AND (is_global = false) AND (is_public = false))"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "fitness_challenges",
+        "policyname": "Public challenges readable",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "fitness_challenges",
+        "policyname": "photo_proof_requires_pro",
+        "with_check": "((require_photo_proof = false) OR (EXISTS ( SELECT 1\n FROM profiles\n WHERE ((profiles.id = auth.uid()) AND (profiles.is_pro = true)))))"
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "fitness_challenges",
+        "policyname": "public_challenge_requires_pro",
+        "with_check": "((is_public = false) OR (EXISTS ( SELECT 1\n FROM profiles\n WHERE ((profiles.id = auth.uid()) AND (profiles.is_pro = true)))))"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "friendships",
+        "policyname": "Friendships readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "(auth.uid() = follower_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "friendships",
+        "policyname": "Users manage own follows",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "league_groups",
+        "policyname": "League groups readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "league_groups",
+        "policyname": "League groups writable by service",
+        "with_check": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "league_memberships",
+        "policyname": "Memberships readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "league_memberships",
+        "policyname": "Memberships writable by service",
+        "with_check": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)"
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "milestone_reactions",
+        "policyname": "milestone_reaction_delete",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "milestone_reactions",
+        "policyname": "milestone_reaction_insert",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "milestone_reactions",
+        "policyname": "milestone_reaction_read",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "notifications",
+        "policyname": "Users read own notifications",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "notifications",
+        "policyname": "Users update own notifications",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "nudges",
+        "policyname": "nudge_insert",
+        "with_check": "(auth.uid() = sender_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((auth.uid() = receiver_id) OR (auth.uid() = sender_id))",
+        "roles": [
+          "public"
+        ],
+        "tablename": "nudges",
+        "policyname": "nudge_select",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.uid() = receiver_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "nudges",
+        "policyname": "nudge_update",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "profiles",
+        "policyname": "Public profiles readable",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.uid() = id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "profiles",
+        "policyname": "Users update own profile",
+        "with_check": "(auth.uid() = id)"
+      },
+      {
+        "cmd": "ALL",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "streak_freeze_uses",
+        "policyname": "users own freezes",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "streak_milestones",
+        "policyname": "milestone_insert",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "streak_milestones",
+        "policyname": "milestone_read",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "user_achievements",
+        "policyname": "Achievements readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "user_device_tokens",
+        "policyname": "Own device token",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "user_league_tier",
+        "policyname": "League tiers readable",
+        "with_check": null
+      },
+      {
+        "cmd": "ALL",
+        "qual": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "user_league_tier",
+        "policyname": "League tiers writable by service",
+        "with_check": "((auth.jwt() ->> 'role'::text) = 'service_role'::text)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "user_streaks",
+        "policyname": "Streaks readable",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_comments",
+        "policyname": "Comments readable",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_comments",
+        "policyname": "Users comment",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_comments",
+        "policyname": "Users delete own comments",
+        "with_check": null
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "((auth.uid() = user_id) OR ((challenge_id IS NOT NULL) AND (EXISTS ( SELECT 1\n FROM challenge_participants cp\n WHERE ((cp.challenge_id = workout_posts.challenge_id) AND (cp.user_id = auth.uid()))))) OR ((challenge_id IS NOT NULL) AND (EXISTS ( SELECT 1\n FROM fitness_challenges fc\n WHERE ((fc.id = workout_posts.challenge_id) AND (fc.is_public = true))))) OR (EXISTS ( SELECT 1\n FROM friendships f\n WHERE ((f.follower_id = auth.uid()) AND (f.following_id = workout_posts.user_id)))))",
+        "roles": [
+          "authenticated"
+        ],
+        "tablename": "workout_posts",
+        "policyname": "Posts readable",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_posts",
+        "policyname": "Users create posts",
+        "with_check": "((auth.uid() = user_id) AND ((challenge_id IS NULL) OR (EXISTS ( SELECT 1\n FROM challenge_participants cp\n WHERE ((cp.challenge_id = workout_posts.challenge_id) AND (cp.user_id = auth.uid()))))))"
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_posts",
+        "policyname": "Users delete own posts",
+        "with_check": null
+      },
+      {
+        "cmd": "UPDATE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_posts",
+        "policyname": "Users update own posts",
+        "with_check": "(auth.uid() = user_id)"
+      },
+      {
+        "cmd": "SELECT",
+        "qual": "true",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_reactions",
+        "policyname": "Reactions readable",
+        "with_check": null
+      },
+      {
+        "cmd": "DELETE",
+        "qual": "(auth.uid() = user_id)",
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_reactions",
+        "policyname": "Users delete own reactions",
+        "with_check": null
+      },
+      {
+        "cmd": "INSERT",
+        "qual": null,
+        "roles": [
+          "public"
+        ],
+        "tablename": "workout_reactions",
+        "policyname": "Users react",
+        "with_check": "(auth.uid() = user_id)"
+      }
+    ],
+    "triggers": [
+      {
+        "name": "on_auth_user_created",
+        "table": "users",
+        "definition": "CREATE TRIGGER on_auth_user_created AFTER INSERT ON auth.users FOR EACH ROW EXECUTE FUNCTION handle_new_user()"
+      },
+      {
+        "name": "on_profile_created_streak",
+        "table": "profiles",
+        "definition": "CREATE TRIGGER on_profile_created_streak AFTER INSERT ON public.profiles FOR EACH ROW EXECUTE FUNCTION handle_new_profile_streak()"
+      },
+      {
+        "name": "on_workout_post_points",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_workout_post_points AFTER INSERT ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION award_points_on_workout()"
+      },
+      {
+        "name": "on_workout_post_global_points",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_workout_post_global_points AFTER INSERT ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION award_global_points_on_workout()"
+      },
+      {
+        "name": "on_workout_post_achievements",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_workout_post_achievements AFTER INSERT ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION check_achievements_on_workout()"
+      },
+      {
+        "name": "enforce_challenge_capacity",
+        "table": "challenge_participants",
+        "definition": "CREATE TRIGGER enforce_challenge_capacity BEFORE INSERT ON public.challenge_participants FOR EACH ROW EXECUTE FUNCTION check_challenge_capacity()"
+      },
+      {
+        "name": "on_workout_post_streak",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_workout_post_streak AFTER INSERT ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION update_streak_on_workout()"
+      },
+      {
+        "name": "on_step_update_streak",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_step_update_streak AFTER UPDATE OF steps ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION update_streak_on_step_update()"
+      },
+      {
+        "name": "auto_sync_workout_fan_out",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER auto_sync_workout_fan_out AFTER INSERT ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION fan_out_workout_to_challenges()"
+      },
+      {
+        "name": "validate_workout_post_trigger",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER validate_workout_post_trigger BEFORE INSERT OR UPDATE ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION validate_workout_post()"
+      },
+      {
+        "name": "on_step_update_points",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_step_update_points AFTER UPDATE OF steps ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION award_points_on_step_update()"
+      },
+      {
+        "name": "on_workout_post_delete_points",
+        "table": "workout_posts",
+        "definition": "CREATE TRIGGER on_workout_post_delete_points AFTER DELETE ON public.workout_posts FOR EACH ROW EXECUTE FUNCTION compensate_points_on_workout_delete()"
+      },
+      {
+        "name": "guard_device_connection_identity",
+        "table": "device_connections",
+        "definition": "CREATE TRIGGER guard_device_connection_identity BEFORE UPDATE ON public.device_connections FOR EACH ROW EXECUTE FUNCTION guard_device_connection_identity()"
+      }
+    ],
+    "functions": [
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "check_challenge_capacity",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "8c5e0c3e13f15d675dcd8433451435da"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "award_global_points_on_workout",
+        "config": null,
+        "definer": true,
+        "definition_md5": "e3584b2d4d34762e119a5568755c86ef"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_provider text, p_external_user_id text",
+        "name": "get_device_connection_decrypted",
+        "config": [
+          "search_path=public, extensions, vault"
+        ],
+        "definer": true,
+        "definition_md5": "12f3277183c2789c234941ccc3bae899"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_user_id uuid, p_provider text, p_access_token text, p_refresh_token text, p_external_user_id text, p_token_expires_at timestamp with time zone, p_is_active boolean, p_scope text",
+        "name": "upsert_encrypted_device_tokens",
+        "config": [
+          "search_path=public, extensions, vault"
+        ],
+        "definer": true,
+        "definition_md5": "bf855bfcdd013270a8588eacf662d4d0"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "check_achievements_on_workout",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "a8002d3e8380d57fd3aba44c4c91007f"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "guard_device_connection_identity",
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": false,
+        "definition_md5": "913de9bae8eda99d6006f85713377c2d"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_group_id uuid, p_week_start date",
+        "name": "get_league_group_leaderboard",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "f1806c7e5cfafb737efc342a225081c8"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "week_start date",
+        "name": "get_weekly_leaderboard",
+        "config": null,
+        "definer": true,
+        "definition_md5": "31cc82565f57dd77a61b4a236ff47296"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "refresh_challenge_statuses",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "cb07633f3c00e9eae12bd0245f307896"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "award_points_on_workout",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "1e91ebe6583b224b617ec06a6fd7c6d6"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "process_recurring_challenges",
+        "config": null,
+        "definer": true,
+        "definition_md5": "631e2325073150d9b6c47800df38f5af"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "handle_new_profile_streak",
+        "config": [
+          "search_path=public, pg_temp"
+        ],
+        "definer": true,
+        "definition_md5": "5fa99c8e0398b9317db6e7e363101dc4"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "update_streak_on_workout",
+        "config": null,
+        "definer": true,
+        "definition_md5": "ced1d66f718d5a656252757a76e0c7ff"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "update_streak_on_step_update",
+        "config": null,
+        "definer": true,
+        "definition_md5": "6d833910a66c6fd7ffd1439bfec2d301"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "fan_out_workout_to_challenges",
+        "config": null,
+        "definer": true,
+        "definition_md5": "e05c1e6d0d21561d62a40205fcd689d9"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "args": "p_user_id uuid",
+        "name": "use_streak_freeze",
+        "config": null,
+        "definer": true,
+        "definition_md5": "8215adc21ef336dcdc0b0d3d80483222"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_user_id uuid, p_provider text, p_access_token text, p_refresh_token text, p_token_expires_at timestamp with time zone",
+        "name": "update_encrypted_device_tokens",
+        "config": [
+          "search_path=public, extensions, vault"
+        ],
+        "definer": true,
+        "definition_md5": "9ec10276758276114bf8ad84a9a61f51"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_oauth_token text",
+        "name": "find_garmin_pending",
+        "config": [
+          "search_path=public, extensions, vault"
+        ],
+        "definer": true,
+        "definition_md5": "a5f716952175cf41ec6b91576d0a0716"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_steps numeric, p_distance_km numeric, p_duration_min numeric",
+        "name": "workout_points",
+        "config": null,
+        "definer": false,
+        "definition_md5": "569b4684ac67bbfaf593daacffabd80a"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "validate_workout_post",
+        "config": null,
+        "definer": true,
+        "definition_md5": "aa7b0d4fb7bda9e9939845b5bfb27c3c"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "p_challenge_id uuid",
+        "name": "refresh_challenge_ranks",
+        "config": null,
+        "definer": true,
+        "definition_md5": "471ab7af9421e79d8a0eb34fe8248aea"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "award_points_on_step_update",
+        "config": null,
+        "definer": true,
+        "definition_md5": "31aa23e4aa1a10dcb9ee6070bb97a76e"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "anon=X/postgres",
+          "authenticated=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "compensate_points_on_workout_delete",
+        "config": null,
+        "definer": true,
+        "definition_md5": "75994382c843935524ef3d99ea004379"
+      },
+      {
+        "acl": [
+          "=X/postgres",
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "args": "",
+        "name": "handle_new_user",
+        "config": null,
+        "definer": true,
+        "definition_md5": "7d3a8488d57a7e0055d981b0356ea9ec"
+      }
+    ]
+  }
+}

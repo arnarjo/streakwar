@@ -15,6 +15,12 @@ database/HOSTED-TEST-ENVIRONMENT.md. Fitbet project permanently deleted with
 explicit owner approval; shared StreakWar and organization retained. Next:
 review isolated baseline, verify RLS with synthetic data, then exact Android build.
 
+DB-BASELINE01 source review received. Read-only current catalog capture confirms
+live per-challenge workout indexes and active fan-out differ from app assumptions.
+Potential duplicate-verification / Steps-update conflicts and global point
+multiplication now need isolated reproduction. See database/RECONCILIATION-2026-10-05.md.
+No production rows read/changed; no test schema deployed. Phone gate remains open.
+
 Previous accepted checkpoint: HC-CONSENT01 (C02-R2 F1). Foreground Android import
 requires a fresh active connection lookup and a subsequent current-scope check.
 Missing/inactive/offline lookup cannot reach native polling. Successful disconnect
