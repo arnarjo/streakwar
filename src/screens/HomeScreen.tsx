@@ -1,11 +1,8 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
-  TouchableOpacity, StatusBar, Platform, Animated as RNAnimated,
+  TouchableOpacity, StatusBar, Platform,
 } from 'react-native';
-import ReAnimated, {
-  useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
-} from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
@@ -24,7 +21,8 @@ import type { MilestoneItem } from '../components/StreakMilestoneCard';
 import { WorkoutPostSkeleton } from '../components/SkeletonPulse';
 import { Share } from 'react-native';
 import { supabase } from '../lib/supabase';
-import { C } from '../theme';
+import InterfaceIcon from '../components/InterfaceIcon';
+import { C, HIT, R } from '../theme';
 import type { AppNavigationProp } from '../navigation/types';
 
 export default function HomeScreen() {
@@ -41,24 +39,8 @@ export default function HomeScreen() {
     const d = new Date().getDay();
     return d === 0 ? 7 : 7 - d;
   })();
-  const fadeAnim = useRef(new RNAnimated.Value(0)).current;
   const [milestones, setMilestones] = React.useState<MilestoneItem[]>([]);
   const [milestonesError, setMilestonesError] = React.useState(false);
-
-  const streakGlowOpacity = useSharedValue(0.06);
-  useEffect(() => {
-    streakGlowOpacity.value = withRepeat(
-      withSequence(
-        withTiming(0.18, { duration: 1800 }),
-        withTiming(0.06, { duration: 1800 }),
-      ),
-      -1,
-      false,
-    );
-  }, []);
-  const streakGlowStyle = useAnimatedStyle(() => ({
-    opacity: streakGlowOpacity.value,
-  }));
 
   const fetchMilestones = useCallback(async () => {
     if (!profile?.id) return;
@@ -116,9 +98,9 @@ export default function HomeScreen() {
   async function handleShare() {
     await Share.share({
       message:
-        `🔥 ${streak?.current_streak ?? 0}-day streak on StreakWar!\n` +
-        `⭐ ${(profile?.total_points ?? 0).toLocaleString()} total points\n` +
-        `\nCan you beat me? Download StreakWar 💪`,
+        `${streak?.current_streak ?? 0}-day streak on StreakWar.\n` +
+        `${(profile?.total_points ?? 0).toLocaleString()} competition points\n` +
+        `\nCan you beat me? Download StreakWar.`,
     });
   }
 
@@ -126,7 +108,6 @@ export default function HomeScreen() {
     fetchFeed();
     fetchWeekly();
     fetchMilestones();
-    RNAnimated.timing(fadeAnim, { toValue: 1, duration: 400, useNativeDriver: true }).start();
   }, [fetchMilestones, fetchFeed, fetchWeekly]);
 
   const onRefresh = useCallback(async () => {
@@ -135,273 +116,290 @@ export default function HomeScreen() {
 
   const activeChallenges = myChallenges.filter(c => c.status === 'active').slice(0, 3);
 
+  const firstName = profile?.full_name?.split(' ')[0] ?? 'there';
+  const initialsText = profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?';
+  const currentStreak = streak?.current_streak ?? 0;
+  const nextMilestone = (Math.floor(currentStreak / 10) + 1) * 10;
+  const daysToMilestone = 10 - (currentStreak % 10);
+  const milestoneProgress = (currentStreak % 10) * 10;
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
         <TouchableOpacity
+          style={s.avatar}
           onPress={() => navigation.navigate('Profile')}
           accessibilityRole="button"
           accessibilityLabel="Open profile"
         >
-          <View style={s.headerAvatar}>
-            <Text style={s.headerAvatarText}>
-              {profile?.full_name?.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() ?? '?'}
-            </Text>
-          </View>
+          <Text style={s.avatarText}>{initialsText}</Text>
         </TouchableOpacity>
 
-        <View style={{ flex: 1, marginLeft: 12 }}>
-          <Text style={s.greeting}>
-            Hey, {profile?.full_name?.split(' ')[0] ?? 'there'}!
-          </Text>
-          <Text style={s.subGreeting}>Ready to move today?</Text>
-        </View>
+        <Text style={s.greeting} numberOfLines={1}>Hi, {firstName}</Text>
 
-        <View style={s.headerRight}>
-          {(profile?.total_points ?? 0) > 0 && (
-            <TouchableOpacity style={s.rankBadge} onPress={() => navigation.navigate('Leaderboard')}>
-              <Text style={s.rankPts}>⭐ {(profile!.total_points).toLocaleString()}</Text>
-            </TouchableOpacity>
-          )}
-          <TouchableOpacity style={s.logBtn} onPress={() => navigation.navigate('LogWorkout')}>
-            <Text style={s.logBtnText}>+ Log</Text>
-          </TouchableOpacity>
-        </View>
+        <TouchableOpacity
+          style={s.logBtn}
+          onPress={() => navigation.navigate('LogWorkout')}
+          accessibilityRole="button"
+          accessibilityLabel="Log a workout"
+        >
+          <InterfaceIcon name="add" size={20} color={C.onPrimary} />
+          <Text style={s.logBtnText}>Log</Text>
+        </TouchableOpacity>
       </View>
 
-      <RNAnimated.View style={{ flex: 1, opacity: fadeAnim }}>
-        <FlatList
-          data={feed}
-          keyExtractor={item => item.id}
-          contentContainerStyle={s.list}
-          showsVerticalScrollIndicator={false}
-          refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
-          ListHeaderComponent={
-            <>
-              {Platform.OS === 'android' && (
-                <PrivateActivitySummaryCard userId={profile?.id ?? ''} refreshToken={`${isFocused}:${loading}`} />
-              )}
-              {streak && streak.current_streak > 0 && (() => {
-                const toNext = 10 - (streak.current_streak % 10);
-                const milestone = Math.ceil(streak.current_streak / 10) * 10;
-                const progress = (streak.current_streak % 10) / 10 * 100;
-                return (
-                  <View style={{ position: 'relative', marginBottom: 14 }}>
-                    <ReAnimated.View style={[
-                      {
-                        position: 'absolute',
-                        top: -6, left: -6, right: -6, bottom: -6,
-                        borderRadius: 28,
-                        backgroundColor: '#F97316',
-                      },
-                      streakGlowStyle,
-                    ]} />
-                    <View style={[s.streakHero, { marginBottom: 0 }]}>
-                      <View style={s.streakHeroTop}>
-                        <View style={s.streakHeroLeft}>
-                          <Text style={s.streakHeroNumber}>{streak.current_streak}</Text>
-                          <Text style={s.streakHeroUnit}>day streak</Text>
-                          {streak.longest_streak > 0 && (
-                            <Text style={s.streakHeroBest}>Personal best · {streak.longest_streak} days</Text>
-                          )}
-                        </View>
-                        <TouchableOpacity style={s.streakShareBtn} onPress={handleShare}>
-                          <Text style={s.streakShareText}>📤  Share</Text>
-                        </TouchableOpacity>
-                      </View>
-                      <View style={s.streakProgress}>
-                        <View style={[s.streakProgressFill, { width: `${Math.min(100, progress)}%` as any }]} />
-                      </View>
-                      <View style={s.streakProgressRow}>
-                        <Text style={s.streakProgressLabel}>
-                          <Text style={s.streakProgressToNext}>{toNext}</Text>
-                          {` days to ${milestone}-day milestone`}
-                        </Text>
-                        <Text style={s.streakMilestoneRight}>{milestone} 🔥</Text>
-                      </View>
-                    </View>
-                  </View>
-                );
-              })()}
+      <FlatList
+        data={feed}
+        keyExtractor={item => item.id}
+        contentContainerStyle={s.list}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
+        ListHeaderComponent={
+          <>
+            {Platform.OS === 'android' && (
+              <PrivateActivitySummaryCard userId={profile?.id ?? ''} refreshToken={`${isFocused}:${loading}`} />
+            )}
 
-              {streak && streak.current_streak === 0 && (
-                <TouchableOpacity style={s.streakStart} onPress={() => navigation.navigate('LogWorkout')} activeOpacity={0.85}>
-                  <Text style={s.streakStartTitle}>Start your streak today! 🔥</Text>
-                  <Text style={s.streakStartSub}>Log one workout to begin your journey.</Text>
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionLabel} accessibilityRole="header">Competition</Text>
+            </View>
+            <Text style={s.sectionCaption}>
+              Based on workouts you log and share in challenges. Kept separate from your private activity.
+            </Text>
+            <View style={s.competitionCard}>
+              <View style={s.competitionRow}>
+                <TouchableOpacity
+                  style={s.competitionCell}
+                  onPress={() => navigation.navigate('Leaderboard')}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Competition points ${(profile?.total_points ?? 0).toLocaleString()}. Open leaderboard`}
+                >
+                  <Text style={s.bigValue}>{(profile?.total_points ?? 0).toLocaleString()}</Text>
+                  <Text style={s.cellLabel}>Competition points</Text>
                 </TouchableOpacity>
-              )}
+                <View style={s.competitionDivider} />
+                <View style={s.competitionCell} accessible accessibilityLabel={streak ? `Competition streak ${currentStreak} days` : 'Competition streak unavailable'}>
+                  <Text style={s.bigValue}>{streak ? currentStreak : '–'}</Text>
+                  <Text style={s.cellLabel}>
+                    {streak && streak.longest_streak > 0 ? `Competition streak · best ${streak.longest_streak}` : 'Competition streak'}
+                  </Text>
+                </View>
+              </View>
 
-              {leagueMembers.length > 0 && myRank !== null && (
-                <TouchableOpacity style={[s.banner, { borderColor: (tierMeta?.color ?? '#B45309') + '30' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
-                  <View style={[s.bannerIcon, { backgroundColor: (tierMeta?.color ?? '#B45309') + '18' }]}>
-                    <Text style={{ fontSize: 22 }}>{tierMeta?.emoji ?? '🥉'}</Text>
+              {streak && currentStreak > 0 ? (
+                <>
+                  <View style={s.progressTrack}>
+                    <View style={[s.progressFill, { width: `${Math.min(100, milestoneProgress)}%` }]} />
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[s.bannerTitle, { color: tierMeta?.color ?? '#B45309' }]}>#{myRank} in {tierMeta?.label} League</Text>
-                    <Text style={s.bannerSub}>{daysUntilSunday} days left · {leagueMembers.length} competitors</Text>
-                  </View>
-                  <Text style={s.bannerChev}>›</Text>
-                </TouchableOpacity>
-              )}
-
-              {rival && (
-                <TouchableOpacity style={[s.banner, { borderColor: C.primary + '25' }]} onPress={() => navigation.navigate('Leaderboard')} activeOpacity={0.85}>
-                  <View style={[s.bannerIcon, { backgroundColor: C.primary + '14' }]}>
-                    <Text style={{ fontSize: 22 }}>🎯</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.bannerTitle}>{rival.full_name ?? rival.username} is {rivalDiff} pts ahead</Text>
-                    <Text style={s.bannerSub}>Your rival this week · catch up</Text>
-                  </View>
-                  <Text style={s.bannerChev}>›</Text>
-                </TouchableOpacity>
-              )}
-
-              {activeChallenges.length > 0 && (
-                <View style={s.section}>
-                  <View style={s.sectionHeader}>
-                    <Text style={s.sectionLabel}>Active challenges</Text>
-                    <TouchableOpacity onPress={() => navigation.navigate('Challenges')}>
-                      <Text style={s.seeAll}>See all →</Text>
+                  <View style={s.progressRow}>
+                    <Text style={s.cellLabel}>
+                      {`${daysToMilestone} day${daysToMilestone === 1 ? '' : 's'} to the ${nextMilestone}-day milestone`}
+                    </Text>
+                    <TouchableOpacity
+                      style={s.textBtn}
+                      onPress={handleShare}
+                      accessibilityRole="button"
+                      accessibilityLabel="Share your streak"
+                    >
+                      <InterfaceIcon name="share-outline" size={18} color={C.text} />
+                      <Text style={s.textBtnLabel}>Share</Text>
                     </TouchableOpacity>
                   </View>
-                  {activeChallenges.map(c => (
-                    <ChallengeCard
-                      key={c.id}
-                      challenge={c}
-                      compact
-                      onPress={() => navigation.navigate('ChallengeDetail', { challengeId: c.id })}
-                    />
-                  ))}
+                </>
+              ) : streak ? (
+                <View style={s.zeroStreak}>
+                  <Text style={s.cellLabel}>
+                    A competition streak counts workouts you log in the app. Imported Health Connect activity isn't counted yet.
+                  </Text>
+                  <TouchableOpacity
+                    style={s.textBtn}
+                    onPress={() => navigation.navigate('LogWorkout')}
+                    accessibilityRole="button"
+                    accessibilityLabel="Log a workout"
+                  >
+                    <Text style={s.textBtnLabel}>Log a workout</Text>
+                  </TouchableOpacity>
                 </View>
-              )}
+              ) : null}
+            </View>
 
-              {milestonesError && (
-                <TouchableOpacity style={s.inlineError} onPress={fetchMilestones} accessibilityRole="button">
-                  <Text style={s.inlineErrorText}>Couldn't load streak milestones — tap to retry</Text>
+            {leagueMembers.length > 0 && myRank !== null && (
+              <TouchableOpacity
+                style={s.banner}
+                onPress={() => navigation.navigate('Leaderboard')}
+                accessibilityRole="button"
+                accessibilityLabel={`Rank ${myRank} in the ${tierMeta?.label} league. Open leaderboard`}
+              >
+                <View style={[s.bannerMark, { backgroundColor: tierMeta?.color ?? C.bronze }]} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bannerTitle}>#{myRank} in the {tierMeta?.label} League</Text>
+                  <Text style={s.bannerSub}>{daysUntilSunday} days left · {leagueMembers.length} competitors</Text>
+                </View>
+                <InterfaceIcon name="chevron-forward" size={18} />
+              </TouchableOpacity>
+            )}
+
+            {rival && (
+              <TouchableOpacity
+                style={s.banner}
+                onPress={() => navigation.navigate('Leaderboard')}
+                accessibilityRole="button"
+                accessibilityLabel={`${rival.full_name ?? rival.username} is ${rivalDiff} points ahead. Open leaderboard`}
+              >
+                <InterfaceIcon name="trending-up" size={20} color={C.text} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.bannerTitle}>{rival.full_name ?? rival.username} is {rivalDiff} pts ahead</Text>
+                  <Text style={s.bannerSub}>Your rival this week</Text>
+                </View>
+                <InterfaceIcon name="chevron-forward" size={18} />
+              </TouchableOpacity>
+            )}
+
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionLabel} accessibilityRole="header">Challenges</Text>
+              {activeChallenges.length > 0 && (
+                <TouchableOpacity
+                  style={s.linkBtn}
+                  onPress={() => navigation.navigate('Challenges')}
+                  accessibilityRole="button"
+                  accessibilityLabel="See all challenges"
+                >
+                  <Text style={s.seeAll}>See all</Text>
                 </TouchableOpacity>
               )}
-
-              {milestones.length > 0 && (
-                <View style={s.section}>
-                  <Text style={s.sectionLabel}>Streak milestones</Text>
-                  {milestones.map(m => (
-                    <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
-                  ))}
-                </View>
-              )}
-
-              {!loading && feed.length > 0 && (
-                <View style={s.sectionHeader}>
-                  <Text style={s.sectionLabel}>Friends feed</Text>
-                </View>
-              )}
-            </>
-          }
-          renderItem={({ item }) => (
-            <WorkoutPostCard
-              post={item}
-              currentUserId={profile?.id}
-              onReact={toggleReaction}
-              onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
-              onAddComment={(id: string, text: string) => addComment(id, text)}
-              onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
-              onDelete={(postId) => deleteWorkout(postId)}
-            />
-          )}
-          ListEmptyComponent={
-            loading ? (
-              <View style={{ paddingHorizontal: 16 }}>
-                {[1, 2, 3].map(k => <WorkoutPostSkeleton key={k} />)}
-              </View>
+            </View>
+            {activeChallenges.length > 0 ? (
+              activeChallenges.map(c => (
+                <ChallengeCard
+                  key={c.id}
+                  challenge={c}
+                  compact
+                  onPress={() => navigation.navigate('ChallengeDetail', { challengeId: c.id })}
+                />
+              ))
             ) : (
-              <View style={s.empty}>
-                <Text style={s.emptyEmoji}>🏃</Text>
-                <Text style={s.emptyTitle}>Feed is empty</Text>
-                <Text style={s.emptyText}>
-                  Join a challenge and start logging workouts to see what your friends are up to.
+              <View style={s.discoverCard}>
+                <Text style={s.discoverTitle}>Find a challenge to join</Text>
+                <Text style={s.discoverText}>
+                  Browse open public challenges, or start one with a friend from the Challenges tab.
                 </Text>
-                <TouchableOpacity style={s.emptyBtn} onPress={() => navigation.navigate('Challenges')}>
-                  <Text style={s.emptyBtnText}>Discover challenges</Text>
+                <TouchableOpacity
+                  style={s.primaryBtn}
+                  onPress={() => navigation.navigate('Challenges')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Browse open challenges"
+                >
+                  <Text style={s.primaryBtnText}>Browse open challenges</Text>
                 </TouchableOpacity>
               </View>
-            )
-          }
-        />
-      </RNAnimated.View>
+            )}
+
+            {milestonesError && (
+              <TouchableOpacity style={s.inlineError} onPress={fetchMilestones} accessibilityRole="button">
+                <Text style={s.inlineErrorText}>Couldn't load streak milestones — tap to retry</Text>
+              </TouchableOpacity>
+            )}
+
+            {milestones.length > 0 && (
+              <View style={s.section}>
+                <Text style={s.sectionLabel} accessibilityRole="header">Streak milestones</Text>
+                {milestones.map(m => (
+                  <StreakMilestoneCard key={m.id} item={m} currentUserId={profile?.id ?? ''} />
+                ))}
+              </View>
+            )}
+
+            {!loading && feed.length > 0 && (
+              <View style={s.sectionHeader}>
+                <Text style={s.sectionLabel} accessibilityRole="header">Challenge feed</Text>
+              </View>
+            )}
+          </>
+        }
+        renderItem={({ item }) => (
+          <WorkoutPostCard
+            post={item}
+            currentUserId={profile?.id}
+            onReact={toggleReaction}
+            onFetchComments={(id: string): Promise<WorkoutComment[]> => fetchComments(id)}
+            onAddComment={(id: string, text: string) => addComment(id, text)}
+            onEdit={(post) => navigation.navigate('LogWorkout', { editWorkout: post })}
+            onDelete={(postId) => deleteWorkout(postId)}
+          />
+        )}
+        ListEmptyComponent={
+          loading ? (
+            <View style={{ paddingHorizontal: 16 }}>
+              {[1, 2, 3].map(k => <WorkoutPostSkeleton key={k} />)}
+            </View>
+          ) : (
+            <View style={s.empty}>
+              <Text style={s.emptyTitle}>Nothing in your feed yet</Text>
+              <Text style={s.emptyText}>
+                Posts from people in your challenges appear here.
+              </Text>
+              <TouchableOpacity
+                style={s.primaryBtn}
+                onPress={() => navigation.navigate('Challenges')}
+                accessibilityRole="button"
+                accessibilityLabel="Browse open challenges"
+              >
+                <Text style={s.primaryBtnText}>Browse open challenges</Text>
+              </TouchableOpacity>
+            </View>
+          )
+        }
+      />
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  headerAvatar: { width: 42, height: 42, borderRadius: 21, backgroundColor: C.primary + '20', borderWidth: 1.5, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
-  headerAvatarText: { fontSize: 15, fontWeight: '800', color: C.primary },
-  greeting: { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
-  subGreeting: { fontSize: 13, color: C.muted, marginTop: 1 },
-  headerRight: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  rankBadge: { backgroundColor: '#151C24', borderWidth: 1, borderColor: 'rgba(255,255,255,0.07)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6, alignItems: 'center', minHeight: 44, justifyContent: 'center' },
-  rankPts: { fontSize: 13, fontWeight: '900', color: C.primary },
-  logBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 11, minHeight: 44, justifyContent: 'center' },
-  logBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
+  avatar: { width: HIT, height: HIT, borderRadius: HIT / 2, backgroundColor: C.dimmed, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 15, fontWeight: '700', color: C.text },
+  greeting: { flex: 1, fontSize: 22, fontWeight: '800', color: C.text, letterSpacing: -0.4 },
+  logBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: C.primary, borderRadius: R.sm, paddingHorizontal: 14, minHeight: HIT, justifyContent: 'center' },
+  logBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 14 },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
-  streakHero: {
-    backgroundColor: C.card,
-    borderWidth: 1,
-    borderColor: C.primary + '30',
-    borderRadius: 22,
-    padding: 20,
-    marginBottom: 0,
-    overflow: 'hidden',
-    shadowColor: C.primary,
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.35,
-    shadowRadius: 32,
-    elevation: 12,
-  },
-  streakHeroTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 },
-  streakHeroLeft: { gap: 2 },
-  streakHeroNumber: { fontSize: 64, fontWeight: '800', color: C.primary, letterSpacing: -2, lineHeight: 60 },
-  streakHeroUnit: { fontSize: 17, fontWeight: '700', color: C.text },
-  streakHeroBest: { fontSize: 12.5, fontWeight: '500', color: C.muted },
-  streakShareBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
-  streakShareText: { fontSize: 12, fontWeight: '700', color: C.text },
-  streakProgress: { height: 7, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden', marginBottom: 8 },
-  streakProgressFill: { height: '100%' as any, backgroundColor: C.primary, borderRadius: 4 },
-  streakProgressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  streakProgressLabel: { fontSize: 12, fontWeight: '500', color: C.muted },
-  streakProgressToNext: { fontSize: 12, fontWeight: '700', color: C.text },
-  streakMilestoneRight: { fontSize: 12, fontWeight: '700', color: C.primary },
-  streakStart: {
-    backgroundColor: C.primary + '12',
-    borderWidth: 1.5,
-    borderColor: C.primary + '30',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 12,
-    alignItems: 'center',
-    gap: 4,
-  },
-  streakStartTitle: { fontSize: 16, fontWeight: '800', color: C.primary },
-  streakStartSub: { fontSize: 13, color: C.muted },
-  banner: { flexDirection: 'row', alignItems: 'center', gap: 13, paddingVertical: 13, paddingHorizontal: 15, marginBottom: 10, borderRadius: 16, backgroundColor: C.card, borderWidth: 1 },
-  bannerIcon: { width: 42, height: 42, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+
+  competitionCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 16, marginBottom: 12, gap: 12 },
+  competitionRow: { flexDirection: 'row' },
+  competitionCell: { flex: 1, minHeight: HIT, justifyContent: 'center', gap: 2 },
+  competitionDivider: { width: 1, backgroundColor: C.border, marginHorizontal: 16 },
+  bigValue: { fontSize: 36, fontWeight: '800', color: C.text, letterSpacing: -1 },
+  cellLabel: { fontSize: 12, color: C.muted, lineHeight: 17, flexShrink: 1 },
+  progressTrack: { height: 4, backgroundColor: C.dimmed, borderRadius: 2, overflow: 'hidden' },
+  progressFill: { height: '100%', backgroundColor: C.primary, borderRadius: 2 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 8 },
+  zeroStreak: { gap: 4 },
+  textBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: HIT, justifyContent: 'center', paddingHorizontal: 4, alignSelf: 'flex-start' },
+  textBtnLabel: { fontSize: 13, fontWeight: '700', color: C.text },
+
+  banner: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingVertical: 10, paddingHorizontal: 14, marginBottom: 8, borderRadius: R.md, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  bannerMark: { width: 4, alignSelf: 'stretch', borderRadius: 2 },
   bannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   bannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
-  bannerChev: { fontSize: 22, color: C.muted },
+
   section: { marginBottom: 8 },
-  inlineError: { backgroundColor: '#EF444412', borderWidth: 1, borderColor: '#EF444430', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center' },
-  inlineErrorText: { color: '#EF4444', fontSize: 13, fontWeight: '600' },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, marginTop: 4 },
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase' },
-  seeAll: { fontSize: 13, color: C.primary, fontWeight: '600' },
-  empty: { alignItems: 'center', paddingTop: 48, paddingHorizontal: 32, gap: 12 },
-  emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 18, fontWeight: '800', color: C.text },
-  emptyText: { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
-  emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  inlineError: { backgroundColor: C.error + '1F', borderWidth: 1, borderColor: C.error + '4D', borderRadius: R.md, padding: 12, marginBottom: 10, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
+  inlineErrorText: { color: C.error, fontSize: 13, fontWeight: '600' },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: 32, marginTop: 8, marginBottom: 4 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1.2, textTransform: 'uppercase' },
+  sectionCaption: { fontSize: 12, color: C.muted, lineHeight: 17, marginBottom: 10 },
+  linkBtn: { minHeight: HIT, justifyContent: 'center', paddingHorizontal: 4 },
+  seeAll: { fontSize: 13, color: C.text, fontWeight: '700' },
+
+  discoverCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 16, gap: 8, marginBottom: 8 },
+  discoverTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  discoverText: { fontSize: 13, color: C.muted, lineHeight: 18 },
+  primaryBtn: { alignSelf: 'flex-start', backgroundColor: C.primary, borderRadius: R.sm, paddingHorizontal: 16, minHeight: HIT, justifyContent: 'center', marginTop: 4 },
+  primaryBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 14 },
+
+  empty: { paddingTop: 24, paddingHorizontal: 4, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  emptyText: { fontSize: 13, color: C.muted, lineHeight: 18 },
 });

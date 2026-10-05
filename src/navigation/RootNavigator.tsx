@@ -2,10 +2,12 @@ import React from 'react';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { Text, View } from 'react-native';
+import { Text, View, useWindowDimensions } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { navigationRef } from './navigationRef';
 import { useAuth } from '../contexts/AuthContext';
 import { C } from '../theme';
+import InterfaceIcon, { type InterfaceIconName } from '../components/InterfaceIcon';
 import type { MainTabParamList, RootStackParamList } from './types';
 
 import OnboardingScreen      from '../screens/auth/OnboardingScreen';
@@ -26,37 +28,49 @@ import WeeklyRecapScreen     from '../screens/WeeklyRecapScreen';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab   = createBottomTabNavigator<MainTabParamList>();
 
-const TAB_ICONS: Record<string, string> = {
-  Home:        '🏠',
-  Challenges:  '💪',
-  Leaderboard: '🏆',
-  Profile:     '👤',
+/** Outline icon when idle, filled when the tab is selected. */
+const TAB_ICONS: Record<keyof MainTabParamList, { idle: InterfaceIconName; active: InterfaceIconName }> = {
+  Home:        { idle: 'home-outline',     active: 'home' },
+  Challenges:  { idle: 'flag-outline',     active: 'flag' },
+  Leaderboard: { idle: 'trophy-outline',   active: 'trophy' },
+  Profile:     { idle: 'person-outline',   active: 'person' },
 };
 
-function TabIcon({ name, focused }: { name: string; focused: boolean }) {
-  return (
-    <Text style={{ fontSize: 20, opacity: focused ? 1 : 0.45 }}>
-      {TAB_ICONS[name] ?? '●'}
-    </Text>
-  );
-}
+const TAB_BAR_CONTENT_HEIGHT = 56;
 
 function MainTabs() {
+  // The bar grows with the system gesture/navigation inset so labels and
+  // touch targets are never covered.
+  const insets = useSafeAreaInsets();
+  const { fontScale } = useWindowDimensions();
+  const labelScale = Math.min(fontScale, 2);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
-        tabBarIcon: ({ focused }) => <TabIcon name={route.name} focused={focused} />,
+        tabBarIcon: ({ focused, color }) => (
+          <InterfaceIcon
+            name={TAB_ICONS[route.name][focused ? 'active' : 'idle']}
+            size={24}
+            color={color}
+          />
+        ),
         tabBarStyle: {
           backgroundColor: C.bg,
           borderTopColor: C.border,
           borderTopWidth: 1,
-          height: 82,
-          paddingTop: 8,
-          paddingBottom: 12,
+          height: TAB_BAR_CONTENT_HEIGHT + insets.bottom + Math.ceil(26 * (labelScale - 1)),
+          paddingTop: 6,
+          paddingBottom: insets.bottom > 0 ? insets.bottom : 8,
         },
-        tabBarLabelStyle:  { marginBottom: 4, fontSize: 10 },
-        tabBarItemStyle:   { paddingVertical: 4 },
+        tabBarLabelStyle:  { fontSize: 11, fontWeight: '600' },
+        tabBarLabel: ({ color }) => (
+          <Text style={{ color, fontSize: 11, fontWeight: '600', textAlign: 'center' }} maxFontSizeMultiplier={2}>
+            {route.name}
+          </Text>
+        ),
+        tabBarItemStyle:   { minHeight: 48 },
+        tabBarAllowFontScaling: true,
         tabBarActiveTintColor:   C.primary,
         tabBarInactiveTintColor: C.muted,
       })}

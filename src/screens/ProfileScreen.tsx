@@ -22,36 +22,10 @@ import { LEAGUE_TIER_META } from '../types/database';
 import type { LeagueTier } from '../types/database';
 import { scheduleStreakReminder, cancelStreakReminders } from '../lib/streakNotification';
 import { format, subDays } from 'date-fns';
-import { C } from '../theme';
+import { C, HIT, R } from '../theme';
 import ActivityHeatmap from '../components/profile/ActivityHeatmap';
 import AchievementsGrid from '../components/profile/AchievementsGrid';
 import type { AppNavigationProp } from '../navigation/types';
-
-function useCountUp(target: number, duration = 900): number {
-  const [display, setDisplay] = React.useState(0);
-  const animRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
-
-  React.useEffect(() => {
-    if (target === 0) { setDisplay(0); return; }
-    if (animRef.current) clearInterval(animRef.current);
-    const startTime = Date.now();
-    animRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3); // ease-out cubic
-      setDisplay(Math.round(target * eased));
-      if (progress >= 1) {
-        clearInterval(animRef.current!);
-        animRef.current = null;
-      }
-    }, 16);
-    return () => { if (animRef.current) clearInterval(animRef.current); };
-  }, [target, duration]);
-
-  return display;
-}
-
-
 
 export default function ProfileScreen() {
   const { profile, signOut } = useAuth();
@@ -75,10 +49,6 @@ export default function ProfileScreen() {
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
 
-  const animPoints    = useCountUp(profile?.total_points ?? 0);
-  const animWorkouts  = useCountUp(totalWorkouts);
-  const animChallenge = useCountUp(myChallenges.length);
-  const animStreak    = useCountUp(streak?.current_streak ?? 0);
   const [refreshing, setRefreshing] = useState(false);
   const [heatmapData, setHeatmapData] = useState<Map<string, number>>(new Map());
   const [statsError, setStatsError] = useState(false);
@@ -183,53 +153,72 @@ export default function ProfileScreen() {
   const tierMeta = LEAGUE_TIER_META[myTier as LeagueTier];
   const leagueTierLabel = tierMeta?.label ?? (isPro ? 'Gold' : 'Bronze');
 
+  const statCells = [
+    { label: 'Competition points', value: (profile?.total_points ?? 0).toLocaleString() },
+    { label: 'Workouts logged',    value: totalWorkouts.toLocaleString() },
+    { label: 'Challenges joined',  value: myChallenges.length.toLocaleString() },
+    { label: 'Competition streak', value: (streak?.current_streak ?? 0).toLocaleString() },
+  ];
+  const statusLabel = (status: string) => (status === 'active' ? 'Active' : status === 'upcoming' ? 'Upcoming' : 'Completed');
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
-
-      <View style={s.header}>
-        <Text style={s.title}>Profile</Text>
-      </View>
 
       <ScrollView
         contentContainerStyle={s.scroll}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={C.primary} />}
       >
-        <View style={s.identitySection}>
-          <View style={s.avatarWrap}>
-            <View style={s.avatar}>
-              <Text style={s.avatarText}>{initials}</Text>
-            </View>
-            <TouchableOpacity
-              style={s.editAvatarBtn}
-              onPress={() => Alert.alert('Edit photo', 'Photo upload coming soon.')}
-              accessibilityRole="button"
-              accessibilityLabel="Edit profile photo"
-            >
-              <Text style={{ fontSize: 14 }}>📷</Text>
-            </TouchableOpacity>
+        <View style={s.identity}>
+          <View style={s.avatar}>
+            <Text style={s.avatarText}>{initials}</Text>
           </View>
-          <Text style={s.fullName}>{profile?.full_name ?? profile?.username}</Text>
-          <Text style={s.username}>@{profile?.username}</Text>
-          <View style={s.tagRow}>
-            <View style={s.tierBadge}>
-              <Text style={s.tierBadgeText}>{leagueTierLabel} League</Text>
-            </View>
-            {isPro && (
-              <View style={s.proBadge}>
-                <Text style={s.proBadgeText}>⚡ PRO</Text>
+          <View style={s.identityText}>
+            <Text style={s.fullName} numberOfLines={2} accessibilityRole="header">{profile?.full_name ?? profile?.username}</Text>
+            <Text style={s.username}>@{profile?.username}</Text>
+            <View style={s.tagRow}>
+              <View style={s.tag}>
+                <Text style={s.tagText}>{leagueTierLabel} League</Text>
               </View>
-            )}
+              {isPro && (
+                <View style={s.tag}>
+                  <Text style={s.tagText}>Pro</Text>
+                </View>
+              )}
+            </View>
           </View>
+        </View>
+
+        <View style={s.actionRow}>
+          <TouchableOpacity
+            style={s.secondaryBtn}
+            onPress={() => Alert.alert('Edit profile', 'Profile editing is not available yet.')}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile"
+            accessibilityHint="Not available yet"
+          >
+            <Text style={s.secondaryBtnText}>Edit profile</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={s.secondaryBtn}
+            onPress={() => Alert.alert('Edit photo', 'Photo upload is not available yet.')}
+            accessibilityRole="button"
+            accessibilityLabel="Edit profile photo"
+            accessibilityHint="Not available yet"
+          >
+            <Text style={s.secondaryBtnText}>Photo</Text>
+          </TouchableOpacity>
           {!isPro && (
-            <TouchableOpacity style={s.upgradeBtn} onPress={() => setUpgradeVisible(true)}>
-              <Text style={s.upgradeBtnText}>Upgrade to Pro →</Text>
+            <TouchableOpacity
+              style={s.linkBtn}
+              onPress={() => setUpgradeVisible(true)}
+              accessibilityRole="button"
+              accessibilityLabel="Upgrade to Pro"
+            >
+              <Text style={s.linkBtnText}>Upgrade to Pro</Text>
             </TouchableOpacity>
           )}
-          <TouchableOpacity style={s.editProfileBtn} onPress={() => Alert.alert('Edit profile', 'Profile editing coming soon.')}>
-            <Text style={s.editProfileBtnText}>Edit profile</Text>
-          </TouchableOpacity>
         </View>
 
         <UpgradeModal
@@ -240,65 +229,67 @@ export default function ProfileScreen() {
           onRestore={restore}
         />
 
-        <Text style={s.sectionLabel}>Stats</Text>
+        <Text style={s.sectionLabel} accessibilityRole="header">Competition stats</Text>
+        <Text style={s.sectionCaption}>
+          Based on workouts you log and share in challenges. Private Health Connect activity is separate and not included here.
+        </Text>
         {statsError && (
           <TouchableOpacity style={s.inlineError} onPress={retryStats} accessibilityRole="button">
             <Text style={s.inlineErrorText}>Couldn't load your stats — tap to retry</Text>
           </TouchableOpacity>
         )}
         <View style={s.statsGrid}>
-          {[
-            { label: 'Total points',      value: animPoints.toLocaleString(),  icon: '⭐', color: C.primary },
-            { label: 'Workouts logged',   value: animWorkouts,                  icon: '💪', color: C.text },
-            { label: 'Challenges joined', value: animChallenge,                 icon: '🏆', color: C.text },
-            { label: 'Streak days',       value: animStreak,                    icon: '🔥', color: C.text },
-          ].map(({ label, value, icon, color }) => (
-            <View key={label} style={s.statCard}>
-              <Text style={s.statIcon}>{icon}</Text>
-              <Text style={[s.statValue, { color }]}>{value}</Text>
+          {statCells.map(({ label, value }) => (
+            <View key={label} style={s.statCard} accessible accessibilityLabel={`${label}: ${value}`}>
+              <Text style={s.statValue}>{value}</Text>
               <Text style={s.statLabel}>{label}</Text>
             </View>
           ))}
         </View>
 
-        <Text style={s.sectionLabel}>Activity</Text>
+        <Text style={s.sectionLabel} accessibilityRole="header">Competition activity · last 90 days</Text>
         <ActivityHeatmap heatmapData={heatmapData} />
 
         {streak && streak.current_streak > 0 && (
           <>
-            <Text style={s.sectionLabel}>Streak</Text>
-            <View style={s.streakCard}>
+            <Text style={s.sectionLabel} accessibilityRole="header">Competition streak</Text>
+            <View style={s.card}>
               <View style={s.streakRow}>
                 <View style={s.streakItem}>
                   <Text style={s.streakNum}>{streak.current_streak}</Text>
-                  <Text style={s.streakLabel}>🔥 Current streak</Text>
+                  <Text style={s.statLabel}>Current streak</Text>
                 </View>
                 <View style={s.streakDivider} />
                 <View style={s.streakItem}>
                   <Text style={s.streakNum}>{streak.longest_streak}</Text>
-                  <Text style={s.streakLabel}>⚡ Best streak</Text>
+                  <Text style={s.statLabel}>Best streak</Text>
                 </View>
               </View>
               {isPro ? (
                 <TouchableOpacity
-                  style={[s.freezeBtn, (frozenToday || freezeCredits <= 0) && s.freezeBtnUsed]}
+                  style={[s.secondaryBtn, s.fullWidthBtn, (frozenToday || freezeCredits <= 0) && s.btnUsed]}
                   disabled={frozenToday || freezeCredits <= 0}
                   onPress={async () => {
                     const { success, message } = await freezeStreak();
-                    Alert.alert(success ? '🛡️ Streak protected!' : 'Could not protect', message);
+                    Alert.alert(success ? 'Streak protected' : 'Could not protect', message);
                   }}
+                  accessibilityRole="button"
                 >
-                  <Text style={s.freezeBtnText}>
+                  <Text style={s.secondaryBtnText}>
                     {frozenToday
-                      ? '🛡️ Protected today'
+                      ? 'Protected today'
                       : freezeCredits <= 0
-                      ? '🛡️ No freezes left this month'
-                      : `🛡️ Protect today (${freezeCredits} left)`}
+                      ? 'No freezes left this month'
+                      : `Protect today (${freezeCredits} left)`}
                   </Text>
                 </TouchableOpacity>
               ) : (
-                <TouchableOpacity style={s.freezeBtn} onPress={() => setUpgradeVisible(true)}>
-                  <Text style={s.freezeBtnText}>⚡ Upgrade for streak freeze</Text>
+                <TouchableOpacity
+                  style={[s.secondaryBtn, s.fullWidthBtn]}
+                  onPress={() => setUpgradeVisible(true)}
+                  accessibilityRole="button"
+                >
+                  <Text style={s.secondaryBtnText}>Upgrade for streak freeze</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -306,11 +297,19 @@ export default function ProfileScreen() {
         )}
 
         <View style={s.sectionHeader}>
-          <Text style={s.sectionLabel}>Auto-sync</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('ConnectDevices')}>
-            <Text style={s.editLink}>Manage →</Text>
+          <Text style={s.sectionLabelInline} accessibilityRole="header">Auto-sync</Text>
+          <TouchableOpacity
+            style={s.manageBtn}
+            onPress={() => navigation.navigate('ConnectDevices')}
+            accessibilityRole="button"
+            accessibilityLabel="Manage connected devices"
+          >
+            <Text style={s.manageText}>Manage →</Text>
           </TouchableOpacity>
         </View>
+        <Text style={s.sectionCaption}>
+          Imported Health Connect activity stays private and is not added to the competition stats above.
+        </Text>
 
         {connectedSources.length > 0 ? (
           <View style={{ marginBottom: 24 }}>
@@ -328,17 +327,16 @@ export default function ProfileScreen() {
                   );
                 }}
               >
-                <Text style={s.warningEmoji}>⚠️</Text>
                 <View style={{ flex: 1 }}>
                   <Text style={s.warningTitle}>{STALE_SYNC_ROW.title}</Text>
                   <Text style={s.warningSub}>{STALE_SYNC_ROW.subtitle}</Text>
                 </View>
               </TouchableOpacity>
             )}
-            <View style={s.syncCard}>
+            <View style={s.card}>
               <View style={s.syncLeft}>
                 <View style={s.syncDot} />
-                <View>
+                <View style={{ flex: 1 }}>
                   <Text style={s.syncTitle}>
                     {connectedSources.length} source{connectedSources.length !== 1 ? 's' : ''} connected
                   </Text>
@@ -346,18 +344,17 @@ export default function ProfileScreen() {
                     {Platform.OS === 'android' ? LAST_FULL_SYNC_LABEL : 'Last synced'}: {lastSynced ? format(lastSynced, 'HH:mm') : 'Not verified this session'}
                   </Text>
                 </View>
+                <TouchableOpacity onPress={handleSyncNow} disabled={syncing} style={s.syncNowBtn}>
+                  <Text style={s.syncNowText}>{syncing ? '...' : 'Sync'}</Text>
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={handleSyncNow} disabled={syncing} style={s.syncNowBtn}>
-                <Text style={s.syncNowText}>{syncing ? '...' : 'Sync'}</Text>
-              </TouchableOpacity>
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={[s.connectBanner, { marginBottom: 24 }]} onPress={() => navigation.navigate('ConnectDevices')}>
-            <Text style={s.connectBannerEmoji}>⚡</Text>
+          <TouchableOpacity style={[s.card, s.connectBanner, { marginBottom: 24 }]} onPress={() => navigation.navigate('ConnectDevices')}>
             <View style={{ flex: 1 }}>
               <Text style={s.connectBannerTitle}>Connect your health apps</Text>
-              <Text style={s.connectBannerSub}>Get points automatically without opening the app</Text>
+              <Text style={s.connectBannerSub}>Import activity automatically. It stays private to you.</Text>
             </View>
             <Text style={s.connectBannerArrow}>→</Text>
           </TouchableOpacity>
@@ -365,13 +362,13 @@ export default function ProfileScreen() {
 
         {myChallenges.length > 0 && (
           <>
-            <Text style={s.sectionLabel}>Recent challenges</Text>
+            <Text style={s.sectionLabel} accessibilityRole="header">Recent challenges</Text>
             {myChallenges.slice(0, 5).map(c => (
               <View key={c.id} style={s.challengeRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={s.challengeName} numberOfLines={1}>{c.name}</Text>
                   <Text style={s.challengeMeta}>
-                    {c.status === 'active' ? '🟢 Active' : c.status === 'upcoming' ? '🔵 Upcoming' : '⚫ Completed'}
+                    {statusLabel(c.status)}
                     {c.my_rank != null ? `  ·  #${c.my_rank}` : ''}
                   </Text>
                 </View>
@@ -384,12 +381,9 @@ export default function ProfileScreen() {
 
         <AchievementsGrid achievements={achievements} />
 
-        <Text style={s.sectionLabel}>Notifications</Text>
-        <View style={s.notifCard}>
+        <Text style={s.sectionLabel} accessibilityRole="header">Notifications</Text>
+        <View style={s.card}>
           <View style={s.notifRow}>
-            <View style={s.notifIconBox}>
-              <Text style={{ fontSize: 18 }}>🔥</Text>
-            </View>
             <View style={{ flex: 1 }}>
               <Text style={s.notifLabel}>Streak reminder</Text>
               <Text style={s.notifDesc}>Daily reminder to keep your streak</Text>
@@ -397,22 +391,22 @@ export default function ProfileScreen() {
             <Switch
               value={streakReminderOn}
               onValueChange={toggleStreakReminder}
-              trackColor={{ false: C.border, true: C.primary + '99' }}
+              accessibilityLabel="Streak reminder"
+              trackColor={{ false: C.dimmed, true: C.primary + '99' }}
               thumbColor={streakReminderOn ? C.primary : C.muted}
             />
           </View>
         </View>
 
-        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut}>
+        <TouchableOpacity style={s.signOutBtn} onPress={handleSignOut} accessibilityRole="button">
           <Text style={s.signOutBtnText}>Sign out</Text>
         </TouchableOpacity>
 
         <View style={s.legalRow}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/privacy-policy.html')}>
+          <TouchableOpacity style={s.legalBtn} onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/privacy-policy.html')} accessibilityRole="link">
             <Text style={s.legalLink}>Privacy Policy</Text>
           </TouchableOpacity>
-          <Text style={s.legalDot}>·</Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/terms-of-service.html')}>
+          <TouchableOpacity style={s.legalBtn} onPress={() => Linking.openURL('https://arnarjo.github.io/streakwar/terms-of-service.html')} accessibilityRole="link">
             <Text style={s.legalLink}>Terms of Service</Text>
           </TouchableOpacity>
         </View>
@@ -423,81 +417,72 @@ export default function ProfileScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
-  title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  scroll: { paddingHorizontal: 20, paddingBottom: 100 },
-  inlineError: { backgroundColor: C.error + '12', borderWidth: 1, borderColor: C.error + '30', borderRadius: 12, padding: 12, marginBottom: 10, alignItems: 'center' },
+  scroll: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 100 },
+  inlineError: { backgroundColor: C.error + '1F', borderWidth: 1, borderColor: C.error + '4D', borderRadius: R.md, padding: 12, marginBottom: 10, alignItems: 'center', minHeight: HIT, justifyContent: 'center' },
   inlineErrorText: { color: C.error, fontSize: 13, fontWeight: '600' },
 
-  identitySection: { alignItems: 'center', paddingVertical: 24, gap: 6 },
-  avatarWrap: { position: 'relative', marginBottom: 4 },
-  avatar: { width: 88, height: 88, borderRadius: 44, backgroundColor: C.primary + '20', borderWidth: 2, borderColor: C.primary + '40', alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 32, fontWeight: '900', color: C.primary },
-  editAvatarBtn: { position: 'absolute', right: -2, bottom: -2, width: 30, height: 30, borderRadius: 15, backgroundColor: C.primary, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#0C1117' },
-  fullName: { fontSize: 26, fontWeight: '700', color: C.text, letterSpacing: -0.3 },
+  identity: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 8 },
+  avatar: { width: 64, height: 64, borderRadius: 32, backgroundColor: C.dimmed, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 22, fontWeight: '800', color: C.text },
+  identityText: { flex: 1, gap: 2 },
+  fullName: { fontSize: 22, fontWeight: '800', color: C.text, letterSpacing: -0.3 },
   username: { fontSize: 14, fontWeight: '500', color: C.muted },
-  tagRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
-  tierBadge: { backgroundColor: '#FBBF2420', borderWidth: 1, borderColor: '#FBBF2440', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  tierBadgeText: { fontSize: 11, fontWeight: '700', color: '#FBBF24', letterSpacing: 0.5 },
-  proBadge: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 4 },
-  proBadgeText: { fontSize: 11, fontWeight: '800', color: C.primary, letterSpacing: 1 },
-  upgradeBtn: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginTop: 2 },
-  upgradeBtnText: { fontSize: 12, fontWeight: '700', color: C.primary },
-  editProfileBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 20, paddingHorizontal: 24, paddingVertical: 8, marginTop: 4 },
-  editProfileBtnText: { fontSize: 13, fontWeight: '600', color: C.text },
+  tagRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
+  tag: { backgroundColor: C.dimmed, borderRadius: R.sm, paddingHorizontal: 8, paddingVertical: 3 },
+  tagText: { fontSize: 11, fontWeight: '700', color: C.text, letterSpacing: 0.3 },
 
-  sectionLabel: { fontSize: 10, fontWeight: '700', color: C.muted, letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 11 },
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 11 },
-  editLink: { color: C.primary, fontSize: 13, fontWeight: '700' },
+  actionRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 8, marginBottom: 20 },
+  secondaryBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, minHeight: HIT, paddingHorizontal: 16, borderWidth: 1, borderColor: C.border, borderRadius: R.sm },
+  secondaryBtnText: { fontSize: 13, fontWeight: '700', color: C.text },
+  fullWidthBtn: { alignSelf: 'stretch' },
+  btnUsed: { opacity: 0.6 },
+  linkBtn: { minHeight: HIT, justifyContent: 'center', paddingHorizontal: 8 },
+  linkBtnText: { fontSize: 13, fontWeight: '700', color: C.primary },
 
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 14 },
-  statIcon: { fontSize: 18, marginBottom: 6 },
-  statValue: { fontSize: 24, fontWeight: '900', color: C.text, letterSpacing: -0.5 },
-  statLabel: { fontSize: 11, color: C.muted, fontWeight: '600', marginTop: 2 },
+  sectionLabel: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 6 },
+  sectionLabelInline: { fontSize: 12, fontWeight: '700', color: C.muted, letterSpacing: 1.2, textTransform: 'uppercase' },
+  sectionCaption: { fontSize: 12, color: C.muted, lineHeight: 17, marginBottom: 10 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', minHeight: HIT },
+  manageBtn: { minHeight: HIT, justifyContent: 'center', paddingHorizontal: 4 },
+  manageText: { color: C.text, fontSize: 13, fontWeight: '700' },
 
-  streakCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, padding: 16, marginBottom: 24, gap: 12 },
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 24 },
+  statCard: { flexGrow: 1, flexBasis: '45%', backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: 14, gap: 2 },
+  statValue: { fontSize: 28, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
+  statLabel: { fontSize: 12, color: C.muted, fontWeight: '500' },
+
+  card: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 14, marginBottom: 16, gap: 12 },
   streakRow: { flexDirection: 'row' },
-  streakItem: { flex: 1, alignItems: 'center', gap: 4 },
-  streakNum: { fontSize: 32, fontWeight: '900', color: C.primary },
-  streakLabel: { fontSize: 12, color: C.muted, fontWeight: '600' },
+  streakItem: { flex: 1, gap: 2 },
+  streakNum: { fontSize: 32, fontWeight: '800', color: C.text },
   streakDivider: { width: 1, backgroundColor: C.border, marginHorizontal: 16 },
-  freezeBtn: { backgroundColor: '#22C55E15', borderWidth: 1, borderColor: '#22C55E40', borderRadius: 10, paddingVertical: 10, alignItems: 'center' },
-  freezeBtnUsed: { backgroundColor: 'transparent', borderColor: C.border },
-  freezeBtnText: { fontSize: 13, fontWeight: '700', color: '#22C55E' },
 
-  syncCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.green + '10', borderWidth: 1, borderColor: C.green + '30', borderRadius: 12, padding: 14, marginBottom: 8, gap: 10 },
-  syncLeft: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  syncLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   syncDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: C.green },
-  syncTitle: { fontSize: 13, fontWeight: '700', color: C.green },
-  syncSub: { fontSize: 11, color: C.muted, marginTop: 1 },
-  syncNowBtn: { backgroundColor: C.primary, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  syncNowText: { color: '#000', fontWeight: '800', fontSize: 12 },
-  warningRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.error + '12', borderWidth: 1, borderColor: C.error + '30', borderRadius: 14, padding: 14, marginBottom: 10 },
-  warningEmoji: { fontSize: 24 },
-  warningTitle: { fontSize: 14, fontWeight: '800', color: C.error },
-  warningSub: { fontSize: 12, color: C.muted, marginTop: 2, fontWeight: '600' },
-  connectBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.primary + '12', borderWidth: 1, borderColor: C.primary + '30', borderRadius: 12, padding: 14 },
-  connectBannerEmoji: { fontSize: 24 },
+  syncTitle: { fontSize: 14, fontWeight: '700', color: C.text },
+  syncSub: { fontSize: 12, color: C.muted, marginTop: 1 },
+  syncNowBtn: { backgroundColor: C.primary, borderRadius: R.sm, paddingHorizontal: 16, minHeight: HIT, justifyContent: 'center' },
+  syncNowText: { color: C.onPrimary, fontWeight: '800', fontSize: 13 },
+  warningRow: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: C.error + '1F', borderWidth: 1, borderColor: C.error + '4D', borderRadius: R.md, padding: 14, marginBottom: 10, minHeight: HIT },
+  warningTitle: { fontSize: 14, fontWeight: '700', color: C.error },
+  warningSub: { fontSize: 12, color: C.muted, marginTop: 2 },
+  connectBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56 },
   connectBannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
   connectBannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
-  connectBannerArrow: { fontSize: 18, color: C.primary, fontWeight: '700' },
+  connectBannerArrow: { fontSize: 18, color: C.text, fontWeight: '700' },
 
-  challengeRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 14, marginBottom: 6, gap: 12 },
+  challengeRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 14, marginBottom: 6, gap: 12 },
   challengeName: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
   challengeMeta: { fontSize: 12, color: C.muted },
-  challengeScore: { fontSize: 16, fontWeight: '800', color: C.primary },
+  challengeScore: { fontSize: 16, fontWeight: '800', color: C.text },
 
-
-  notifCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 16, marginBottom: 16, overflow: 'hidden' },
-  notifRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  notifIconBox: { width: 36, height: 36, borderRadius: 10, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center' },
+  notifRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: HIT },
   notifLabel: { fontSize: 14, fontWeight: '700', color: C.text, marginBottom: 2 },
   notifDesc: { fontSize: 12, color: C.muted },
 
-  signOutBtn: { borderWidth: 1, borderColor: C.error + '40', borderRadius: 14, paddingVertical: 14, alignItems: 'center', marginTop: 20 },
+  signOutBtn: { borderWidth: 1, borderColor: C.error + '66', borderRadius: R.md, minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   signOutBtnText: { color: C.error, fontSize: 15, fontWeight: '700' },
-  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 8, marginTop: 16, marginBottom: 8 },
-  legalLink: { color: C.muted, fontSize: 11, fontWeight: '600' },
-  legalDot: { color: C.muted, fontSize: 11 },
+  legalRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap', gap: 8, marginTop: 8, marginBottom: 8 },
+  legalBtn: { minHeight: HIT, justifyContent: 'center', paddingHorizontal: 8 },
+  legalLink: { color: C.muted, fontSize: 12, fontWeight: '600', textDecorationLine: 'underline' },
 });

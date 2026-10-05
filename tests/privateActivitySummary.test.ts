@@ -366,6 +366,15 @@ describe('PrivateActivitySummaryCard', () => {
     expect(refresh.props.accessibilityRole).toBe('button');
   });
 
+  it('says the totals cover all imported history and keeps controls at least 44dp tall', async () => {
+    rpc.mockResolvedValue(row(A, 4, 9, 100));
+    await mountCard({ userId: A });
+    expect(text(tree.root)).toContain('Totals cover everything imported from Health Connect so far, not just today or this week.');
+    expect(text(tree.root)).not.toMatch(/workout/i);
+    const refresh = buttonByLabel(tree, PRIVATE_ACTIVITY_REFRESH_LABEL);
+    expect((refresh.props.style as { minHeight: number }[]).flat().find(x => x && x.minHeight)?.minHeight).toBeGreaterThanOrEqual(44);
+  });
+
   it('shows an empty state that points to Health Connect without any navigation', async () => {
     rpc.mockResolvedValue(row(A, 0, 0, 0));
     await mountCard({ userId: A });

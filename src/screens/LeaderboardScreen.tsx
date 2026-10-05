@@ -11,8 +11,9 @@ import { useStreaks } from '../hooks/useStreaks';
 import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { LeaderboardEntry, LeagueTier } from '../types/database';
-import { C } from '../theme';
-import { medalOrRank, rankColor, initials } from '../lib/leaderboardFormat';
+import InterfaceIcon from '../components/InterfaceIcon';
+import { C, HIT, R } from '../theme';
+import { rankColor, initials } from '../lib/leaderboardFormat';
 
 type Tab = 'league' | 'week' | 'world' | 'friends';
 
@@ -97,10 +98,10 @@ export default function LeaderboardScreen() {
     const label = tab === 'week' ? 'this week' : 'all-time';
     await Share.share({
       message:
-        `🔥 ${streak?.current_streak ?? 0}-day streak on StreakWar!\n` +
-        `⭐ ${pts.toLocaleString()} points ${label}\n` +
-        (rank ? `🌍 Ranked #${rank} ${tab === 'week' ? 'this week' : 'globally'}\n` : '') +
-        `\nCan you beat me? Download StreakWar and compete! 💪`,
+        `${streak?.current_streak ?? 0}-day streak on StreakWar.\n` +
+        `${pts.toLocaleString()} competition points ${label}\n` +
+        (rank ? `Ranked #${rank} ${tab === 'week' ? 'this week' : 'globally'}\n` : '') +
+        `\nCan you beat me? Download StreakWar and compete.`,
     });
   }
 
@@ -121,17 +122,17 @@ export default function LeaderboardScreen() {
         rank === 2 && s.rowSilver,
         rank === 3 && s.rowBronze,
       ]}>
-        <Text style={[s.rank, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
+        <Text style={[s.rank, { color: rankColor(rank) }]}>{rank}</Text>
 
         <View style={[s.avatar, isMe && s.avatarMe]}>
-          <Text style={[s.avatarText, isMe && { color: C.primary }]}>{initials(item)}</Text>
+          <Text style={[s.avatarText, isMe && { color: C.text }]}>{initials(item)}</Text>
         </View>
 
         <View style={s.info}>
           <Text style={s.name} numberOfLines={1}>
             {item.full_name ?? item.username}{isMe ? '  (you)' : ''}
           </Text>
-          <Text style={s.username}>@{item.username}</Text>
+          <Text style={s.username} numberOfLines={1}>@{item.username}</Text>
         </View>
 
         <View style={s.ptsBadge}>
@@ -144,12 +145,12 @@ export default function LeaderboardScreen() {
             style={[s.followBtn, isFollowing && s.followingBtn]}
             onPress={() => isFollowing ? unfollow(item.id) : follow(item.id)}
             activeOpacity={0.7}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             accessibilityRole="button"
+            accessibilityState={{ selected: isFollowing }}
             accessibilityLabel={isFollowing ? `Unfollow ${item.username}` : `Follow ${item.username}`}
           >
-            <Text style={[s.followBtnText, isFollowing && s.followingBtnText]}>
-              {isFollowing ? '✓' : '+'}
-            </Text>
+            <InterfaceIcon name={isFollowing ? 'checkmark' : 'add'} size={18} color={isFollowing ? C.onPrimary : C.text} />
           </TouchableOpacity>
         )}
         {!isMe && (
@@ -157,69 +158,71 @@ export default function LeaderboardScreen() {
             style={[s.nudgeBtn, nudgedToday.has(item.id) && s.nudgeBtnDone]}
             onPress={() => setNudgeTarget({ id: item.id, name: item.full_name ?? item.username })}
             activeOpacity={0.7}
+            hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
             accessibilityRole="button"
             accessibilityLabel={`Nudge ${item.full_name ?? item.username}`}
           >
-            <Text style={s.nudgeBtnText}>{nudgedToday.has(item.id) ? '✓' : '💪'}</Text>
+            <InterfaceIcon name={nudgedToday.has(item.id) ? 'checkmark' : 'flash-outline'} size={18} color={C.text} />
           </TouchableOpacity>
         )}
       </View>
     );
   }
 
+  const TABS: { key: Tab; label: string; icon: React.ComponentProps<typeof InterfaceIcon>['name'] }[] = [
+    { key: 'league', label: 'League', icon: 'shield-outline' },
+    { key: 'week', label: 'Week', icon: 'calendar-outline' },
+    { key: 'world', label: 'All-time', icon: 'globe-outline' },
+    { key: 'friends', label: 'Friends', icon: 'people-outline' },
+  ];
+  const shownRank = tab === 'week' || tab === 'world' ? myRank : null;
+
   return (
     <SafeAreaView style={s.container} edges={['top']}>
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
-      {/* Header */}
       <View style={s.header}>
-        <View>
-          <Text style={s.title}>Leaderboard</Text>
-          <Text style={s.subtitle}>
-            {myRank
-              ? `#${myRank} ${tab === 'week' ? 'this week' : 'globally'} · ${myRank === 1 ? 'You\'re leading! 🥇' : `Keep pushing to reach #${myRank - 1}!`}`
-              : 'Log workouts to rank up'}
-          </Text>
-        </View>
-        <View style={s.headerRight}>
-          <TouchableOpacity style={s.shareBtn} onPress={handleShare} activeOpacity={0.7}>
-            <Text style={s.shareBtnText}>Share 📤</Text>
-          </TouchableOpacity>
-          <View style={s.myPtsBadge}>
-            <Text style={s.myPtsNum}>{(profile?.total_points ?? 0).toLocaleString()}</Text>
-            <Text style={s.myPtsLabel}>total pts</Text>
-          </View>
-        </View>
+        <Text style={s.title} accessibilityRole="header">Leaderboard</Text>
+        <TouchableOpacity
+          style={s.shareBtn}
+          onPress={handleShare}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Share your ranking"
+        >
+          <InterfaceIcon name="share-outline" size={18} color={C.text} />
+          <Text style={s.shareBtnText}>Share</Text>
+        </TouchableOpacity>
       </View>
 
-      {/* Scoring chips */}
-      <View style={s.scoringRow}>
-        {[
-          { icon: '💪', label: '1pt / workout' },
-          { icon: '👟', label: '1pt / 1k steps' },
-          { icon: '📍', label: '1pt / km' },
-          { icon: '⏱', label: '1pt / 30min' },
-        ].map(({ icon, label }) => (
-          <View key={label} style={s.chip}>
-            <Text style={s.chipIcon}>{icon}</Text>
-            <Text style={s.chipLabel}>{label}</Text>
-          </View>
-        ))}
+      <Text style={s.scopeNote}>
+        Competition rankings only. Private Health Connect activity is not included.
+      </Text>
+
+      <View style={s.summary}>
+        <View>
+          <Text style={s.summaryValue}>{(profile?.total_points ?? 0).toLocaleString()}</Text>
+          <Text style={s.summaryLabel}>Your competition points</Text>
+        </View>
+        {shownRank !== null && (
+          <Text style={s.summaryRank}>#{shownRank} {tab === 'week' ? 'this week' : 'globally'}</Text>
+        )}
       </View>
+
+      <Text style={s.scoringNote}>Points: 1 per workout · 1 per 1k steps · 1 per km · 1 per 30 min</Text>
 
       {/* Tabs */}
-      <View style={s.tabs}>
-        {([
-          { key: 'league' as Tab, label: `${tierMeta?.emoji ?? '🥉'} League` },
-          { key: 'week' as Tab, label: '📅 Week' },
-          { key: 'world' as Tab, label: '🌍 All-time' },
-          { key: 'friends' as Tab, label: '👥 Friends' },
-        ]).map(({ key, label }) => (
+      <View style={s.tabs} accessibilityRole="tablist">
+        {TABS.map(({ key, label, icon }) => (
           <TouchableOpacity
             key={key}
             style={[s.tab, tab === key && s.tabActive]}
             onPress={() => setTab(key)}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === key }}
+            accessibilityLabel={key === 'league' ? `${tierMeta?.label ?? ''} league`.trim() : label}
           >
+            <InterfaceIcon name={icon} size={18} color={tab === key ? C.primary : C.muted} />
             <Text style={[s.tabText, tab === key && s.tabTextActive]}>{label}</Text>
           </TouchableOpacity>
         ))}
@@ -234,14 +237,15 @@ export default function LeaderboardScreen() {
           refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefreshLeague} tintColor={C.primary} />}
           ListHeaderComponent={
             <View style={{ paddingBottom: 8 }}>
-              <Text style={[{ fontSize: 20, fontWeight: '900', letterSpacing: -0.5, marginBottom: 4 }, { color: tierMeta?.color ?? '#B45309' }]}>
-                {tierMeta?.emoji} {tierMeta?.label} League
-              </Text>
+              <View style={s.leagueTitleRow}>
+                <View style={[s.leagueMark, { backgroundColor: tierMeta?.color ?? C.bronze }]} />
+                <Text style={s.leagueTitle} accessibilityRole="header">{tierMeta?.label} League</Text>
+              </View>
               {(() => {
                 const dayOfWeek = new Date().getDay(); // 0=Sun
                 const daysLeft = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
                 return (
-                  <Text style={{ fontSize: 12, color: C.muted, marginBottom: 12 }}>
+                  <Text style={s.leagueCaption}>
                     Top 5 promote · Bottom 5 relegate · {daysLeft} day{daysLeft !== 1 ? 's' : ''} left
                   </Text>
                 );
@@ -250,10 +254,9 @@ export default function LeaderboardScreen() {
                 <ActivityIndicator style={{ paddingVertical: 24 }} color={C.primary} />
               )}
               {leagueMembers.length === 0 && !leagueLoading && (
-                <View style={{ paddingVertical: 24, alignItems: 'center' }}>
-                  <Text style={{ fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 }}>
-                    Your league group is being set up — check back Monday!
-                  </Text>
+                <View style={s.leagueEmpty}>
+                  <Text style={s.emptyTitle}>No league group yet</Text>
+                  <Text style={s.emptyText}>No league group was found for your account. Weekly league rankings appear here once you are in a group.</Text>
                 </View>
               )}
             </View>
@@ -275,7 +278,7 @@ export default function LeaderboardScreen() {
                 rank === 2 && s.leagueRowSilver,
                 rank === 3 && s.leagueRowBronze,
               ]}>
-                <Text style={[s.leagueRankText, { color: rankColor(rank) }]}>{medalOrRank(rank)}</Text>
+                <Text style={[s.leagueRankText, { color: rankColor(rank) }]}>{rank}</Text>
                 <View style={s.leagueAvatar}>
                   <Text style={s.leagueAvatarText}>{avatarInitials}</Text>
                 </View>
@@ -283,18 +286,19 @@ export default function LeaderboardScreen() {
                   <Text style={s.leagueMemberName} numberOfLines={1}>
                     {name}{isMe ? ' (you)' : ''}
                   </Text>
-                  {isPromotion && <Text style={{ fontSize: 10, color: '#22C55E', fontWeight: '700', marginTop: 2 }}>⬆️ Promotion zone</Text>}
-                  {isRelegation && <Text style={{ fontSize: 10, color: '#EF4444', fontWeight: '700', marginTop: 2 }}>⬇️ Relegation zone</Text>}
+                  {isPromotion && <Text style={[s.zoneText, { color: C.green }]}>Promotion zone</Text>}
+                  {isRelegation && <Text style={[s.zoneText, { color: C.error }]}>Relegation zone</Text>}
                 </View>
                 <Text style={s.leaguePts}>{item.weekly_points} pts</Text>
                 {!isMe && (
                   <TouchableOpacity
                     style={[s.nudgeBtn, nudgedToday.has(item.user_id) && s.nudgeBtnDone]}
                     onPress={() => setNudgeTarget({ id: item.user_id, name: item.full_name ?? item.username })}
+                    hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
                     accessibilityRole="button"
                     accessibilityLabel={`Nudge ${name}`}
                   >
-                    <Text style={s.nudgeBtnText}>{nudgedToday.has(item.user_id) ? '✓' : '💪'}</Text>
+                    <InterfaceIcon name={nudgedToday.has(item.user_id) ? 'checkmark' : 'flash-outline'} size={18} color={C.text} />
                   </TouchableOpacity>
                 )}
               </View>
@@ -326,10 +330,12 @@ export default function LeaderboardScreen() {
               style={[s.nudgeTextBtn, nudgeSending && { opacity: 0.5 }]}
               onPress={() => sendNudge(nudgeTarget!.id)}
               disabled={nudgeSending}
+              accessibilityRole="button"
+              accessibilityLabel="Send nudge"
             >
               {nudgeSending
-                ? <ActivityIndicator color="#000" size="small" />
-                : <Text style={s.nudgeTextBtnText}>💪 Get moving!</Text>
+                ? <ActivityIndicator color={C.onPrimary} size="small" />
+                : <Text style={s.nudgeTextBtnText}>Send nudge</Text>
               }
             </TouchableOpacity>
           </View>
@@ -377,14 +383,13 @@ export default function LeaderboardScreen() {
           ListEmptyComponent={
             !loading ? (
               <View style={s.empty}>
-                <Text style={s.emptyEmoji}>{tab === 'friends' ? '👥' : '🏆'}</Text>
                 <Text style={s.emptyTitle}>
                   {tab === 'friends' ? 'No friends yet' : tab === 'week' ? 'No workouts this week' : 'No one here yet'}
                 </Text>
                 <Text style={s.emptyText}>
                   {tab === 'friends'
-                    ? 'Switch to Week or All-time and tap + to follow people'
-                    : 'Log your first workout to appear here'}
+                    ? 'Switch to Week or All-time and tap + to follow people.'
+                    : 'Log a workout to appear here.'}
                 </Text>
               </View>
             ) : (
@@ -399,86 +404,84 @@ export default function LeaderboardScreen() {
 
 const s = StyleSheet.create({
   container:    { flex: 1, backgroundColor: C.bg },
-  header:       { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 10 },
+  header:       { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4 },
   title:        { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
-  subtitle:     { fontSize: 13, color: C.muted, marginTop: 2 },
-  headerRight:  { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  shareBtn:     { backgroundColor: '#1E2A35', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: C.border },
-  shareBtnText: { fontSize: 12, fontWeight: '700', color: C.text },
-  myPtsBadge:   { backgroundColor: C.primary + '18', borderWidth: 1, borderColor: C.primary + '35', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 7, alignItems: 'center' },
-  myPtsNum:     { fontSize: 15, fontWeight: '900', color: C.primary },
-  myPtsLabel:   { fontSize: 9, color: C.primary, fontWeight: '600', marginTop: 1 },
+  shareBtn:     { flexDirection: 'row', alignItems: 'center', gap: 6, minHeight: HIT, paddingHorizontal: 12, borderRadius: R.sm, borderWidth: 1, borderColor: C.border },
+  shareBtnText: { fontSize: 13, fontWeight: '700', color: C.text },
+  scopeNote:    { fontSize: 12, color: C.muted, lineHeight: 17, paddingHorizontal: 16, marginBottom: 10 },
+  summary:      { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, paddingHorizontal: 16, marginBottom: 6 },
+  summaryValue: { fontSize: 36, fontWeight: '800', color: C.text, letterSpacing: -1 },
+  summaryLabel: { fontSize: 12, color: C.muted },
+  summaryRank:  { fontSize: 14, fontWeight: '700', color: C.text, paddingBottom: 4 },
+  scoringNote:  { fontSize: 12, color: C.muted, paddingHorizontal: 16, marginBottom: 10 },
 
-  scoringRow:   { flexDirection: 'row', paddingHorizontal: 16, gap: 5, marginBottom: 10 },
-  chip:         { flex: 1, backgroundColor: C.card, borderRadius: 8, borderWidth: 1, borderColor: C.border, paddingVertical: 6, alignItems: 'center', gap: 2 },
-  chipIcon:     { fontSize: 12 },
-  chipLabel:    { fontSize: 8, color: C.muted, fontWeight: '600', textAlign: 'center' },
-
-  tabs:         { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, backgroundColor: C.card, borderRadius: 12, padding: 4, borderWidth: 1, borderColor: C.border },
-  tab:          { flex: 1, paddingVertical: 8, alignItems: 'center', borderRadius: 10 },
-  tabActive:    { backgroundColor: C.primary },
-  tabText:      { fontSize: 12, fontWeight: '700', color: C.muted },
-  tabTextActive:{ color: '#000' },
+  tabs:         { flexDirection: 'row', marginHorizontal: 16, marginBottom: 10, gap: 6 },
+  tab:          { flex: 1, minHeight: 52, paddingVertical: 6, alignItems: 'center', justifyContent: 'center', gap: 2, borderRadius: R.sm, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  tabActive:    { backgroundColor: C.dimmed, borderColor: C.primary },
+  tabText:      { fontSize: 12, fontWeight: '600', color: C.muted, textAlign: 'center' },
+  tabTextActive:{ color: C.text, fontWeight: '800' },
 
   list:         { paddingHorizontal: 16, paddingBottom: 100 },
-  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: 14, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10 },
-  rowMe:        { borderColor: C.primary + '50', backgroundColor: C.primary + '08' },
-  rowGold:      { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
-  rowSilver:    { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
-  rowBronze:    { borderLeftWidth: 3, borderLeftColor: '#B45309' },
-  rank:         { width: 30, fontSize: 13, fontWeight: '800', textAlign: 'center' },
-  avatar:       { width: 38, height: 38, borderRadius: 19, backgroundColor: '#1E2A35', alignItems: 'center', justifyContent: 'center' },
-  avatarMe:     { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
+  row:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderRadius: R.md, borderWidth: 1, borderColor: C.border, padding: 12, marginBottom: 8, gap: 10, minHeight: 60 },
+  rowMe:        { borderColor: C.primary, backgroundColor: C.dimmed },
+  rowGold:      { borderLeftWidth: 3, borderLeftColor: C.gold },
+  rowSilver:    { borderLeftWidth: 3, borderLeftColor: C.silver },
+  rowBronze:    { borderLeftWidth: 3, borderLeftColor: C.bronze },
+  rank:         { width: 26, fontSize: 15, fontWeight: '800', textAlign: 'center' },
+  avatar:       { width: 38, height: 38, borderRadius: 19, backgroundColor: C.dimmed, alignItems: 'center', justifyContent: 'center' },
+  avatarMe:     { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border },
   avatarText:   { fontSize: 13, fontWeight: '800', color: C.muted },
   info:         { flex: 1 },
   name:         { fontSize: 14, fontWeight: '700', color: C.text },
-  username:     { fontSize: 11, color: C.muted, marginTop: 1 },
+  username:     { fontSize: 12, color: C.muted, marginTop: 1 },
   ptsBadge:     { alignItems: 'flex-end' },
-  pts:          { fontSize: 16, fontWeight: '900', color: C.text },
-  ptsLabel:     { fontSize: 9, color: C.muted, fontWeight: '600' },
-  followBtn:    { width: 30, height: 30, borderRadius: 15, borderWidth: 1.5, borderColor: C.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 2 },
-  followingBtn: { backgroundColor: C.primary },
-  followBtnText:   { fontSize: 15, color: C.primary, fontWeight: '800', lineHeight: 17 },
-  followingBtnText:{ color: '#000' },
-  empty:        { alignItems: 'center', paddingTop: 64, gap: 12, paddingHorizontal: 32 },
-  emptyEmoji:   { fontSize: 48 },
-  emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.muted },
-  emptyText:    { fontSize: 14, color: C.muted, textAlign: 'center', lineHeight: 20 },
+  pts:          { fontSize: 16, fontWeight: '800', color: C.text },
+  ptsLabel:     { fontSize: 11, color: C.muted, fontWeight: '600' },
+  followBtn:    { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  followingBtn: { backgroundColor: C.primary, borderColor: C.primary },
+  empty:        { paddingTop: 32, gap: 8, paddingHorizontal: 4 },
+  emptyTitle:   { fontSize: 16, fontWeight: '700', color: C.text },
+  emptyText:    { fontSize: 13, color: C.muted, lineHeight: 18 },
 
-  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: 12, padding: 12, marginBottom: 6, gap: 10 },
-  leagueRowMe:        { borderColor: C.primary + '60', backgroundColor: C.primary + '10' },
-  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: '#22C55E' },
-  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: '#EF4444' },
-  leagueRowGold:       { borderLeftWidth: 3, borderLeftColor: '#F59E0B' },
-  leagueRowSilver:     { borderLeftWidth: 3, borderLeftColor: '#9CA3AF' },
-  leagueRowBronze:     { borderLeftWidth: 3, borderLeftColor: '#B45309' },
-  leagueRankText:     { fontSize: 14, fontWeight: '800', width: 32, textAlign: 'center' },
-  leagueAvatar:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.primary + '20', alignItems: 'center', justifyContent: 'center' },
-  leagueAvatarText:   { fontSize: 13, fontWeight: '800', color: C.primary },
+  leagueTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 4 },
+  leagueMark:    { width: 4, height: 22, borderRadius: 2 },
+  leagueTitle:   { fontSize: 20, fontWeight: '800', color: C.text, letterSpacing: -0.4 },
+  leagueCaption: { fontSize: 12, color: C.muted, marginBottom: 12 },
+  leagueEmpty:   { paddingVertical: 16, gap: 8 },
+  zoneText:      { fontSize: 11, fontWeight: '700', marginTop: 2 },
+  leagueRow:          { flexDirection: 'row', alignItems: 'center', backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 12, marginBottom: 6, gap: 10, minHeight: 60 },
+  leagueRowMe:        { borderColor: C.primary, backgroundColor: C.dimmed },
+  leagueRowPromotion: { borderLeftWidth: 3, borderLeftColor: C.green },
+  leagueRowRelegation: { borderLeftWidth: 3, borderLeftColor: C.error },
+  leagueRowGold:       { borderLeftWidth: 3, borderLeftColor: C.gold },
+  leagueRowSilver:     { borderLeftWidth: 3, borderLeftColor: C.silver },
+  leagueRowBronze:     { borderLeftWidth: 3, borderLeftColor: C.bronze },
+  leagueRankText:     { fontSize: 15, fontWeight: '800', width: 28, textAlign: 'center' },
+  leagueAvatar:       { width: 36, height: 36, borderRadius: 18, backgroundColor: C.dimmed, alignItems: 'center', justifyContent: 'center' },
+  leagueAvatarText:   { fontSize: 13, fontWeight: '800', color: C.text },
   leagueMemberName:   { fontSize: 14, fontWeight: '700', color: C.text },
-  leaguePts:          { fontSize: 15, fontWeight: '900', color: C.primary },
+  leaguePts:          { fontSize: 15, fontWeight: '800', color: C.text },
 
-  nudgeBtn:     { width: 40, height: 40, borderRadius: 20, borderWidth: 1.5, borderColor: C.primary + '60', alignItems: 'center', justifyContent: 'center' },
-  nudgeBtnDone: { backgroundColor: C.primary + '20', borderColor: C.primary },
-  nudgeBtnText: { fontSize: 14, lineHeight: 16 },
+  nudgeBtn:     { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: C.border, alignItems: 'center', justifyContent: 'center' },
+  nudgeBtnDone: { backgroundColor: C.dimmed },
 
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center' },
-  nudgeModal: { backgroundColor: '#151C24', borderRadius: 20, padding: 24, alignItems: 'center', gap: 16, width: 280, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  nudgeModal: { backgroundColor: C.card, borderRadius: R.md, padding: 24, alignItems: 'center', gap: 16, width: 280, maxWidth: '90%', borderWidth: 1, borderColor: C.border },
   nudgeModalTitle: { fontSize: 16, fontWeight: '800', color: C.text },
-  nudgeEmojiRow: { flexDirection: 'row', gap: 12 },
-  nudgeEmojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: 'rgba(255,255,255,0.06)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  nudgeEmoji: { fontSize: 26 },
-  nudgeTextBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 24, paddingVertical: 12, alignItems: 'center', width: '100%' },
-  nudgeTextBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
+  nudgeEmojiRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
+  nudgeEmojiBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: C.dimmed, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: C.border },
+  nudgeEmoji: { fontSize: 24 },
+  nudgeTextBtn: { backgroundColor: C.primary, borderRadius: R.sm, minHeight: 48, justifyContent: 'center', alignItems: 'center', width: '100%' },
+  nudgeTextBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 15 },
 
   pinnedFooter: {
     paddingTop: 10,
     marginTop: 8,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.07)',
+    borderTopColor: C.border,
   },
   pinnedLabel: {
-    fontSize: 9, fontWeight: '700', color: '#637C8F',
-    letterSpacing: 1.4, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4,
+    fontSize: 11, fontWeight: '700', color: C.muted,
+    letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8, marginLeft: 4,
   },
 });

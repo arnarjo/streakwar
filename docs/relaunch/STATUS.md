@@ -3,6 +3,18 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
+UI-REFRESH01 integrated and isolated APK built locally. Claude's leased UI
+delivery was hash-verified and reviewed. Codex restored tab font scaling,
+fixed exact-ten-day milestone copy and included TSX tests in default Jest.
+536 Jest tests/20 suites, TypeScript, 11 Node tests and full lint (0 errors,
+56 advisory warnings) PASS. See handoffs/UI-REFRESH01-integration.md.
+No personal screenshots/data shared. New APK NOT installed: USB inventory empty;
+visual acceptance pending. Existing @expo/vector-icons 15.1.1 pinned directly;
+dependency check passes against local Expo map (offline caveat).
+Original phone-test APK installed on S24/Android16; owner reports launch/login
+succeed. Temporary TEST email-confirmation exception recorded in runbook;
+production untouched. Background/deduplication device evidence remains open.
+
 Latest checkpoint: PHONE-TEST provisioning approved and persisted in isolated
 vqizpuqmsykmhlyihyry. 23/23 tables have RLS; zero users/private records. Post-commit
 private intake acceptance passed inside rollback, then zero fixtures verified.

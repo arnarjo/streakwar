@@ -5,6 +5,17 @@ const expoConfig = require('eslint-config-expo/flat');
 module.exports = defineConfig([
   expoConfig,
   {
+    files: [
+      'scripts/build-hosted-test-baseline.cjs',
+      'scripts/build-hosted-test-baseline.test.cjs',
+      'scripts/private-health-schema.test.cjs',
+    ],
+    languageOptions: {
+      sourceType: 'commonjs',
+      globals: { __dirname: 'readonly', __filename: 'readonly' },
+    },
+  },
+  {
     // Global ignores (config object containing only `ignores`)
     ignores: [
       'node_modules/**',

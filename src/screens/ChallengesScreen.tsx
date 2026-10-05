@@ -13,11 +13,12 @@ import { usePremium } from '../hooks/usePremium';
 import ChallengeCard from '../components/ChallengeCard';
 import DiscoverChallengesScreen from './DiscoverChallengesScreen';
 import UpgradeModal from '../components/UpgradeModal';
-import { C } from '../theme';
+import InterfaceIcon from '../components/InterfaceIcon';
+import { C, HIT, R } from '../theme';
 import type { AppNavigationProp } from '../navigation/types';
 
 type Tab = 'active' | 'upcoming' | 'completed' | 'discover';
-const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Done', discover: '🔍' };
+const TAB_LABELS: Record<Tab, string> = { active: 'Active', upcoming: 'Upcoming', completed: 'Completed', discover: 'Discover' };
 
 export default function ChallengesScreen() {
   const { profile } = useAuth();
@@ -67,7 +68,7 @@ export default function ChallengesScreen() {
     } else {
       setJoinModalOpen(false);
       setCode('');
-      Alert.alert('Joined! 💪', `You're now in "${challenge?.name}"`);
+      Alert.alert('Joined', `You're now in "${challenge?.name}"`);
     }
   }
 
@@ -103,7 +104,7 @@ export default function ChallengesScreen() {
   async function handleShareCode() {
     if (!quickInviteCode) return;
     await Share.share({
-      message: `Join my 7-day workout challenge on StreakWar! 💪\nUse invite code: ${quickInviteCode}`,
+      message: `Join my 7-day workout challenge on StreakWar.\nUse invite code: ${quickInviteCode}`,
     });
   }
 
@@ -118,34 +119,63 @@ export default function ChallengesScreen() {
       <StatusBar barStyle="light-content" backgroundColor={C.bg} />
 
       <View style={s.header}>
-        <Text style={s.title}>Challenges</Text>
+        <Text style={s.title} accessibilityRole="header">Challenges</Text>
         <View style={s.headerBtns}>
-          <TouchableOpacity style={s.joinBtn} onPress={() => setJoinModalOpen(true)}>
+          <TouchableOpacity
+            style={s.joinBtn}
+            onPress={() => setJoinModalOpen(true)}
+            accessibilityRole="button"
+            accessibilityLabel="Join with a code"
+          >
             <Text style={s.joinBtnText}>Code</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={s.createBtn} onPress={handleNewChallenge}>
-            <Text style={s.createBtnText}>+ New</Text>
+          <TouchableOpacity
+            style={s.createBtn}
+            onPress={handleNewChallenge}
+            accessibilityRole="button"
+            accessibilityLabel="Create a new challenge"
+          >
+            <InterfaceIcon name="add" size={18} color={C.onPrimary} />
+            <Text style={s.createBtnText}>New</Text>
           </TouchableOpacity>
         </View>
       </View>
 
-      <TouchableOpacity style={s.quickBanner} onPress={handleQuickBanner} activeOpacity={0.8}>
-        <Text style={s.quickBannerEmoji}>⚡</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={s.quickBannerTitle}>Challenge a friend</Text>
-          <Text style={s.quickBannerSub}>Create a private 7-day 1v1 in seconds</Text>
+      {tab !== 'discover' && (
+        <View style={s.startCard}>
+          <Text style={s.startTitle}>Find an open challenge</Text>
+          <Text style={s.startSub}>Browse public challenges you can join.</Text>
+          <View style={s.startActions}>
+            <TouchableOpacity
+              style={s.browseBtn}
+              onPress={() => setTab('discover')}
+              accessibilityRole="button"
+              accessibilityLabel="Browse open challenges"
+            >
+              <Text style={s.browseBtnText}>Browse challenges</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={s.friendBtn}
+              onPress={handleQuickBanner}
+              accessibilityRole="button"
+              accessibilityLabel="Challenge a friend"
+              accessibilityHint="Creates a private 7-day challenge with an invite code"
+            >
+              <Text style={s.friendBtnText}>Challenge a friend</Text>
+            </TouchableOpacity>
+          </View>
         </View>
-        <Text style={s.quickBannerArrow}>→</Text>
-      </TouchableOpacity>
+      )}
 
-      <View style={s.tabs}>
+      <View style={s.tabs} accessibilityRole="tablist">
         {(Object.keys(TAB_LABELS) as Tab[]).map(t => (
           <TouchableOpacity
             key={t}
             style={[s.tab, tab === t && s.tabActive]}
             onPress={() => setTab(t)}
-            accessibilityRole="button"
-            {...(t === 'discover' ? { accessibilityLabel: 'Discover challenges' } : {})}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: tab === t }}
+            accessibilityLabel={t === 'discover' ? 'Discover challenges' : TAB_LABELS[t]}
           >
             <Text style={[s.tabText, tab === t && s.tabTextActive]}>{TAB_LABELS[t]}</Text>
           </TouchableOpacity>
@@ -168,14 +198,35 @@ export default function ChallengesScreen() {
           ListEmptyComponent={
             !loading ? (
               <View style={s.empty}>
-                <Text style={s.emptyEmoji}>{tab === 'active' ? '💪' : tab === 'upcoming' ? '📅' : '🏆'}</Text>
                 <Text style={s.emptyTitle}>
                   {tab === 'active' ? 'No active challenges' : tab === 'upcoming' ? 'No upcoming challenges' : 'No completed challenges'}
                 </Text>
+                <Text style={s.emptyText}>
+                  {tab === 'active'
+                    ? 'Join a public challenge or start your own.'
+                    : tab === 'upcoming'
+                    ? "Challenges you've joined that haven't started yet appear here."
+                    : 'Challenges you took part in that have finished appear here.'}
+                </Text>
                 {tab === 'active' && (
-                  <TouchableOpacity style={s.emptyBtn} onPress={handleNewChallenge}>
-                    <Text style={s.emptyBtnText}>Create a challenge</Text>
-                  </TouchableOpacity>
+                  <View style={s.emptyActions}>
+                    <TouchableOpacity
+                      style={s.browseBtn}
+                      onPress={() => setTab('discover')}
+                      accessibilityRole="button"
+                      accessibilityLabel="Browse open challenges"
+                    >
+                      <Text style={s.browseBtnText}>Browse open challenges</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={s.friendBtn}
+                      onPress={handleNewChallenge}
+                      accessibilityRole="button"
+                      accessibilityLabel="Create a challenge"
+                    >
+                      <Text style={s.friendBtnText}>Create a challenge</Text>
+                    </TouchableOpacity>
+                  </View>
                 )}
               </View>
             ) : (
@@ -199,13 +250,13 @@ export default function ChallengesScreen() {
               <View style={s.modalHandle} />
               {quickInviteCode ? (
                 <>
-                  <Text style={s.modalTitle}>Challenge created! 🎉</Text>
+                  <Text style={s.modalTitle}>Challenge created</Text>
                   <Text style={s.modalSub}>Share this code with your friend</Text>
                   <View style={s.inviteCodeBox}>
                     <Text style={s.inviteCode}>{quickInviteCode}</Text>
                   </View>
                   <TouchableOpacity style={s.joinConfirmBtn} onPress={handleShareCode}>
-                    <Text style={s.joinConfirmBtnText}>📤 Share invite code</Text>
+                    <Text style={s.joinConfirmBtnText}>Share invite code</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.cancelBtn} onPress={closeQuickModal}>
                     <Text style={s.cancelBtnText}>Done</Text>
@@ -213,7 +264,7 @@ export default function ChallengesScreen() {
                 </>
               ) : (
                 <>
-                  <Text style={s.modalTitle}>⚡ Quick 1v1</Text>
+                  <Text style={s.modalTitle}>Challenge a friend</Text>
                   <Text style={s.modalSub}>Private 7-day workout challenge</Text>
                   <View style={s.quickInfoRow}>
                     {['7 days', 'Workouts', 'Private'].map(tag => (
@@ -236,7 +287,7 @@ export default function ChallengesScreen() {
                     onPress={handleQuickCreate}
                     disabled={!quickName.trim() || quickCreating}
                   >
-                    <Text style={s.joinConfirmBtnText}>{quickCreating ? 'Creating...' : 'Create & get invite code 🚀'}</Text>
+                    <Text style={s.joinConfirmBtnText}>{quickCreating ? 'Creating...' : 'Create and get invite code'}</Text>
                   </TouchableOpacity>
                   <TouchableOpacity style={s.cancelBtn} onPress={closeQuickModal}>
                     <Text style={s.cancelBtnText}>Cancel</Text>
@@ -294,50 +345,41 @@ export default function ChallengesScreen() {
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bg },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 12, paddingBottom: 16 },
+  header: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4, paddingBottom: 8 },
   title: { fontSize: 24, fontWeight: '800', color: C.text, letterSpacing: -0.5 },
   headerBtns: { flexDirection: 'row', gap: 8 },
-  joinBtn: { borderWidth: 1, borderColor: C.border, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
+  joinBtn: { minHeight: HIT, justifyContent: 'center', borderWidth: 1, borderColor: C.border, borderRadius: R.sm, paddingHorizontal: 16 },
   joinBtnText: { color: C.text, fontWeight: '700', fontSize: 13 },
-  createBtn: { backgroundColor: C.primary, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
-  createBtnText: { color: '#000', fontWeight: '800', fontSize: 13 },
-  tabs: { flexDirection: 'row', paddingHorizontal: 20, marginBottom: 12, gap: 8 },
-  tab: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, backgroundColor: 'rgba(255,255,255,0.05)' },
-  tabActive: { backgroundColor: C.primary + '20', borderWidth: 1, borderColor: C.primary + '40' },
-  tabText: { fontSize: 13, color: C.muted, fontWeight: '600' },
-  tabTextActive: { color: C.primary },
+  createBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: HIT, justifyContent: 'center', backgroundColor: C.primary, borderRadius: R.sm, paddingHorizontal: 14 },
+  createBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 13 },
+  startCard: { backgroundColor: C.card, borderWidth: 1, borderColor: C.border, borderRadius: R.md, padding: 16, gap: 6, marginHorizontal: 16, marginBottom: 12 },
+  startTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  startSub: { fontSize: 13, color: C.muted, lineHeight: 18 },
+  startActions: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8, marginTop: 6 },
+  browseBtn: { minHeight: HIT, justifyContent: 'center', backgroundColor: C.primary, borderRadius: R.sm, paddingHorizontal: 16 },
+  browseBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 14 },
+  friendBtn: { minHeight: HIT, justifyContent: 'center', borderWidth: 1, borderColor: C.border, borderRadius: R.sm, paddingHorizontal: 16 },
+  friendBtnText: { color: C.text, fontWeight: '700', fontSize: 13 },
+  tabs: { flexDirection: 'row', paddingHorizontal: 16, marginBottom: 8, gap: 6 },
+  tab: { flex: 1, minHeight: HIT, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 6, borderRadius: R.sm, backgroundColor: C.card, borderWidth: 1, borderColor: C.border },
+  tabActive: { backgroundColor: C.dimmed, borderColor: C.primary },
+  tabText: { fontSize: 13, color: C.muted, fontWeight: '600', textAlign: 'center' },
+  tabTextActive: { color: C.text, fontWeight: '800' },
   list: { paddingHorizontal: 16, paddingBottom: 100 },
-  empty: { alignItems: 'center', paddingTop: 64, gap: 12 },
-  emptyEmoji: { fontSize: 48 },
-  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.muted },
-  emptyBtn: { backgroundColor: C.primary, borderRadius: 12, paddingHorizontal: 20, paddingVertical: 12, marginTop: 8 },
-  emptyBtnText: { color: '#000', fontWeight: '800', fontSize: 14 },
+  empty: { paddingTop: 32, paddingHorizontal: 4, gap: 8 },
+  emptyTitle: { fontSize: 16, fontWeight: '700', color: C.text },
+  emptyText: { fontSize: 13, color: C.muted, lineHeight: 18 },
+  emptyActions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 },
   modalOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
-  modalSheet: { backgroundColor: C.card, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40, gap: 12 },
+  modalSheet: { backgroundColor: C.card, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: 24, paddingBottom: 40, gap: 12 },
   modalHandle: { width: 36, height: 4, backgroundColor: C.border, borderRadius: 2, alignSelf: 'center', marginBottom: 8 },
   modalTitle: { fontSize: 20, fontWeight: '800', color: C.text },
   modalSub: { fontSize: 14, color: C.muted },
   codeInput: { backgroundColor: C.bg, borderWidth: 1, borderColor: C.border, borderRadius: 12, paddingHorizontal: 16, paddingVertical: 14, color: C.text, fontSize: 24, fontWeight: '800', letterSpacing: 6, textAlign: 'center' },
-  joinConfirmBtn: { backgroundColor: C.primary, borderRadius: 14, paddingVertical: 15, alignItems: 'center', marginTop: 4 },
-  joinConfirmBtnText: { color: '#000', fontWeight: '800', fontSize: 15 },
-  cancelBtn: { alignItems: 'center', paddingVertical: 4 },
+  joinConfirmBtn: { backgroundColor: C.primary, borderRadius: R.md, minHeight: 48, justifyContent: 'center', alignItems: 'center', marginTop: 4 },
+  joinConfirmBtnText: { color: C.onPrimary, fontWeight: '800', fontSize: 15 },
+  cancelBtn: { alignItems: 'center', justifyContent: 'center', minHeight: HIT },
   cancelBtnText: { color: C.muted, fontSize: 14, fontWeight: '600' },
-  quickBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    backgroundColor: C.primary + '12',
-    borderWidth: 1,
-    borderColor: C.primary + '30',
-    borderRadius: 12,
-    padding: 14,
-    marginHorizontal: 16,
-    marginBottom: 14,
-  },
-  quickBannerEmoji: { fontSize: 24 },
-  quickBannerTitle: { fontSize: 14, fontWeight: '700', color: C.text },
-  quickBannerSub: { fontSize: 12, color: C.muted, marginTop: 2 },
-  quickBannerArrow: { fontSize: 18, color: C.primary, fontWeight: '700' },
   quickInfoRow: { flexDirection: 'row', gap: 8, marginBottom: 4 },
   quickTag: {
     backgroundColor: C.primary + '20',
