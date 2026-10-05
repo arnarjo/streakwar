@@ -3,7 +3,16 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
-Latest checkpoint: PRIVATE-FIRST01. Owner delegated sharing choice; selected
+Latest checkpoint: PHONE-TEST provisioning approved and persisted in isolated
+vqizpuqmsykmhlyihyry. 23/23 tables have RLS; zero users/private records. Post-commit
+private intake acceptance passed inside rollback, then zero fixtures verified.
+See database/PHONE-TEST-PROVISIONED-2026-10-05.md. Separate Android phone-test
+profile built locally: standalone debug-signed release APK, package
+is.streakwar.phonetest; signature and embedded TEST backend verified. See
+PHONE-TEST-RUNBOOK.md for artifact hash and exact evidence. No paid EAS build or
+store submission. No phone connected; installation/device evidence outstanding.
+
+Previous checkpoint: PRIVATE-FIRST01. Owner delegated sharing choice; selected
 private imports until explicit share. HC now uses a separate canonical private
 table with its own cursor; private points have no public/social effects. Claude
 delivered the summary hook/card; Codex added two reproduced callback-race fixes
@@ -12,8 +21,8 @@ tests and Android JS export pass. Targeted lint 0 errors /10 existing warnings.
 Hosted rollback-only private ownership/dedup/scoring/consent checks PASS; separate
 post-test check confirms 0 tables/0 users/0 markers. See
 handoffs/PRIVATE-FIRST01-integration.md and PRIVATE-FIRST-CONTRACT.md.
-Persistent test provisioning/access approval requested, not assumed. No Expo
-profile wired to TEST yet; no production changes, new APK or device evidence.
+Persistent test provisioning/access was pending at that checkpoint; now approved
+and applied as recorded above. No production changes or device evidence.
 
 Previous checkpoint: isolated hosted rollback rehearsal actually executed. Baseline and
 two-user ownership/solo checks pass; multi-challenge update collision and global

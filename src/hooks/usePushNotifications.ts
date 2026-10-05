@@ -31,6 +31,7 @@ export function usePushNotifications(
   const responseListener = useRef<Notifications.EventSubscription>(undefined);
 
   const refreshReminders = useCallback(async () => {
+    if (process.env.EXPO_PUBLIC_APP_VARIANT === 'phone-test') return;
     if (!userId) return;
     // Drop any reminders left in the OS queue by an older build before
     // re-scheduling the current English ones.
@@ -58,6 +59,7 @@ export function usePushNotifications(
   }, [userId]);
 
   useEffect(() => {
+    if (process.env.EXPO_PUBLIC_APP_VARIANT === 'phone-test') return;
     if (!userId) return;
 
     registerForPushNotifications(userId, refreshReminders).catch((e) =>

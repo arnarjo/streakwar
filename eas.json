@@ -1,6 +1,17 @@
 {
   "cli": { "version": ">= 5.0.0" },
   "build": {
+    "phone-test": {
+      "distribution": "internal",
+      "android": { "buildType": "apk" },
+      "env": {
+        "EXPO_PUBLIC_APP_VARIANT": "phone-test",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://vqizpuqmsykmhlyihyry.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable_ieumOio_CuIRbN5Az69k8g_3LhW-mVu",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID": "",
+        "EXPO_PUBLIC_REVENUECAT_API_KEY_IOS": ""
+      }
+    },
     "development": {
       "developmentClient": true,
       "distribution": "internal"
