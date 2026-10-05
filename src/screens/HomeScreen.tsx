@@ -1,13 +1,13 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, StyleSheet, FlatList, RefreshControl,
-  TouchableOpacity, StatusBar, Animated as RNAnimated,
+  TouchableOpacity, StatusBar, Platform, Animated as RNAnimated,
 } from 'react-native';
 import ReAnimated, {
   useSharedValue, withRepeat, withSequence, withTiming, useAnimatedStyle,
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useAuth } from '../hooks/useAuth';
 import { useWorkoutFeed } from '../hooks/useWorkoutFeed';
 import { useStreaks } from '../hooks/useStreaks';
@@ -17,6 +17,7 @@ import { useLeague } from '../hooks/useLeague';
 import { LEAGUE_TIER_META } from '../types/database';
 import type { WorkoutComment, LeagueTier } from '../types/database';
 import WorkoutPostCard from '../components/WorkoutPostCard';
+import PrivateActivitySummaryCard from '../components/PrivateActivitySummaryCard';
 import ChallengeCard from '../components/ChallengeCard';
 import StreakMilestoneCard from '../components/StreakMilestoneCard';
 import type { MilestoneItem } from '../components/StreakMilestoneCard';
@@ -29,6 +30,7 @@ import type { AppNavigationProp } from '../navigation/types';
 export default function HomeScreen() {
   const { profile } = useAuth();
   const navigation = useNavigation<AppNavigationProp>();
+  const isFocused = useIsFocused();
   const { feed, loading, fetchFeed, toggleReaction, fetchComments, addComment, deleteWorkout } = useWorkoutFeed(profile?.id ?? '');
   const { myChallenges, refresh: refreshChallenges } = useFitnessChallenges(profile?.id ?? '');
   const { streak } = useStreaks(profile?.id ?? '');
@@ -178,6 +180,9 @@ export default function HomeScreen() {
           refreshControl={<RefreshControl refreshing={loading} onRefresh={onRefresh} tintColor={C.primary} />}
           ListHeaderComponent={
             <>
+              {Platform.OS === 'android' && (
+                <PrivateActivitySummaryCard userId={profile?.id ?? ''} refreshToken={`${isFocused}:${loading}`} />
+              )}
               {streak && streak.current_streak > 0 && (() => {
                 const toNext = 10 - (streak.current_streak % 10);
                 const milestone = Math.ceil(streak.current_streak / 10) * 10;

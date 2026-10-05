@@ -16,6 +16,7 @@ import {
 } from '../lib/healthSyncFeedback';
 
 import { C } from '../theme';
+import PrivateActivitySummaryCard from '../components/PrivateActivitySummaryCard';
 import type { RootStackNavigationProp } from '../navigation/types';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL ?? '';
@@ -196,6 +197,9 @@ export default function ConnectDevicesScreen() {
         </View>
 
         {/* Status */}
+        {Platform.OS === 'android' && (
+          <PrivateActivitySummaryCard userId={profile?.id ?? ''} refreshToken={syncing} />
+        )}
         {permissionNotice && (
           <View style={s.warningRow} accessibilityRole="alert">
             <Text style={s.warningSub}>{permissionNotice}</Text>

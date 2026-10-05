@@ -13,7 +13,6 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ExerciseSessionRecord } from 'react-native-health-connect';
 import { supabase } from './supabase';
-import { getActiveChallengeId } from './db';
 import { toLocalDate } from './dateUtils';
 import { mapHCExerciseType } from './healthMapping';
 import { assertHealthSyncUser } from './healthSyncIdentity';
@@ -225,9 +224,10 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
   }
   const canReadSteps = granted.some((g: any) => g.recordType === 'Steps' && g.accessType === 'read');
 
-  // Never adopt the legacy unscoped cursor: its owner cannot be established.
-  // Each account starts with its own bounded lookback and existing deduplication.
-  const cursorKey = `${LAST_SYNC_KEY}:${userId}`;
+  // Private intake has its own cursor: a public-post cursor does not prove that
+  // any records exist in private storage. Never adopt scoped or unscoped legacy
+  // cursors; each account starts with the bounded seven-day lookback here.
+  const cursorKey = `${LAST_SYNC_KEY}:private-v1:${userId}`;
   const lastSyncRaw = await AsyncStorage.getItem(cursorKey);
   // Subtract the overlap from the stored cursor so late-arriving records
   // (watch syncs, manual entries) are still picked up. First run: 7 days.
@@ -248,8 +248,8 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
   try {
     let insertFailed = false;
     let stepsFailed = false;
-    // Fetch once — reused by both the sessions batch and the steps insert
-    const challengeId = await getActiveChallengeId(userId);
+    // Private intake is independent of challenge membership. Never fall back to
+    // public workout_posts if the private backend is unavailable.
 
     // Read the complete fixed window before importing or advancing its cursor.
     // Fail closed on a broken/unbounded continuation instead of losing records.
@@ -287,7 +287,7 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
       for (const ids of planLookupBatches([...candidates.keys()])) {
         await assertHealthSyncUser(userId);
         const { data: existing, error: lookupError } = await supabase
-          .from('workout_posts')
+          .from('private_health_activities')
           .select('external_activity_id')
           .eq('user_id', userId)
           .eq('source', 'health_connect')
@@ -308,7 +308,6 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
           const durationMin = Number.isFinite(durationMs) ? Math.round(durationMs / 60000) : null;
           return {
             user_id: userId,
-            challenge_id: challengeId,
             activity_type: mapHCExerciseType(session.exerciseType ?? 0),
             duration_minutes: durationMin !== null && durationMin > 0 ? durationMin : null,
             source: 'health_connect',
@@ -323,28 +322,26 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
       // blocks the cursor so the next poll retries safely via dedupe.
       for (const batch of chunk(toInsert)) {
         await assertHealthSyncUser(userId);
-        const { error: batchErr } = await supabase.from('workout_posts').insert(batch);
+        const { error: batchErr } = await supabase.from('private_health_activities').insert(batch);
         if (batchErr?.code === '23505') {
           // A concurrent importer can race the existence query. Retry this
           // batch's rows individually without overwriting saved rows.
           for (const row of batch) {
             await assertHealthSyncUser(userId);
-            const { error } = await supabase.from('workout_posts').insert(row);
+            const { error } = await supabase.from('private_health_activities').insert(row);
             if (!error) {
               synced++;
             } else if (error.code === '23505') {
               // Do not swallow unrelated unique violations. Verify this user's
-              // exact attempted row exists. A trigger's conflict can roll back
-              // the insert while a copy in another challenge still exists.
-              const duplicateQuery = supabase
-                .from('workout_posts')
+              // exact canonical identity exists; sharing never creates copies
+              // in the private table or changes this unique key.
+              const { data: duplicate, error: verifyError } = await supabase
+                .from('private_health_activities')
                 .select('external_activity_id')
                 .eq('user_id', userId)
                 .eq('source', 'health_connect')
-                .eq('external_activity_id', row.external_activity_id);
-              const { data: duplicate, error: verifyError } = await (row.challenge_id == null
-                ? duplicateQuery.is('challenge_id', null)
-                : duplicateQuery.eq('challenge_id', row.challenge_id)).limit(1).maybeSingle();
+                .eq('external_activity_id', row.external_activity_id)
+                .limit(1).maybeSingle();
               if (verifyError || !duplicate) insertFailed = true;
             } else {
               insertFailed = true;
@@ -353,7 +350,8 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
             if (insertFailed) break;
           }
         } else if (batchErr) {
-          console.error('[HealthConnect] batch insert failed:', batchErr.message, batchErr.code);
+          // Database/native errors can contain a failing row's private values.
+          console.error('[HealthConnect] private exercise insert failed');
           insertFailed = true;
         } else {
           synced += batch.length;
@@ -395,9 +393,8 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
         await assertHealthSyncUser(userId);
         // Atomic insert — if the row already exists, update steps in place.
         // This eliminates the SELECT-then-INSERT race condition from concurrent syncs.
-        const { error: insertErr } = await supabase.from('workout_posts').insert({
+        const { error: insertErr } = await supabase.from('private_health_activities').insert({
           user_id: userId,
-          challenge_id: challengeId,
           activity_type: 'walk',
           steps: totalSteps,
           source: 'health_connect',
@@ -407,25 +404,24 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
 
         if (insertErr) {
           if (insertErr.code === '23505') {
-            // Refresh this source's existing copies without moving them between
-            // challenges. Reassigning every copy to one challenge violates the
-            // per-challenge unique index. New sharing is not an update side effect.
+            // Replace one canonical daily snapshot. No challenge fields or
+            // public scoring/fan-out triggers exist on private intake.
             await assertHealthSyncUser(userId);
             const { count: updatedCount, error: updateError } = await supabase
-              .from('workout_posts')
+              .from('private_health_activities')
               .update({ steps: totalSteps }, { count: 'exact' })
               .eq('user_id', userId)
               .eq('source', 'health_connect')
               .eq('external_activity_id', `steps_${localDate}`);
             if (updateError) throw updateError;
-            if (updatedCount == null || !Number.isInteger(updatedCount) || updatedCount < 1) {
+            if (updatedCount !== 1) {
               throw new Error('Health Connect step conflict did not match a saved row');
             }
             stepsUpdated = true;
           } else {
             stepsFailed = true;
             stepsStatus = 'failed';
-            console.warn('[HealthConnect] steps insert failed:', insertErr);
+            console.warn('[HealthConnect] private steps insert failed');
           }
         } else {
           synced++;
@@ -433,11 +429,11 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
         }
       }
       if (!stepsFailed) stepsStatus = 'ok';
-    } catch (e) {
+    } catch {
       stepsFailed = true;
       // Without the read grant the first statement threw before any attempt.
       stepsStatus = canReadSteps ? 'failed' : 'skipped';
-      console.warn('[HealthConnect] steps sync failed:', e);
+      console.warn('[HealthConnect] private steps sync failed');
     }
     if (!insertFailed) {
       await assertHealthSyncUser(userId);
@@ -445,8 +441,8 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
       cursorAdvanced = true;
     }
     completed = !insertFailed && !stepsFailed;
-  } catch (e) {
-    console.warn('[HealthConnect] poll failed:', e);
+  } catch {
+    console.warn('[HealthConnect] private poll failed');
     // Do not advance LAST_SYNC_KEY on failure — retry from same window next poll.
   }
 

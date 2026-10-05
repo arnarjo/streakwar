@@ -48,6 +48,26 @@ beforeEach(() => {
 
 afterEach(() => jest.restoreAllMocks());
 
+it.each(['exercise', 'steps', 'read'])('does not log private values from %s errors', async phase => {
+  const warn = jest.spyOn(console, 'warn').mockImplementation(() => {});
+  const error = jest.spyOn(console, 'error').mockImplementation(() => {});
+  const failure = { code: '23514', message: 'private-record-value', details: 'private-record-value' };
+  if (phase === 'read') jest.mocked(readRecords).mockRejectedValue(failure);
+  if (phase === 'steps') jest.mocked(aggregateRecord<'Steps'>).mockResolvedValue({ COUNT_TOTAL: 5000, dataOrigins: [] });
+  if (phase === 'exercise') jest.mocked(readRecords<'ExerciseSession'>).mockResolvedValue({ records: [{
+    metadata: { id: 'private-id' }, exerciseType: 0,
+    startTime: '2026-10-05T10:00:00Z', endTime: '2026-10-05T10:30:00Z',
+  }] });
+  const query = { eq: jest.fn().mockReturnThis(), in: jest.fn().mockResolvedValue({ data: [], error: null }) };
+  (supabase.from as jest.Mock).mockReturnValue({
+    select: jest.fn().mockReturnValue(query), insert: jest.fn().mockResolvedValue({ error: failure }),
+  });
+  const result = await pollHealthConnect('synthetic-user');
+  expect(result.completed).toBe(false);
+  expect([...warn.mock.calls, ...error.mock.calls].length).toBeGreaterThan(0);
+  expect(JSON.stringify([...warn.mock.calls, ...error.mock.calls])).not.toContain('private-record-value');
+});
+
 it('does not confirm a write-only Health Connect grant', async () => {
   jest.mocked(getGrantedPermissions).mockResolvedValue([{ accessType: 'write', recordType: 'ExerciseSession' }]);
   await expect(checkHealthConnectGranted()).resolves.toBe(false);
@@ -186,19 +206,22 @@ describe('exercise batch conflict recovery', () => {
       ['external_activity_id', 'existing'],
     ]);
     expect(query.limit).toHaveBeenCalledWith(1);
-    expect(query.is).toHaveBeenCalledWith('challenge_id', null);
+    expect(query.is).not.toHaveBeenCalled();
     expect(confirm).toHaveBeenCalledTimes(1);
   });
 
-  it('requires the attempted challenge on duplicate verification, not just another copy', async () => {
+  it('never consults challenge membership or attaches imports to a challenge', async () => {
     jest.mocked(getActiveChallengeId).mockResolvedValue('challenge-one');
-    confirm.mockResolvedValue({ data: null, error: null });
     const result = await pollHealthConnect('synthetic-user');
-    const query = (supabase.from as jest.Mock).mock.results[0].value.select();
-    expect(query.eq).toHaveBeenLastCalledWith('challenge_id', 'challenge-one');
-    expect(query.is).not.toHaveBeenCalled();
-    expect(result.exercise?.cursorAdvanced).toBe(false);
-    expect(result.completed).toBe(false);
+    expect(getActiveChallengeId).not.toHaveBeenCalled();
+    expect((supabase.from as jest.Mock).mock.calls.every(([table]) => table === 'private_health_activities')).toBe(true);
+    for (const [payload] of insert.mock.calls) {
+      for (const row of Array.isArray(payload) ? payload : [payload]) {
+        expect(row).not.toHaveProperty('challenge_id');
+        expect(row).not.toHaveProperty('parent_workout_id');
+      }
+    }
+    expect(result.completed).toBe(true);
   });
 });
 
@@ -264,7 +287,10 @@ it('does not report completion or advance the cursor after a records read failur
 });
 
 it('keeps a different cursor per user and ignores the unowned legacy cursor', async () => {
-  const saved = new Map([['health_connect_last_sync', '2099-01-01T00:00:00Z']]);
+  const saved = new Map([
+    ['health_connect_last_sync', '2099-01-01T00:00:00Z'],
+    ['health_connect_last_sync:user-a', '2099-01-01T00:00:00Z'],
+  ]);
   storage.getItem.mockImplementation(async key => saved.get(key) ?? null);
   storage.setItem.mockImplementation(async (key, value) => { saved.set(key, value); });
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-a' } } }, error: null });
@@ -272,10 +298,10 @@ it('keeps a different cursor per user and ignores the unowned legacy cursor', as
   (supabase.auth.getSession as jest.Mock).mockResolvedValue({ data: { session: { user: { id: 'user-b' } } }, error: null });
   await pollHealthConnect('user-b');
   expect(storage.getItem.mock.calls).toEqual([
-    ['health_connect_last_sync:user-a'], ['health_connect_last_sync:user-b'],
+    ['health_connect_last_sync:private-v1:user-a'], ['health_connect_last_sync:private-v1:user-b'],
   ]);
-  expect(saved.has('health_connect_last_sync:user-a')).toBe(true);
-  expect(saved.has('health_connect_last_sync:user-b')).toBe(true);
+  expect(saved.has('health_connect_last_sync:private-v1:user-a')).toBe(true);
+  expect(saved.has('health_connect_last_sync:private-v1:user-b')).toBe(true);
   const secondWindow = jest.mocked(readRecords).mock.calls[1][1].timeRangeFilter;
   if (secondWindow.operator !== 'between') throw new Error('Expected a bounded polling window');
   expect(new Date(secondWindow.startTime).getTime()).toBeLessThan(Date.now());
@@ -286,7 +312,7 @@ it('does not report full completion when steps fail, but saves the exercise curs
   jest.mocked(aggregateRecord).mockRejectedValueOnce(new Error('Steps denied'));
   jest.mocked(readRecords).mockResolvedValueOnce({ records: [] }).mockRejectedValueOnce(new Error('Steps denied'));
   await expect(pollHealthConnect('synthetic-user')).resolves.toMatchObject({ completed: false });
-  expect(storage.setItem).toHaveBeenCalledWith('health_connect_last_sync:synthetic-user', expect.any(String));
+  expect(storage.setItem).toHaveBeenCalledWith('health_connect_last_sync:private-v1:synthetic-user', expect.any(String));
 });
 
 it('does not report completion if persisting the cursor fails', async () => {
@@ -655,11 +681,11 @@ describe('per-type outcomes (additive contract)', () => {
     });
   });
 
-  it('refreshes all matching HC copies without moving challenges or touching another source', async () => {
+  it('refreshes the one private daily snapshot regardless of active challenges', async () => {
     steps(6000);
     jest.mocked(getActiveChallengeId).mockResolvedValue('challenge-one');
     insert.mockResolvedValue({ error: { code: '23505' } });
-    update.mockReturnValue({ error: null, count: 2 });
+    update.mockReturnValue({ error: null, count: 1 });
     const result = await pollHealthConnect('synthetic-user');
     const table = (supabase.from as jest.Mock).mock.results[0].value;
     expect(table.update).toHaveBeenCalledWith({ steps: 6000 }, { count: 'exact' });
@@ -669,9 +695,12 @@ describe('per-type outcomes (additive contract)', () => {
       ['external_activity_id', expect.stringMatching(/^steps_\d{4}-\d{2}-\d{2}$/)],
     ]);
     expect(result.steps).toEqual(stepsOutcome('ok', 0, true));
+    expect(getActiveChallengeId).not.toHaveBeenCalled();
+    expect(insert).toHaveBeenCalledWith(expect.not.objectContaining({ challenge_id: expect.anything() }));
+    expect((supabase.from as jest.Mock).mock.calls.every(([name]) => name === 'private_health_activities')).toBe(true);
   });
 
-  it.each([0, null, undefined, NaN, -1, 1.5])('does not report success for an unconfirmed steps update count (%s)', async count => {
+  it.each([0, null, undefined, NaN, -1, 1.5, 2])('does not report success for an unconfirmed steps update count (%s)', async count => {
     steps(6000);
     insert.mockResolvedValue({ error: { code: '23505' } });
     update.mockReturnValue({ error: null, count });

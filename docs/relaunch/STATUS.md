@@ -3,7 +3,19 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
-Current work: isolated hosted rollback rehearsal actually executed. Baseline and
+Latest checkpoint: PRIVATE-FIRST01. Owner delegated sharing choice; selected
+private imports until explicit share. HC now uses a separate canonical private
+table with its own cursor; private points have no public/social effects. Claude
+delivered the summary hook/card; Codex added two reproduced callback-race fixes
+and integrated Android Home/Connect. 484 tests /19 suites, typecheck, seven Node
+tests and Android JS export pass. Targeted lint 0 errors /10 existing warnings.
+Hosted rollback-only private ownership/dedup/scoring/consent checks PASS; separate
+post-test check confirms 0 tables/0 users/0 markers. See
+handoffs/PRIVATE-FIRST01-integration.md and PRIVATE-FIRST-CONTRACT.md.
+Persistent test provisioning/access approval requested, not assumed. No Expo
+profile wired to TEST yet; no production changes, new APK or device evidence.
+
+Previous checkpoint: isolated hosted rollback rehearsal actually executed. Baseline and
 two-user ownership/solo checks pass; multi-challenge update collision and global
 double credit reproduced. Client correction preserves challenge links, scopes
 updates/duplicate confirmation to Health Connect, and requires nonzero update
@@ -13,8 +25,9 @@ and positive-integer count validation; both integrated. 428 Jest tests /18 suite
 typecheck, Android JS export and four baseline-renderer tests pass; targeted lint
 0 errors /2 existing warnings. See handoffs/HC-CATALOG02-integration.md and
 database/HOSTED-REHEARSAL-2026-10-05.md.
-No persistent test schema or production data changes. Sharing choice and coherent
-global scoring remain open; existing Expo profiles still point at production.
+No persistent test schema or production data changes at that checkpoint. Sharing
+choice was then open; it is now settled above. Historical global scoring remains
+unfixed; existing Expo profiles still point at production.
 
 Latest accepted source checkpoint: AUTH-REFRESH01 (C02-R2 F3). Same-user resolved
 profile refresh preserves the mounted navigation gate and current profile on
