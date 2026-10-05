@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, RefreshControl, Alert, Linking, Switch, Platform,
@@ -62,6 +62,15 @@ export default function ProfileScreen() {
   const { achievements } = useAchievements(profile?.id ?? '');
   const { isPro, offering, purchase, restore } = usePremium(profile?.id ?? '');
   const { myTier } = useLeague(profile?.id ?? '');
+
+  // Account generation for manual-sync Alerts: bumped synchronously (layout
+  // effect) on account change and on unmount, so a result that resolves after
+  // A -> B, A -> B -> A or unmount is never shown. Captured per invocation.
+  const syncGeneration = useRef(0);
+  useLayoutEffect(() => {
+    syncGeneration.current += 1;
+    return () => { syncGeneration.current += 1; };
+  }, [profile?.id]);
 
   const [upgradeVisible, setUpgradeVisible] = useState(false);
   const [totalWorkouts, setTotalWorkouts] = useState(0);
@@ -154,11 +163,14 @@ export default function ProfileScreen() {
   }
 
   async function handleSyncNow() {
+    const generation = syncGeneration.current;
     try {
       const count = await syncNow();
+      if (generation !== syncGeneration.current) return;
       const feedback = formatSyncSuccess(count);
       Alert.alert(feedback.title, feedback.message);
     } catch (error) {
+      if (generation !== syncGeneration.current) return;
       const feedback = formatSyncError(error);
       Alert.alert(feedback.title, feedback.message);
     }

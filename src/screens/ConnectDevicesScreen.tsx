@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, StatusBar, Platform, AppState, Linking,
@@ -35,6 +35,15 @@ export default function ConnectDevicesScreen() {
   } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
+  // Account generation for manual-sync Alerts: bumped synchronously (layout
+  // effect) on account change and on unmount, so a result that resolves after
+  // A -> B, A -> B -> A or unmount is never shown. Captured per invocation.
+  const syncGeneration = useRef(0);
+  useLayoutEffect(() => {
+    syncGeneration.current += 1;
+    return () => { syncGeneration.current += 1; };
+  }, [profile?.id]);
+
   const awaitingHCReturn = useRef(false);
   const mounted = useRef(true);
 
@@ -148,11 +157,14 @@ export default function ConnectDevicesScreen() {
   }
 
   async function handleSyncNow() {
+    const generation = syncGeneration.current;
     try {
       const count = await syncNow();
+      if (generation !== syncGeneration.current) return;
       const feedback = formatSyncSuccess(count);
       Alert.alert(feedback.title, feedback.message);
     } catch (error) {
+      if (generation !== syncGeneration.current) return;
       const feedback = formatSyncError(error);
       Alert.alert(feedback.title, feedback.message);
     }

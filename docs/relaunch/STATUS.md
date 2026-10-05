@@ -3,7 +3,22 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
-Latest accepted checkpoint: HC-PARTIAL02B foreground feedback. Manual workout
+Latest accepted checkpoint: HC-ALERT01 manual-sync Alert isolation. Both screens
+suppress stale success/error feedback after account change (including A-B-A) or
+unmount. Local checks: 382 tests / 17 suites and typecheck PASS; targeted lint
+0 errors / 4 existing warnings. See handoffs/HC-ALERT01-integration.md.
+Next: consolidated C02 review and exact device-test checkpoint. No device proof.
+
+GitHub backup established: remote `codex/streakwar-baseline` commit `0ead6e3`
+is an exact-tree snapshot of local `8c3ed86`, verified by tree SHA
+`6e41807a7e1fa19ef57f1414b5fc3cf2ba0b5c78`. Publication used the connected
+personal arnarjo GitHub account; local detailed history was not rewritten.
+The remote snapshot history differs from local history; do not force-push.
+Default branch master and store deployments were not changed. Earlier push
+failure notes below are historical. This checkpoint will be published as a
+fast-forward child of that snapshot after acceptance.
+
+Previous accepted checkpoint: HC-PARTIAL02B foreground feedback. Manual workout
 counts exclude Steps; both screens show accurate partial/missing-permission
 feedback and Android full-sync labels. Shared timestamp/background semantics are
 unchanged. Codex added two failing-then-fixed formatter regressions and corrected

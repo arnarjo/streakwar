@@ -36,8 +36,10 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
 jest.mock('../src/lib/supabase', () => ({ supabase: { from: jest.fn() } }));
 jest.mock('../src/lib/healthConnect', () => ({ openHealthConnectPermissions: jest.fn(), getLastHCDebug: jest.fn(() => '') }));
 jest.mock('../src/lib/streakNotification', () => ({ scheduleStreakReminder: jest.fn(), cancelStreakReminders: jest.fn() }));
+// Mutable auth fixture so tests can switch accounts and re-render the real screens.
+const mockAuth = { profile: { id: 'user-a', username: 'tester', full_name: 'Test User', total_points: 0 } as { id: string; username: string; full_name: string; total_points: number } | null };
 jest.mock('../src/hooks/useAuth', () => ({
-  useAuth: () => ({ profile: { id: 'user-a', username: 'tester', full_name: 'Test User', total_points: 0 }, signOut: jest.fn() }),
+  useAuth: () => ({ profile: mockAuth.profile, signOut: jest.fn() }),
 }));
 jest.mock('../src/hooks/useStreaks', () => ({
   useStreaks: () => ({ streak: null, freezeCredits: 0, frozenToday: false, freezeStreak: jest.fn() }),
@@ -103,6 +105,7 @@ beforeEach(() => {
   };
   for (const method of ['select', 'eq', 'gte']) query[method] = jest.fn(() => query);
   (supabase.from as jest.Mock).mockReturnValue(query);
+  mockAuth.profile = { id: 'user-a', username: 'tester', full_name: 'Test User', total_points: 0 };
   jest.mocked(useHealthSync).mockReturnValue(hook() as never);
 });
 
@@ -120,7 +123,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const expected = formatSyncSuccess(count);
     expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
     expect(Alert.alert).not.toHaveBeenCalledWith('Nothing new', expect.anything());
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 
   it('a typed partial result (exercise ok, Steps permission missing) is shown with its counts', async () => {
@@ -135,7 +138,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const expected = formatSyncError(new HealthSyncIncompleteError(result));
     expect(expected.message).toContain('2 new workouts');
     expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 
   it('a partial exercise failure states the saved count and never claims success', async () => {
@@ -148,7 +151,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const tree = await mount();
     await press(pressable(tree.root, syncLabel));
     expect(Alert.alert).toHaveBeenCalledWith('Sync incomplete', '50 workouts were saved before a problem occurred. Please retry to import the rest.');
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 
   it('an unknown error shows only the generic guidance, never its text', async () => {
@@ -158,7 +161,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const expected = formatSyncError(new Error('x'));
     expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
     expect(JSON.stringify(jest.mocked(Alert.alert).mock.calls)).not.toContain('workout_posts');
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 
   it('the stale row and alert use the shared wording and do not blame battery optimization', async () => {
@@ -169,7 +172,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const [title, message] = jest.mocked(Alert.alert).mock.calls[0];
     expect([title, message]).toEqual([STALE_SYNC_ALERT.title, STALE_SYNC_ALERT.message]);
     expect(JSON.stringify(jest.mocked(Alert.alert).mock.calls)).not.toMatch(/battery/i);
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 
   it('labels the Android native timestamp as a full sync', async () => {
@@ -178,7 +181,7 @@ describe.each(screens)('$name uses the shared sync feedback', ({ Screen, syncLab
     const all = text(tree.root);
     expect(all).toContain('Last full sync');
     expect(all).not.toMatch(/Last synced/);
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
   });
 });
 
@@ -194,7 +197,7 @@ describe('timestamp labels are per provider', () => {
     await act(async () => { tree = renderer.create(createElement(ConnectDevicesScreen as never)); });
     expect(text(tree.root)).toMatch(/Last synced/);
     expect(text(tree.root)).not.toMatch(/Last full sync/);
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
 
     (Platform as { OS: string }).OS = 'ios';
     jest.mocked(useHealthSync).mockReturnValue(hook({
@@ -205,6 +208,117 @@ describe('timestamp labels are per provider', () => {
     await act(async () => { tree = renderer.create(createElement(ConnectDevicesScreen as never)); });
     expect(text(tree.root)).toMatch(/Last synced/);
     expect(text(tree.root)).not.toMatch(/Last full sync/);
-    act(() => { tree.unmount(); });
+    await act(async () => { tree.unmount(); });
+  });
+});
+
+describe.each(screens)('$name suppresses a stale manual-sync Alert', ({ Screen, syncLabel }) => {
+  type Deferred = { promise: Promise<number>; resolve(value: number): void; reject(error: unknown): void };
+  const deferred = (): Deferred => {
+    let resolve!: (value: number) => void;
+    let reject!: (error: unknown) => void;
+    const promise = new Promise<number>((res, rej) => { resolve = res; reject = rej; });
+    return { promise, resolve, reject };
+  };
+  const user = (id: string) => ({ id, username: id, full_name: id, total_points: 0 });
+  const mount = async () => {
+    let tree!: ReturnType<typeof renderer.create>;
+    await act(async () => { tree = renderer.create(createElement(Screen as never)); });
+    return tree;
+  };
+  const rerenderAs = (tree: ReturnType<typeof renderer.create> & { update?: (e: ReactElement) => void }, id: string) =>
+    act(async () => { mockAuth.profile = user(id); (tree as unknown as { update(e: ReactElement): void }).update(createElement(Screen as never)); });
+  /** Starts a manual sync without awaiting it, as a user tap would. */
+  const start = async (tree: ReturnType<typeof renderer.create>, pending: Deferred) => {
+    syncNow.mockReturnValueOnce(pending.promise);
+    let invocation!: Promise<unknown>;
+    await act(async () => { invocation = Promise.resolve((pressable(tree.root, syncLabel).props.onPress as () => unknown)()); });
+    return { invocation };   // boxed: an async function would otherwise await the pending sync
+  };
+  const partialFromA = () => new HealthSyncIncompleteError({
+    synced: 7, ranWithPermissions: true, completed: false,
+    exercise: { status: 'failed', written: 7, cursorAdvanced: false },
+    steps: { status: 'ok', written: 0, updated: false },
+  });
+  const settle = async (invocation: Promise<unknown>, action: () => void) => {
+    await act(async () => { action(); await invocation; });
+  };
+
+  it.each([['success', 4], ['typed partial error carrying A\'s counts', 'error']] as const)('after A -> B: %s is not shown', async (_n, outcome) => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await rerenderAs(tree, 'user-b');
+    await settle(invocation, () => (outcome === 'error' ? pending.reject(partialFromA()) : pending.resolve(outcome)));
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await act(async () => { tree.unmount(); });
+  });
+
+  it.each([['success', 4], ['typed partial error carrying A\'s counts', 'error']] as const)('after A -> B -> A: %s is not shown (generation, not just the latest id)', async (_n, outcome) => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await rerenderAs(tree, 'user-b');
+    await rerenderAs(tree, 'user-a');
+    await settle(invocation, () => (outcome === 'error' ? pending.reject(partialFromA()) : pending.resolve(outcome)));
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await act(async () => { tree.unmount(); });
+  });
+
+  it.each([['success', 4], ['typed partial error', 'error']] as const)('after unmount: %s is not shown', async (_n, outcome) => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await act(async () => { tree.unmount(); });
+    await settle(invocation, () => (outcome === 'error' ? pending.reject(partialFromA()) : pending.resolve(outcome)));
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it('a sync started after the account change shows its own feedback normally', async () => {
+    const stale = deferred();
+    const fresh = deferred();
+    const tree = await mount();
+    const { invocation: staleInvocation } = await start(tree, stale);
+    await rerenderAs(tree, 'user-b');
+    const { invocation: freshInvocation } = await start(tree, fresh);
+    await settle(staleInvocation, () => stale.resolve(9));
+    expect(Alert.alert).not.toHaveBeenCalled();
+    await settle(freshInvocation, () => fresh.resolve(2));
+    const expected = formatSyncSuccess(2);
+    expect(Alert.alert).toHaveBeenCalledTimes(1);
+    expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('same account: a deferred success still shows the existing feedback, even across same-user re-renders', async () => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await rerenderAs(tree, 'user-a');
+    await settle(invocation, () => pending.resolve(3));
+    const expected = formatSyncSuccess(3);
+    expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('same account: a deferred typed error still shows the existing feedback', async () => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await settle(invocation, () => pending.reject(partialFromA()));
+    const expected = formatSyncError(partialFromA());
+    expect(expected.message).toContain('7 workouts were saved');
+    expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
+    await act(async () => { tree.unmount(); });
+  });
+
+  it('same account: a deferred generic error still shows the generic guidance', async () => {
+    const pending = deferred();
+    const tree = await mount();
+    const { invocation } = await start(tree, pending);
+    await settle(invocation, () => pending.reject(new Error('x')));
+    const expected = formatSyncError(new Error('x'));
+    expect(Alert.alert).toHaveBeenCalledWith(expected.title, expected.message);
+    await act(async () => { tree.unmount(); });
   });
 });
