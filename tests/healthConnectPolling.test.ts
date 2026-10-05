@@ -132,6 +132,8 @@ describe('exercise batch conflict recovery', () => {
       eq: jest.fn(),
       in: jest.fn().mockResolvedValue({ data: [], error: null }),
       maybeSingle: confirm,
+      limit: jest.fn().mockReturnThis(),
+      is: jest.fn().mockReturnThis(),
     };
     query.eq.mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue(query), insert });
@@ -179,9 +181,24 @@ describe('exercise batch conflict recovery', () => {
   it('binds duplicate confirmation to the account and exact exercise ID', async () => {
     await pollHealthConnect('synthetic-user');
     const query = (supabase.from as jest.Mock).mock.results[0].value.select();
-    expect(query.eq).toHaveBeenCalledWith('user_id', 'synthetic-user');
-    expect(query.eq).toHaveBeenCalledWith('external_activity_id', 'existing');
+    expect(query.eq.mock.calls.slice(-3)).toEqual([
+      ['user_id', 'synthetic-user'], ['source', 'health_connect'],
+      ['external_activity_id', 'existing'],
+    ]);
+    expect(query.limit).toHaveBeenCalledWith(1);
+    expect(query.is).toHaveBeenCalledWith('challenge_id', null);
     expect(confirm).toHaveBeenCalledTimes(1);
+  });
+
+  it('requires the attempted challenge on duplicate verification, not just another copy', async () => {
+    jest.mocked(getActiveChallengeId).mockResolvedValue('challenge-one');
+    confirm.mockResolvedValue({ data: null, error: null });
+    const result = await pollHealthConnect('synthetic-user');
+    const query = (supabase.from as jest.Mock).mock.results[0].value.select();
+    expect(query.eq).toHaveBeenLastCalledWith('challenge_id', 'challenge-one');
+    expect(query.is).not.toHaveBeenCalled();
+    expect(result.exercise?.cursorAdvanced).toBe(false);
+    expect(result.completed).toBe(false);
   });
 });
 
@@ -286,9 +303,10 @@ it('reports completion for a successful empty poll', async () => {
 it.each(['insert', 'update'])('reports incomplete sync when a steps %s fails', async failure => {
   jest.spyOn(console, 'warn').mockImplementation(() => {});
   jest.mocked(aggregateRecord<'Steps'>).mockResolvedValue({ COUNT_TOTAL: 500, dataOrigins: [] });
-  const update = jest.fn().mockReturnValue({ eq: jest.fn().mockReturnValue({
-    eq: jest.fn().mockResolvedValue({ error: { message: 'Offline' } }),
-  }) });
+  const updateQuery = { eq: jest.fn(), then: (resolve: (v: unknown) => unknown) =>
+    resolve({ error: { message: 'Offline' }, count: null }) };
+  updateQuery.eq.mockReturnValue(updateQuery);
+  const update = jest.fn().mockReturnValue(updateQuery);
   (supabase.from as jest.Mock).mockReturnValue({
     insert: jest.fn().mockResolvedValue({ error: { code: failure === 'update' ? '23505' : 'NETWORK', message: 'Failed' } }),
     update,
@@ -355,7 +373,7 @@ describe('bounded exercise batches', () => {
     inFn.mockReset().mockResolvedValue({ data: [], error: null });
     confirm.mockReset();
     eq.mockReset();
-    const query = { eq, in: inFn, maybeSingle: confirm };
+    const query = { eq, in: inFn, maybeSingle: confirm, limit: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis() };
     eq.mockReturnValue(query);
     (supabase.from as jest.Mock).mockReturnValue({ select: jest.fn().mockReturnValue(query), insert });
   });
@@ -543,12 +561,12 @@ describe('per-type outcomes (additive contract)', () => {
     update.mockReset();
     inFn.mockReset().mockResolvedValue({ data: [], error: null });
     confirm.mockReset();
-    const query = { eq: jest.fn(), in: inFn, maybeSingle: confirm };
+    const query = { eq: jest.fn(), in: inFn, maybeSingle: confirm, limit: jest.fn().mockReturnThis(), is: jest.fn().mockReturnThis() };
     query.eq.mockReturnValue(query);
     const updateQuery = { eq: jest.fn() };
     updateQuery.eq.mockReturnValue(updateQuery);
     Object.assign(updateQuery, { then: (resolve: (v: unknown) => unknown) => resolve(update()) });
-    update.mockReturnValue({ error: null });
+    update.mockReturnValue({ error: null, count: 1 });
     (supabase.from as jest.Mock).mockReturnValue({
       select: jest.fn().mockReturnValue(query), insert, update: jest.fn().mockReturnValue(updateQuery),
     });
@@ -635,6 +653,32 @@ describe('per-type outcomes (additive contract)', () => {
     await expect(pollHealthConnect('synthetic-user')).resolves.toEqual({
       synced: 0, ranWithPermissions: true, completed: false, exercise: ok(0), steps: stepsOutcome('failed'),
     });
+  });
+
+  it('refreshes all matching HC copies without moving challenges or touching another source', async () => {
+    steps(6000);
+    jest.mocked(getActiveChallengeId).mockResolvedValue('challenge-one');
+    insert.mockResolvedValue({ error: { code: '23505' } });
+    update.mockReturnValue({ error: null, count: 2 });
+    const result = await pollHealthConnect('synthetic-user');
+    const table = (supabase.from as jest.Mock).mock.results[0].value;
+    expect(table.update).toHaveBeenCalledWith({ steps: 6000 }, { count: 'exact' });
+    const query = table.update.mock.results[0].value;
+    expect(query.eq.mock.calls).toEqual([
+      ['user_id', 'synthetic-user'], ['source', 'health_connect'],
+      ['external_activity_id', expect.stringMatching(/^steps_\d{4}-\d{2}-\d{2}$/)],
+    ]);
+    expect(result.steps).toEqual(stepsOutcome('ok', 0, true));
+  });
+
+  it.each([0, null, undefined, NaN, -1, 1.5])('does not report success for an unconfirmed steps update count (%s)', async count => {
+    steps(6000);
+    insert.mockResolvedValue({ error: { code: '23505' } });
+    update.mockReturnValue({ error: null, count });
+    const result = await pollHealthConnect('synthetic-user');
+    expect(result.steps).toEqual(stepsOutcome('failed'));
+    expect(result.completed).toBe(false);
+    expect(result.exercise).toEqual(ok(0));
   });
 
   it('Steps insert failure other than a conflict: failed with nothing written', async () => {

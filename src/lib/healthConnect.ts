@@ -334,13 +334,17 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
               synced++;
             } else if (error.code === '23505') {
               // Do not swallow unrelated unique violations. Verify this user's
-              // exact external ID exists; migration 002's index spans sources.
-              const { data: duplicate, error: verifyError } = await supabase
+              // exact attempted row exists. A trigger's conflict can roll back
+              // the insert while a copy in another challenge still exists.
+              const duplicateQuery = supabase
                 .from('workout_posts')
                 .select('external_activity_id')
                 .eq('user_id', userId)
-                .eq('external_activity_id', row.external_activity_id)
-                .maybeSingle();
+                .eq('source', 'health_connect')
+                .eq('external_activity_id', row.external_activity_id);
+              const { data: duplicate, error: verifyError } = await (row.challenge_id == null
+                ? duplicateQuery.is('challenge_id', null)
+                : duplicateQuery.eq('challenge_id', row.challenge_id)).limit(1).maybeSingle();
               if (verifyError || !duplicate) insertFailed = true;
             } else {
               insertFailed = true;
@@ -403,19 +407,20 @@ async function pollHealthConnectUnlocked(userId: string): Promise<HealthPollResu
 
         if (insertErr) {
           if (insertErr.code === '23505') {
-            // Unique constraint hit — row was already created today. Update the step
-            // count, and the challenge_id if one is active, so a challenge joined
-            // mid-day still gets credit (never clobber an existing link with null).
-            // The unique index is (user_id, external_activity_id) WITHOUT source,
-            // so do not filter by source — the conflicting row may have been
-            // created by Apple Health before a platform switch.
+            // Refresh this source's existing copies without moving them between
+            // challenges. Reassigning every copy to one challenge violates the
+            // per-challenge unique index. New sharing is not an update side effect.
             await assertHealthSyncUser(userId);
-            const { error: updateError } = await supabase
+            const { count: updatedCount, error: updateError } = await supabase
               .from('workout_posts')
-              .update({ steps: totalSteps, ...(challengeId ? { challenge_id: challengeId } : {}) })
+              .update({ steps: totalSteps }, { count: 'exact' })
               .eq('user_id', userId)
+              .eq('source', 'health_connect')
               .eq('external_activity_id', `steps_${localDate}`);
             if (updateError) throw updateError;
+            if (updatedCount == null || !Number.isInteger(updatedCount) || updatedCount < 1) {
+              throw new Error('Health Connect step conflict did not match a saved row');
+            }
             stepsUpdated = true;
           } else {
             stepsFailed = true;

@@ -21,7 +21,8 @@ publication membership returned. RLS enabled is not a policy correctness proof.
   parent_workout_id. Its `cp.challenge_id != NEW.challenge_id` excludes all rows
   when NEW.challenge_id is NULL (SQL NULL comparison); this is current behavior.
 - Health Connect duplicate verification uses maybeSingle without challenge/parent
-  qualification. Its Steps update matches user/source/external ID and sets every
+  qualification. At this captured base its Steps update matches user/external ID
+  (NOT source) and sets every
   matched row to one challenge_id. With multiple copies this can hit uniqueness
   conflicts. Reproduce in an isolated SQL test before accepting a correction.
 - Current award_global_points_on_workout unconditionally adds workout_points

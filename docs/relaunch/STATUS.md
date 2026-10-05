@@ -3,6 +3,19 @@
 Updated: 2026-10-05. Baseline branch: `codex/streakwar-baseline`.
 This file records Codex progress; Claude owns `CLAUDE_STATUS.md`.
 
+Current work: isolated hosted rollback rehearsal actually executed. Baseline and
+two-user ownership/solo checks pass; multi-challenge update collision and global
+double credit reproduced. Client correction preserves challenge links, scopes
+updates/duplicate confirmation to Health Connect, and requires nonzero update
+count. Expanded hosted SQL confirms two copies update without touching another
+source. Claude HC-CATALOG02 review prompted exact-challenge duplicate verification
+and positive-integer count validation; both integrated. 428 Jest tests /18 suites,
+typecheck, Android JS export and four baseline-renderer tests pass; targeted lint
+0 errors /2 existing warnings. See handoffs/HC-CATALOG02-integration.md and
+database/HOSTED-REHEARSAL-2026-10-05.md.
+No persistent test schema or production data changes. Sharing choice and coherent
+global scoring remain open; existing Expo profiles still point at production.
+
 Latest accepted source checkpoint: AUTH-REFRESH01 (C02-R2 F3). Same-user resolved
 profile refresh preserves the mounted navigation gate and current profile on
 transient failure. Codex reproduced 8 baseline failures, then all 420 tests /18
