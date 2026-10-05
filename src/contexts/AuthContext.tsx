@@ -4,15 +4,16 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
+import { Alert } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
 import * as Linking from 'expo-linking';
 import { supabase } from '../lib/supabase';
 import { configurePurchases, logOutPurchases } from '../hooks/usePremium';
 import { cancelStreakReminders } from '../lib/streakNotification';
-import { clearUserId, unregisterBackgroundSync } from '../lib/backgroundSync';
-import { teardownHealthKit } from '../lib/healthKit';
+import { requestHealthSyncOwner, whenHealthSyncSettled } from '../lib/healthSyncLifecycle';
 import type { Profile } from '../types/database';
 import type { AuthError, Session } from '@supabase/supabase-js';
 
@@ -35,7 +36,7 @@ export interface AuthContextValue {
   signIn: (email: string, password: string) => Promise<{ error: AuthError | null }>;
   signInWithGoogle: () => Promise<{ error: AuthError | Error | null }>;
   signInWithFacebook: () => Promise<{ error: AuthError | Error | null }>;
-  signOut: () => Promise<void>;
+  signOut: () => Promise<{ error: AuthError | Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -92,11 +93,24 @@ async function signInWithFacebook() {
   return signInWithProvider('facebook');
 }
 
-async function signOut() {
-  await supabase.auth.signOut();
-  clearUserId().catch(() => {});
-  unregisterBackgroundSync().catch(() => {});
-  teardownHealthKit();
+async function signOut(): Promise<{ error: AuthError | Error | null }> {
+  let error: AuthError | Error | null = null;
+  try {
+    ({ error } = await supabase.auth.signOut());
+  } catch (e) {
+    error = e instanceof Error ? e : new Error(String(e));
+  }
+  if (error) {
+    // The session is still active (no SIGNED_OUT event), so do not tear down
+    // the account's local health state. Never reject into the caller's onPress.
+    Alert.alert('Sign out failed', 'We could not sign you out. Please check your connection and try again.');
+    return { error };
+  }
+  // SIGNED_OUT already requested cleanup from the auth callback. Wait for the
+  // serialized queue instead of running a second, independent cleanup that
+  // could finish after another account has started.
+  await whenHealthSyncSettled();
+  return { error: null };
 }
 
 // --- Provider --------------------------------------------------------------
@@ -108,13 +122,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [needsPasswordReset, setNeedsPasswordReset] = useState(false);
 
-  const fetchProfile = useCallback(async (userId: string) => {
+  // Identity/revision guards: a profile response only applies if no newer
+  // auth event, account change or unmount happened since it was requested.
+  const identityRef = useRef<string | null>(null);
+  const profileRevision = useRef(0);
+  // User whose password-recovery session is pending; reset UI is tied to it.
+  const recoveryUserRef = useRef<string | null>(null);
+
+  const fetchProfile = useCallback(async (userId: string, revision: number) => {
+    const isLatest = () => revision === profileRevision.current;
     try {
       const { data, error } = await supabase
         .from('profiles')
         .select('id, username, full_name, avatar_url, total_points, streak_freeze_credits, bio, is_admin, created_at')
         .eq('id', userId)
         .single();
+      if (!isLatest()) return;
 
       if (!error && data) {
         setProfile(data);
@@ -124,10 +147,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfileMissing(error?.code !== 'PGRST116'); // only flag missing if it's truly not found
       }
     } catch {
+      if (!isLatest()) return;
       setProfile(null);
       setProfileMissing(false);
     } finally {
-      setLoading(false);
+      if (isLatest()) setLoading(false);
     }
   }, []);
 
@@ -135,16 +159,53 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // onAuthStateChange fires INITIAL_SESSION on mount with the current session,
     // so we don't need a separate getSession() call. This is the ONLY auth
     // subscription in the app — every consumer reads this context instead of
-    // opening its own.
+    // opening its own. The callback must stay synchronous (Supabase holds its
+    // auth lock while it runs): everything async is deferred to the lifecycle
+    // queue or to un-awaited calls.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      const nextUserId = session?.user?.id ?? null;
+
       if (event === 'PASSWORD_RECOVERY') {
         setNeedsPasswordReset(true);
         setLoading(false);
+        recoveryUserRef.current = nextUserId;
+        // The recovery session is not adopted as the signed-in user, but a
+        // DIFFERENT previously signed-in account must stop being the identity:
+        // drop its profile, ignore its in-flight responses and tear down its
+        // local health state. The same user (or nobody) is left untouched.
+        if (identityRef.current !== null && identityRef.current !== nextUserId) {
+          identityRef.current = null;
+          profileRevision.current++;
+          setSession(null);
+          setProfile(null);
+          setProfileMissing(false);
+          void requestHealthSyncOwner(null);
+          logOutPurchases();
+          cancelStreakReminders().catch(() => {});
+        }
         return;
       }
       if (event === 'USER_UPDATED') {
         setNeedsPasswordReset(false);
+        recoveryUserRef.current = null;
+      } else if (recoveryUserRef.current !== null && nextUserId !== recoveryUserRef.current) {
+        // Recovery state must not outlive logout or an unrelated account.
+        recoveryUserRef.current = null;
+        setNeedsPasswordReset(false);
       }
+
+      if (nextUserId !== identityRef.current) {
+        // Account changed (including A -> B without a null): drop the old
+        // profile immediately and ignore any response still in flight.
+        identityRef.current = nextUserId;
+        profileRevision.current++;
+        setProfile(null);
+        setProfileMissing(false);
+      }
+      // Health lifecycle follows auth directly (any source of SIGNED_OUT),
+      // independent of profile loading. Same-user events are a no-op there.
+      void requestHealthSyncOwner(nextUserId);
+
       setSession(session);
       if (session) {
         // Only configure purchases on actual sign-in events, not on every state change
@@ -152,17 +213,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           configurePurchases(session.user.id);
         }
         setLoading(true);
-        fetchProfile(session.user.id);
+        fetchProfile(session.user.id, ++profileRevision.current);
       } else {
         logOutPurchases();
         cancelStreakReminders().catch(() => {});
+        profileRevision.current++;
         setProfile(null);
         setProfileMissing(false);
         setLoading(false);
       }
     });
 
-    return () => subscription.unsubscribe();
+    const revision = profileRevision;
+    const identity = identityRef;
+    return () => {
+      revision.current++;
+      identity.current = null;
+      subscription.unsubscribe();
+    };
   }, [fetchProfile]);
 
   const value = useMemo<AuthContextValue>(

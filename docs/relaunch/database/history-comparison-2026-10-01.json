@@ -1,0 +1,232 @@
+{
+  "project_ref": "uzstenhkngldkrwnsmku",
+  "captured_on": "2026-10-01",
+  "replay_verified": false,
+  "note": "TOKEN_MATCH ignores outer comments/whitespace only, preserves quoted bodies. Not schema equivalence or replay proof.",
+  "rows": [
+    {
+      "version": "001",
+      "remote_name": "streakwar_schema",
+      "statement_count": 81,
+      "statement_array_sha256": "5d5a033d5b55ee3b41ff9dd3c0372c526ec9e3852af2c50f29fcf33427496e75",
+      "local_file": "001_streakwar_schema.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "002",
+      "remote_name": "device_connections",
+      "statement_count": 16,
+      "statement_array_sha256": "23c6396c14e634571d925f6c663c309c3685f28be2a5a38e07e7fe403a3ce5c5",
+      "local_file": "002_device_connections.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "003",
+      "remote_name": "global_leaderboard",
+      "statement_count": 13,
+      "statement_array_sha256": "db15b892c26394385acaa762d1278db93389aa44fe64b633236b4d57699175db",
+      "local_file": "003_global_leaderboard.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "004",
+      "remote_name": "weekly_achievements",
+      "statement_count": 9,
+      "statement_array_sha256": "42162ac0f368113a1bd5fa7fa4bb0595be093f9173c017193ce95a0fbae86973",
+      "local_file": "004_weekly_achievements.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "005",
+      "remote_name": "leagues",
+      "statement_count": 20,
+      "statement_array_sha256": "8fe5f461926cb5e9da44e965edef8be78911cc03e4ab63e4f78310bd9d7264ee",
+      "local_file": "005_leagues.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "006",
+      "remote_name": "reactions_trash_talk",
+      "statement_count": 7,
+      "statement_array_sha256": "22827c74370b0b8cd1bb61b47080c121698768736ac7d084f008d189072b2d5b",
+      "local_file": "006_reactions_trash_talk.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "007",
+      "remote_name": "group_challenges",
+      "statement_count": 2,
+      "statement_array_sha256": "b8350ffb260ed173e1e87a782cf95684373355aab69a284c2dde00a36ee692ef",
+      "local_file": "007_group_challenges.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "008",
+      "remote_name": "capacity_enforcement",
+      "statement_count": 3,
+      "statement_array_sha256": "ae41c14a9b24ec2f1180497ea92e168676489bcf7a58b881b5298e48fadf034b",
+      "local_file": "008_capacity_enforcement.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "009",
+      "remote_name": "premium",
+      "statement_count": 3,
+      "statement_array_sha256": "22f07774e759d4835aa4eb20392c74984bd30188300fa1e90909dd6524302be0",
+      "local_file": "009_premium.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "010",
+      "remote_name": "streak_rules",
+      "statement_count": 1,
+      "statement_array_sha256": "3f898e4d8b6df6ca7973c1317372c7c0296574b585408e483141ffde3226f091",
+      "local_file": "010_streak_rules.sql",
+      "status": "CONTENT_DIFF"
+    },
+    {
+      "version": "011",
+      "remote_name": "recurring_challenges",
+      "statement_count": 8,
+      "statement_array_sha256": "8f608a567fd58d177144a64562e58f23e63762b96989b0d32e5cb83bc564476d",
+      "local_file": "011_recurring_challenges.sql",
+      "status": "CONTENT_DIFF"
+    },
+    {
+      "version": "012",
+      "remote_name": "cron_renewal",
+      "statement_count": 4,
+      "statement_array_sha256": "98085231897748835e6825d010e01b8dd7f1f16aa100859d3521f673db1e766b",
+      "local_file": "012_cron_renewal.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "013",
+      "remote_name": "pro_features",
+      "statement_count": 7,
+      "statement_array_sha256": "7c61229ef0f23eba0efca1d72fc785c1841b16b840cd28545c41af146376e54f",
+      "local_file": "013_pro_features.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "014",
+      "remote_name": "social",
+      "statement_count": 14,
+      "statement_array_sha256": "64a5dc8831beba59b0bdf301ecc6c678357ebe25da286615b9bc7e478a87c765",
+      "local_file": "014_social.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "015",
+      "remote_name": "streak_step_update",
+      "statement_count": 3,
+      "statement_array_sha256": "d678ebcbed150ca411f0b8448fa6290ad844cacb834913982323e6210ac380f8",
+      "local_file": "015_streak_step_update.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "016",
+      "remote_name": "streak_server_decay",
+      "statement_count": 5,
+      "statement_array_sha256": "9d5d00f0f3d0556c00068d02dbc1c89e8581ef56052412b688d8c66cb9e517dd",
+      "local_file": "016_streak_server_decay.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "017",
+      "remote_name": "fix_streak_freeze",
+      "statement_count": 3,
+      "statement_array_sha256": "03c4e43952ceff616692ab0a95dc75edb5f433bc117f41a39314cde77c8eccbb",
+      "local_file": "017_fix_streak_freeze.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "018",
+      "remote_name": "backfill_challenges",
+      "statement_count": 2,
+      "statement_array_sha256": "ddb374d7378684c717d4474b8ea4c8ee00c10430c41d042a5c68b4259262adc0",
+      "local_file": "018_backfill_challenges.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "019",
+      "remote_name": "encrypt_oauth_tokens",
+      "statement_count": 8,
+      "statement_array_sha256": "4f9bcac2ebc296f7506bac5a8bad467b3916cc58ccf39dea8ceeb9125e09ed1c",
+      "local_file": "019_security_hardening.sql",
+      "status": "VERSION_NAME_COLLISION"
+    },
+    {
+      "version": "020",
+      "remote_name": "multi_challenge_workout_fan_out",
+      "statement_count": 8,
+      "statement_array_sha256": "9edf9ea740e75420122c5f18e465788deaeebb3f52bf0319bf94af10381f60da",
+      "local_file": "020_read_scoping.sql",
+      "status": "VERSION_NAME_COLLISION"
+    },
+    {
+      "version": "021",
+      "remote_name": "heart_rate_columns",
+      "statement_count": 3,
+      "statement_array_sha256": "7ac50dfb71960c62847eabc2adf370b25d4c831e5317f0802d42a98fac367d87",
+      "local_file": "021_global_challenges_english_and_fun.sql",
+      "status": "VERSION_NAME_COLLISION"
+    },
+    {
+      "version": "022",
+      "remote_name": "fix_streak_freeze_idor",
+      "statement_count": 1,
+      "statement_array_sha256": "2b3ca53ff4eee773df2a944c63ceded9a07cec3d87756acb16141499518a0dfd",
+      "local_file": null,
+      "status": "REMOTE_ONLY"
+    },
+    {
+      "version": "023",
+      "remote_name": "storage_bucket_policy",
+      "statement_count": 3,
+      "statement_array_sha256": "b005696f3073886db3d64fcab48d17efe4abca90bbdb97b81a6ac8625d63ef74",
+      "local_file": null,
+      "status": "REMOTE_ONLY"
+    },
+    {
+      "version": "024",
+      "remote_name": "security_hardening",
+      "statement_count": 19,
+      "statement_array_sha256": "ea7a32c8a867c7395c84273100526d36d67ad35ed104ea3562c42fdab77c4d69",
+      "local_file": null,
+      "status": "REMOTE_ONLY"
+    },
+    {
+      "version": "20260605000000",
+      "remote_name": "security_perf_followup",
+      "statement_count": 5,
+      "statement_array_sha256": "968ace0a7ab6b5018d612777e02b01c3abd87c0bda34d603b51de17c0856563a",
+      "local_file": null,
+      "status": "REMOTE_ONLY"
+    },
+    {
+      "version": "20260605100000",
+      "remote_name": "device_token_rpcs",
+      "statement_count": 17,
+      "statement_array_sha256": "6efbf2c8abd90168357dc62777c99cae1d7985529c02c85c0047fb2b4db5d277",
+      "local_file": null,
+      "status": "REMOTE_ONLY"
+    },
+    {
+      "version": "20261001093330",
+      "remote_name": "restrict_device_token_rpc_execution",
+      "statement_count": 1,
+      "statement_array_sha256": "74bbaa002da64e6f75f0850f5c8f5957f003f7288dd34e6b26bf46cad2751bca",
+      "local_file": "20261001093330_restrict_device_token_rpc_execution.sql",
+      "status": "TOKEN_MATCH"
+    },
+    {
+      "version": "20261001094527",
+      "remote_name": "restrict_device_connection_client_writes",
+      "statement_count": 1,
+      "statement_array_sha256": "ffdc34e4b5dd6f9604b45474f5ca53bb57d532da08ec108a6894ee70c996424d",
+      "local_file": "20261001094527_restrict_device_connection_client_writes.sql",
+      "status": "TOKEN_MATCH"
+    }
+  ]
+}

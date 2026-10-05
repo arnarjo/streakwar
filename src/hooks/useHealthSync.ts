@@ -1,9 +1,12 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Platform } from 'react-native';
+import { useState, useEffect, useLayoutEffect, useMemo, useRef, useCallback } from 'react';
+import { AppState, Platform } from 'react-native';
 import { supabase } from '../lib/supabase';
+import { assertHealthSyncUser } from '../lib/healthSyncIdentity';
 import { initHealthKit, syncRecentWorkouts } from '../lib/healthKit';
 import { initHealthConnect, checkHealthConnectGranted, pollHealthConnect } from '../lib/healthConnect';
-import { persistUserId, clearUserId, unregisterBackgroundSync } from '../lib/backgroundSync';
+import { registerHealthSyncBackground, disconnectHealthSyncBackground } from '../lib/healthSyncLifecycle';
+import { HealthSyncIncompleteError, formatConnectedSyncNote } from '../lib/healthSyncFeedback';
+import { getHealthConnectBackgroundState, requestHealthConnectBackground, type HealthConnectBackgroundState } from '../lib/healthConnectBackground';
 
 export type ProviderKey =
   | 'apple_health'
@@ -29,19 +32,91 @@ export function useHealthSync(userId: string) {
   const [syncing, setSyncing] = useState(false);
   const [lastSynced, setLastSynced] = useState<Date | null>(null);
   const [showBatteryWarning, setShowBatteryWarning] = useState(false);
+  const [backgroundSyncUnavailable, setBackgroundSyncUnavailable] = useState(false);
+  const [backgroundAccess, setBackgroundAccess] = useState<HealthConnectBackgroundState | 'checking'>('checking');
+  const [permissionNotice, setPermissionNotice] = useState<string | null>(null);
+  const [stateUserId, setStateUserId] = useState(userId);
+  const scope = useMemo(() => Symbol(userId), [userId]);
+  const activeScope = useRef<symbol | null>(null);
+  const manualInFlight = useRef(false);
+  const fetchRevision = useRef(0);
+  const backgroundRevision = useRef(0);
+  useLayoutEffect(() => {
+    activeScope.current = scope;
+    manualInFlight.current = false;
+    return () => { activeScope.current = null; };
+  }, [scope]);
+
+  // Reset before exposing the previous account's connection/status to a render.
+  if (stateUserId !== userId) {
+    setStateUserId(userId);
+    setConnections([]);
+    setSyncing(false);
+    setLastSynced(null);
+    setBackgroundSyncUnavailable(false);
+    setBackgroundAccess('checking');
+    setPermissionNotice(null);
+    setShowBatteryWarning(false);
+  }
+
+  const assertCurrent = useCallback(async () => {
+    if (activeScope.current !== scope) throw new Error('Health sync account changed or screen closed.');
+    await assertHealthSyncUser(userId);
+    if (activeScope.current !== scope) throw new Error('Health sync account changed or screen closed.');
+  }, [scope, userId]);
 
   const fetchConnections = useCallback(async () => {
     if (!userId) return;
-    const { data } = await supabase
+    const revision = ++fetchRevision.current;
+    const { data, error } = await supabase
       .from('device_connections')
       .select('provider, is_active, last_synced_at')
       .eq('user_id', userId);
-    setConnections(data ?? []);
-  }, [userId]);
+    if (error) throw error;
+    if (activeScope.current === scope && revision === fetchRevision.current) setConnections(data ?? []);
+  }, [userId, scope]);
 
   useEffect(() => {
-    fetchConnections();
+    fetchConnections().catch(() => {});
   }, [fetchConnections]);
+
+  const hasHealthConnect = connections.some(c => c.provider === 'health_connect' && c.is_active);
+  useEffect(() => {
+    if (Platform.OS !== 'android' || !hasHealthConnect) return;
+    let disposed = false;
+    const refreshAccess = async () => {
+      const current = ++backgroundRevision.current;
+      const state = await getHealthConnectBackgroundState();
+      if (!disposed && activeScope.current === scope && current === backgroundRevision.current) setBackgroundAccess(state);
+    };
+    void refreshAccess();
+    const listener = AppState.addEventListener('change', state => {
+      if (state === 'active') void refreshAccess();
+    });
+    return () => { disposed = true; listener.remove(); };
+  }, [hasHealthConnect, scope]);
+
+  const enableBackgroundSync = useCallback(async () => {
+    if (Platform.OS !== 'android' || !hasHealthConnect) throw new Error('Connect Health Connect first.');
+    if (syncing || manualInFlight.current) throw new Error('Sync is already running.');
+    manualInFlight.current = true;
+    setSyncing(true);
+    try {
+      await assertCurrent();
+      const state = await requestHealthConnectBackground();
+      await assertCurrent();
+      ++backgroundRevision.current;
+      setBackgroundAccess(state);
+      const registered = state === 'granted' && await registerHealthSyncBackground(userId, { persist: false });
+      await assertCurrent();
+      setBackgroundSyncUnavailable(!registered);
+    } finally {
+      if (activeScope.current === scope) {
+        manualInFlight.current = false;
+        setSyncing(false);
+      }
+    }
+  }, [hasHealthConnect, syncing, assertCurrent, scope, userId]);
 
   useEffect(() => {
     if (Platform.OS !== 'android') return;
@@ -54,6 +129,48 @@ export function useHealthSync(userId: string) {
     const stale = Date.now() - lastSync > 30 * 60 * 1000;
     setShowBatteryWarning(stale);
   }, [connections]);
+
+  // A permission grant or a poll attempt is not evidence that data was saved.
+  const syncAndRecord = useCallback(async (): Promise<number> => {
+    await assertCurrent();
+    let count = 0;
+    if (Platform.OS === 'android') {
+      const result = await pollHealthConnect(userId);
+      await assertCurrent();
+      const missing = result.missingPermissions ?? [];
+      setPermissionNotice(missing.length
+        ? `Health Connect read access is missing for: ${missing.join(', ')}. Open Health Connect settings to enable it. Other data may have imported.`
+        : null);
+      if (!result.completed) {
+        // Thrown only after assertCurrent() above, so a stale account never exposes this result.
+        throw new HealthSyncIncompleteError(result);
+      }
+      // Steps insert/update is not a workout; without the per-type outcome there
+      // is no safe count, so fail (and write no timestamp) instead of guessing.
+      if (result.exercise?.status !== 'ok' || !Number.isInteger(result.exercise.written) || result.exercise.written < 0) {
+        throw new Error('Sync did not complete. The sync outcome was unavailable. Please retry.');
+      }
+      count = result.exercise.written;
+    } else if (Platform.OS === 'ios') {
+      count = await syncRecentWorkouts(userId);
+    } else {
+      throw new Error('Health sync is not available on this platform.');
+    }
+    const finishedAt = new Date();
+    await assertCurrent();
+    const { data, error } = await supabase
+      .from('device_connections')
+      .update({ last_synced_at: finishedAt.toISOString() })
+      .eq('user_id', userId)
+      .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect')
+      .eq('is_active', true)
+      .select('provider');
+    if (error) throw error;
+    if (data?.length !== 1) throw new Error('Sync status was not saved to an active connection. Please reconnect and retry.');
+    await assertCurrent();
+    setLastSynced(finishedAt);
+    return count;
+  }, [userId, assertCurrent]);
 
   /** Connect a native health source (HealthKit on iOS / Health Connect on Android). */
   const connectNative = useCallback(async (): Promise<{ success: boolean; message: string }> => {
@@ -74,27 +191,35 @@ export function useHealthSync(userId: string) {
     }
 
     const provider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
-    await supabase.from('device_connections').upsert({
+    await assertCurrent();
+    const { error } = await supabase.from('device_connections').upsert({
       user_id: userId,
       provider,
       is_active: true,
-      last_synced_at: new Date().toISOString(),
     }, { onConflict: 'user_id,provider' });
+    if (error) throw error;
 
-    await persistUserId(userId);
+    await assertCurrent();
+    const registered = await registerHealthSyncBackground(userId, { persist: true });
+    await assertCurrent();
+    setBackgroundSyncUnavailable(!registered);
     await fetchConnections();
 
+    await assertCurrent();
     setSyncing(true);
-    if (Platform.OS === 'ios') {
-      await syncRecentWorkouts(userId);
-    } else {
-      await pollHealthConnect(userId);
+    try {
+      await syncAndRecord();
+      await fetchConnections();
+      return { success: true, message: 'Connected! Your recent workouts have been synced.' };
+    } catch (syncError) {
+      await assertCurrent();
+      // The connection exists, but the initial import did not complete.
+      // Do not send the caller back to the permission dialog or claim success.
+      return { success: true, message: formatConnectedSyncNote(syncError) };
+    } finally {
+      if (activeScope.current === scope) setSyncing(false);
     }
-    setSyncing(false);
-    setLastSynced(new Date());
-
-    return { success: true, message: 'Connected! Your recent workouts have been synced.' };
-  }, [userId, fetchConnections]);
+  }, [userId, fetchConnections, syncAndRecord, assertCurrent, scope]);
 
   /**
    * Called after the user returns from Health Connect settings on Android.
@@ -107,73 +232,80 @@ export function useHealthSync(userId: string) {
     console.log('[useHealthSync] Granted:', granted);
     if (!granted) return false;
 
-    await supabase.from('device_connections').upsert({
+    await assertCurrent();
+    const { error } = await supabase.from('device_connections').upsert({
       user_id: userId,
       provider: 'health_connect',
       is_active: true,
-      last_synced_at: new Date().toISOString(),
     }, { onConflict: 'user_id,provider' });
+    if (error) throw error;
 
-    await persistUserId(userId);
+    await assertCurrent();
+    const registered = await registerHealthSyncBackground(userId, { persist: true });
+    await assertCurrent();
+    setBackgroundSyncUnavailable(!registered);
     await fetchConnections();
 
+    await assertCurrent();
     setSyncing(true);
-    await pollHealthConnect(userId);
-    setSyncing(false);
-    setLastSynced(new Date());
+    try {
+      await syncAndRecord();
+      await fetchConnections();
+    } catch {
+      await assertCurrent();
+      // This boolean confirms permissions/connection, not import success.
+      // Keep the previous last-success value on a failed or skipped poll.
+    } finally {
+      if (activeScope.current === scope) setSyncing(false);
+    }
     return true;
-  }, [userId, fetchConnections]);
+  }, [userId, fetchConnections, syncAndRecord, assertCurrent, scope]);
 
   /** Trigger a manual foreground sync */
   const syncNow = useCallback(async (): Promise<number> => {
-    if (!userId || syncing) return 0;
+    if (!userId) throw new Error('Sign in before syncing.');
+    if (syncing || manualInFlight.current) throw new Error('Sync is already running.');
     const nativeProvider: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
-    if (!connections.some(c => c.provider === nativeProvider && c.is_active)) return 0;
+    if (!connections.some(c => c.provider === nativeProvider && c.is_active)) {
+      throw new Error('Connect a health source before syncing.');
+    }
+    manualInFlight.current = true;
     setSyncing(true);
 
-    let count = 0;
-    let syncRan = false;
-    if (Platform.OS === 'ios') {
-      count = await syncRecentWorkouts(userId);
-      syncRan = true;
-    } else if (Platform.OS === 'android') {
-      const result = await pollHealthConnect(userId);
-      count = result.synced;
-      // Skipped polls (permissions revoked) must not bump last_synced_at,
-      // or the staleness warning would never fire.
-      syncRan = result.ranWithPermissions;
+    try {
+      const count = await syncAndRecord();
+      await fetchConnections();
+      return count;
+    } finally {
+      if (activeScope.current === scope) {
+        manualInFlight.current = false;
+        setSyncing(false);
+      }
     }
-
-    if (syncRan) {
-      await supabase
-        .from('device_connections')
-        .update({ last_synced_at: new Date().toISOString() })
-        .eq('user_id', userId)
-        .eq('provider', Platform.OS === 'ios' ? 'apple_health' : 'health_connect');
-    }
-    await fetchConnections();
-
-    setSyncing(false);
-    setLastSynced(new Date());
-    return count;
-  }, [userId, fetchConnections, syncing]);
+  }, [userId, fetchConnections, syncing, syncAndRecord, connections, scope]);
 
   /** Disconnect a provider */
   const disconnect = useCallback(async (provider: ProviderKey): Promise<void> => {
-    await supabase
+    await assertCurrent();
+    const { error } = await supabase
       .from('device_connections')
       .update({ is_active: false })
       .eq('user_id', userId)
       .eq('provider', provider);
+    if (error) throw error;
+    await assertCurrent();
 
     const nativeProv: ProviderKey = Platform.OS === 'ios' ? 'apple_health' : 'health_connect';
     if (provider === nativeProv) {
-      await clearUserId();
-      await unregisterBackgroundSync();
+      await disconnectHealthSyncBackground(userId);
+      await assertCurrent();
+      setBackgroundSyncUnavailable(false);
+      setBackgroundAccess('checking');
+      setPermissionNotice(null);
     }
 
     await fetchConnections();
-  }, [userId, fetchConnections]);
+  }, [userId, fetchConnections, assertCurrent]);
 
   function isConnected(provider: ProviderKey): boolean {
     return connections.some(c => c.provider === provider && c.is_active);
@@ -192,6 +324,10 @@ export function useHealthSync(userId: string) {
     disconnect,
     nativeProvider,
     showBatteryWarning,
+    backgroundSyncUnavailable,
+    backgroundAccess,
+    enableBackgroundSync,
+    permissionNotice,
     refresh: fetchConnections,
   };
 }

@@ -11,6 +11,9 @@ import { useHealthSync, PROVIDER_META } from '../hooks/useHealthSync';
 import type { ProviderKey } from '../hooks/useHealthSync';
 import { openHealthConnectPermissions, getLastHCDebug } from '../lib/healthConnect';
 import { formatDistanceToNow } from 'date-fns';
+import {
+  formatSyncSuccess, formatSyncError, STALE_SYNC_ALERT, STALE_SYNC_ROW, LAST_FULL_SYNC_LABEL,
+} from '../lib/healthSyncFeedback';
 
 import { C } from '../theme';
 import type { RootStackNavigationProp } from '../navigation/types';
@@ -27,7 +30,8 @@ export default function ConnectDevicesScreen() {
   const {
     connections, syncing, isConnected, connectNative,
     confirmHealthConnectConnection, syncNow, disconnect,
-    nativeProvider, showBatteryWarning, refresh: fetchConnections
+    nativeProvider, showBatteryWarning, backgroundSyncUnavailable, backgroundAccess,
+    enableBackgroundSync, permissionNotice, refresh: fetchConnections
   } = useHealthSync(profile?.id ?? '');
 
   const [connecting, setConnecting] = useState<ProviderKey | null>(null);
@@ -49,14 +53,18 @@ export default function ConnectDevicesScreen() {
       console.log('[ConnectDevices] AppState changed to:', state, 'Awaiting HC:', awaitingHCReturn.current);
       if (state === 'active' && awaitingHCReturn.current) {
         awaitingHCReturn.current = false;
-        const confirmed = await confirmHealthConnectConnection();
-        console.log('[ConnectDevices] Connection confirmed:', confirmed);
-        if (!mounted.current) return;
-        setConnecting(null);
-        if (confirmed) {
-          Alert.alert('Connected!', 'Health Connect permissions granted. Your workouts will sync automatically.');
-        } else {
-          Alert.alert('Not connected', 'Permissions were not granted in Health Connect.');
+        try {
+          const confirmed = await confirmHealthConnectConnection();
+          if (!mounted.current) return;
+          if (confirmed) {
+            Alert.alert('Connected!', 'Health Connect permissions granted. Check the last full sync time, or tap Sync now to retry.');
+          } else {
+            Alert.alert('Not connected', 'Permissions were not granted in Health Connect.');
+          }
+        } catch {
+          if (mounted.current) Alert.alert('Connection check failed', 'Please try connecting again.');
+        } finally {
+          if (mounted.current) setConnecting(null);
         }
       }
     });
@@ -67,34 +75,38 @@ export default function ConnectDevicesScreen() {
 
   async function handleNativeConnect() {
     setConnecting(nativeProvider);
+    try {
+      if (Platform.OS === 'android') {
+        // Try requestPermission first (works when installed via Play Store)
+        const { success, message } = await connectNative();
+        if (success) {
+          setConnecting(null);
+          Alert.alert('Connected!', message);
+          return;
+        }
+        // Show debug info so we can diagnose why requestPermission() failed
+        if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
 
-    if (Platform.OS === 'android') {
-      // Try requestPermission first (works when installed via Play Store)
-      const { success, message } = await connectNative();
-      if (success) {
-        setConnecting(null);
-        Alert.alert('Connected!', message);
+        // Permissions not granted via dialog — open HC permissions page directly.
+        // AppState listener will detect when user returns and check if granted.
+        awaitingHCReturn.current = true;
+        const opened = await openHealthConnectPermissions();
+        if (!opened) {
+          awaitingHCReturn.current = false;
+          setConnecting(null);
+          Alert.alert('Could not open Health Connect', 'Please open Health Connect manually and grant permissions to StreakWar.');
+        }
+        // Keep connecting spinner active while user is in HC — cleared by AppState listener
         return;
       }
-      // Show debug info so we can diagnose why requestPermission() failed
-      if (__DEV__) Alert.alert('HC Debug (temp)', getLastHCDebug() || 'no debug info');
 
-      // Permissions not granted via dialog — open HC permissions page directly.
-      // AppState listener will detect when user returns and check if granted.
-      awaitingHCReturn.current = true;
-      const opened = await openHealthConnectPermissions();
-      if (!opened) {
-        awaitingHCReturn.current = false;
-        setConnecting(null);
-        Alert.alert('Could not open Health Connect', 'Please open Health Connect manually and grant permissions to StreakWar.');
-      }
-      // Keep connecting spinner active while user is in HC — cleared by AppState listener
-      return;
+      const { success, message } = await connectNative();
+      setConnecting(null);
+      Alert.alert(success ? 'Connected!' : 'Could not connect', message);
+    } catch {
+      setConnecting(null);
+      Alert.alert('Could not connect', 'Please check your connection and try again.');
     }
-
-    const { success, message } = await connectNative();
-    setConnecting(null);
-    Alert.alert(success ? 'Connected!' : 'Could not connect', message);
   }
 
   async function handleOAuthConnect(provider: ProviderKey) {
@@ -124,17 +136,26 @@ export default function ConnectDevicesScreen() {
       'Future workouts will no longer be synced automatically.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Disconnect', style: 'destructive', onPress: () => disconnect(provider) },
+        { text: 'Disconnect', style: 'destructive', onPress: async () => {
+          try {
+            await disconnect(provider);
+          } catch {
+            Alert.alert('Disconnect failed', 'Please check your connection and try again.');
+          }
+        } },
       ]
     );
   }
 
   async function handleSyncNow() {
-    const count = await syncNow();
-    Alert.alert(
-      count > 0 ? 'Sync complete' : 'Nothing new',
-      count > 0 ? `${count} new workout${count === 1 ? '' : 's'} imported.` : 'No new activities found.'
-    );
+    try {
+      const count = await syncNow();
+      const feedback = formatSyncSuccess(count);
+      Alert.alert(feedback.title, feedback.message);
+    } catch (error) {
+      const feedback = formatSyncError(error);
+      Alert.alert(feedback.title, feedback.message);
+    }
   }
 
   const connectedCount = connections.filter(c => c.is_active).length;
@@ -158,18 +179,57 @@ export default function ConnectDevicesScreen() {
           <Text style={s.explainerEmoji}>⚡</Text>
           <Text style={s.explainerTitle}>Auto-sync your workouts</Text>
           <Text style={s.explainerText}>
-            Connect your health apps and devices. StreakWar will automatically detect new workouts and award points — even when the app is closed.
+            Connect your health apps and devices to import workouts. On supported Android devices, you can allow background reads. Android controls when background sync runs; you can also use Sync now.
           </Text>
         </View>
 
         {/* Status */}
+        {permissionNotice && (
+          <View style={s.warningRow} accessibilityRole="alert">
+            <Text style={s.warningSub}>{permissionNotice}</Text>
+          </View>
+        )}
+        {Platform.OS === 'android' && isConnected('health_connect') && (
+          <View style={s.warningRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={s.warningTitle}>Health Connect background access</Text>
+              <Text style={s.warningSub}>{
+                backgroundAccess === 'checking' ? 'Checking this device…' :
+                backgroundAccess === 'granted' ? 'Background read permission is enabled. Delivery is not yet verified; Android controls timing.' :
+                backgroundAccess === 'unsupported' ? 'Background reads are not supported by Health Connect on this device. Use Sync now while the app is open.' :
+                backgroundAccess === 'unavailable' ? 'Background support cannot be checked in this build or Health Connect is unavailable. Use a supported native build and Sync now.' :
+                backgroundAccess === 'foreground_permission_required' ? 'Enable workout read access in Health Connect first. Background access is separate.' :
+                backgroundAccess === 'error' ? 'Could not check background access. Retry or use Sync now while the app is open.' :
+                'Optional: allow workout and step imports while StreakWar is in the background. Sync now remains available if you decline.'
+              }</Text>
+              {['permission_required', 'granted', 'error'].includes(backgroundAccess) && (
+                <TouchableOpacity accessibilityRole="button" disabled={syncing}
+                  style={s.syncNowBtn} onPress={async () => {
+                    try { await enableBackgroundSync(); }
+                    catch { if (mounted.current) Alert.alert('Background setup failed', 'Please retry. Manual sync is still available.'); }
+                  }}>
+                  <Text style={s.syncNowText}>{syncing ? 'Please wait…' : backgroundAccess === 'permission_required' ? 'Enable background sync' : 'Retry background setup'}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+          </View>
+        )}
+        {backgroundSyncUnavailable && (Platform.OS !== 'android' || backgroundAccess === 'granted') && (
+          <View style={s.warningRow} accessibilityRole="alert">
+            <Text style={s.warningEmoji}>⚠️</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.warningTitle}>Background sync could not be enabled</Text>
+              <Text style={s.warningSub}>Use Sync now while the app is open. Check system background restrictions, then reconnect to retry.</Text>
+            </View>
+          </View>
+        )}
         {showBatteryWarning && (
           <TouchableOpacity
             style={s.warningRow}
             onPress={() => {
               Alert.alert(
-                'Background Sync Stale',
-                'Health Connect has not synced in over 30 minutes. This usually means Android is "optimizing" the app for battery. Please disable battery optimization for StreakWar in system settings.',
+                STALE_SYNC_ALERT.title,
+                STALE_SYNC_ALERT.message,
                 [
                   { text: 'Cancel', style: 'cancel' },
                   { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -179,8 +239,8 @@ export default function ConnectDevicesScreen() {
           >
             <Text style={s.warningEmoji}>⚠️</Text>
             <View style={{ flex: 1 }}>
-              <Text style={s.warningTitle}>Background sync is delayed</Text>
-              <Text style={s.warningSub}>Tap to fix battery optimization →</Text>
+              <Text style={s.warningTitle}>{STALE_SYNC_ROW.title}</Text>
+              <Text style={s.warningSub}>{STALE_SYNC_ROW.subtitle}</Text>
             </View>
           </TouchableOpacity>
         )}
@@ -188,7 +248,7 @@ export default function ConnectDevicesScreen() {
         {connectedCount > 0 && (
           <View style={s.statusRow}>
             <View style={s.statusDot} />
-            <Text style={s.statusText}>{connectedCount} source{connectedCount !== 1 ? 's' : ''} connected · auto-syncing</Text>
+            <Text style={s.statusText}>{connectedCount} source{connectedCount !== 1 ? 's' : ''} connected</Text>
             <TouchableOpacity onPress={handleSyncNow} disabled={syncing} style={s.syncNowBtn}>
               {syncing
                 ? <ActivityIndicator color={C.primary} size="small" />
@@ -215,6 +275,7 @@ export default function ConnectDevicesScreen() {
           onConnect={handleNativeConnect}
           onDisconnect={() => handleDisconnect(nativeProvider)}
           lastSynced={connections.find(c => c.provider === nativeProvider)?.last_synced_at ?? null}
+          lastSyncedLabel={Platform.OS === 'android' ? LAST_FULL_SYNC_LABEL : undefined}
         />
 
         {/* OAuth providers */}
@@ -274,7 +335,7 @@ export default function ConnectDevicesScreen() {
 
 function ProviderRow({
   icon, label, description, connected, loading, comingSoon,
-  onConnect, onDisconnect, lastSynced,
+  onConnect, onDisconnect, lastSynced, lastSyncedLabel = 'Last synced',
 }: {
   icon: string;
   label: string;
@@ -285,6 +346,8 @@ function ProviderRow({
   onConnect: () => void;
   onDisconnect: () => void;
   lastSynced: string | null;
+  /** Wording is per provider: only Android native health records a full-sync time. */
+  lastSyncedLabel?: string;
 }) {
   const timeAgo = lastSynced
     ? formatDistanceToNow(new Date(lastSynced), { addSuffix: true })
@@ -305,7 +368,7 @@ function ProviderRow({
           </View>
           <Text style={r.desc}>{description}</Text>
           {connected && timeAgo && (
-            <Text style={r.lastSync}>Last synced {timeAgo}</Text>
+            <Text style={r.lastSync}>{lastSyncedLabel} {timeAgo}</Text>
           )}
         </View>
       </View>

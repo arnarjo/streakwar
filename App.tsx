@@ -1,5 +1,5 @@
 import 'react-native-url-polyfill/auto';
-import './src/lib/backgroundSync';
+import './src/lib/backgroundSync'; // defines the headless task before any component mounts
 import React, { useEffect } from 'react';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { StatusBar } from 'expo-status-bar';
@@ -8,15 +8,13 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { usePushNotifications } from './src/hooks/usePushNotifications';
 import { navigationRef } from './src/navigation/navigationRef';
 import { supabase } from './src/lib/supabase';
-import { registerBackgroundSync, persistUserId, clearUserId } from './src/lib/backgroundSync';
-import { initHealthKit, teardownHealthKit } from './src/lib/healthKit';
-import { Platform, Linking } from 'react-native';
+import { Linking } from 'react-native';
 import { AuthProvider, useAuth } from './src/contexts/AuthContext';
 import { C } from './src/theme';
 
 function AppInner() {
   // Session comes from the single auth subscription owned by AuthProvider.
-  const { session, loading } = useAuth();
+  const { session } = useAuth();
   const userId = session?.user?.id;
 
   // Handle deep links: password reset + OAuth callbacks
@@ -55,17 +53,9 @@ function AppInner() {
     return () => sub.remove();
   }, []);
 
-  // Health-sync lifecycle, driven by the AuthProvider's session: boot on
-  // login (and on app start with an existing session), tear down on logout.
-  useEffect(() => {
-    if (loading) return; // wait until the auth state has resolved
-    if (userId) {
-      bootHealthSync(userId);
-    } else {
-      teardownHealthKit();
-      clearUserId().catch(() => {});
-    }
-  }, [userId, loading]);
+  // Local health-sync lifecycle (identity, background task, HealthKit) is
+  // requested by AuthProvider from the single auth subscription and serialized
+  // in src/lib/healthSyncLifecycle.ts — nothing here boots or tears it down.
 
   usePushNotifications(userId ?? '', navigationRef);
 
@@ -75,19 +65,6 @@ function AppInner() {
       <RootNavigator />
     </>
   );
-}
-
-async function bootHealthSync(userId: string) {
-  await persistUserId(userId);
-  await registerBackgroundSync();
-  // iOS: set up HealthKit observers (safe — callback-based, no Activity required)
-  if (Platform.OS === 'ios') {
-    await initHealthKit(userId);
-  }
-  // Android: do NOT call initHealthConnect() here — requestPermission() launches an
-  // Android Activity and crashes when called from an auth callback. Permission is
-  // requested only from ConnectDevicesScreen when the user explicitly taps "Connect".
-  // Streak reminder is scheduled in usePushNotifications after permissions are granted.
 }
 
 export default function App() {

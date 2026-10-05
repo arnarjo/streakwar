@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, RefreshControl, Alert, Linking, Switch,
+  StatusBar, RefreshControl, Alert, Linking, Switch, Platform,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -11,6 +11,9 @@ import { useAuth } from '../hooks/useAuth';
 import { useStreaks } from '../hooks/useStreaks';
 import { useFitnessChallenges } from '../hooks/useFitnessChallenges';
 import { useHealthSync } from '../hooks/useHealthSync';
+import {
+  formatSyncSuccess, formatSyncError, STALE_SYNC_ALERT, STALE_SYNC_ROW, LAST_FULL_SYNC_LABEL,
+} from '../lib/healthSyncFeedback';
 import { useAchievements } from '../hooks/useAchievements';
 import { usePremium } from '../hooks/usePremium';
 import { useLeague } from '../hooks/useLeague';
@@ -151,11 +154,14 @@ export default function ProfileScreen() {
   }
 
   async function handleSyncNow() {
-    const count = await syncNow();
-    Alert.alert(
-      count > 0 ? 'Sync complete' : 'Nothing new',
-      count > 0 ? `${count} new workout${count !== 1 ? 's' : ''} imported.` : 'No new activities found.'
-    );
+    try {
+      const count = await syncNow();
+      const feedback = formatSyncSuccess(count);
+      Alert.alert(feedback.title, feedback.message);
+    } catch (error) {
+      const feedback = formatSyncError(error);
+      Alert.alert(feedback.title, feedback.message);
+    }
   }
 
   const connectedSources = connections.filter(c => c.is_active);
@@ -301,8 +307,8 @@ export default function ProfileScreen() {
                 style={s.warningRow}
                 onPress={() => {
                   Alert.alert(
-                    'Background Sync Stale',
-                    'Health Connect has not synced in over 30 minutes. Please disable battery optimization for StreakWar.',
+                    STALE_SYNC_ALERT.title,
+                    STALE_SYNC_ALERT.message,
                     [
                       { text: 'Cancel', style: 'cancel' },
                       { text: 'Open Settings', onPress: () => Linking.openSettings() }
@@ -312,8 +318,8 @@ export default function ProfileScreen() {
               >
                 <Text style={s.warningEmoji}>⚠️</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.warningTitle}>Background sync delayed</Text>
-                  <Text style={s.warningSub}>Tap to fix battery optimization →</Text>
+                  <Text style={s.warningTitle}>{STALE_SYNC_ROW.title}</Text>
+                  <Text style={s.warningSub}>{STALE_SYNC_ROW.subtitle}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -325,7 +331,7 @@ export default function ProfileScreen() {
                     {connectedSources.length} source{connectedSources.length !== 1 ? 's' : ''} connected
                   </Text>
                   <Text style={s.syncSub}>
-                    Last synced: {lastSynced ? format(lastSynced, 'HH:mm') : 'Recently'}
+                    {Platform.OS === 'android' ? LAST_FULL_SYNC_LABEL : 'Last synced'}: {lastSynced ? format(lastSynced, 'HH:mm') : 'Not verified this session'}
                   </Text>
                 </View>
               </View>

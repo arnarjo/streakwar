@@ -58,6 +58,7 @@
         "android.permission.FOREGROUND_SERVICE",
         "android.permission.health.READ_EXERCISE",
         "android.permission.health.READ_STEPS",
+        "android.permission.health.READ_HEALTH_DATA_IN_BACKGROUND",
         "android.permission.health.READ_DISTANCE",
         "android.permission.health.READ_ACTIVE_CALORIES_BURNED",
         "android.permission.WAKE_LOCK",
@@ -106,6 +107,7 @@
       ],
       "./plugins/withHealthConnectManifest",
       "./plugins/withHealthConnectMainActivity",
+      "./plugins/withHealthConnectBackground",
       "./plugins/withPlayStoreVerification",
       [
         "expo-build-properties",

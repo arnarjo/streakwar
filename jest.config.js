@@ -1,4 +1,4 @@
-/** Jest config — pure-logic tests only (no native modules, no supabase client). */
+/** Unit tests only — native modules and live service clients must be mocked. */
 module.exports = {
   preset: 'jest-expo',
   roots: ['<rootDir>/tests'],
